@@ -241,7 +241,7 @@ function ClientsSuppliers() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('entities.title')}</h1>
         <p className="text-gray-600 text-sm">{t('entities.subtitle')}</p>

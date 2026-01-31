@@ -411,9 +411,9 @@ function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">{t('dashboard.title')}</h1>
           <p className="text-gray-600 dark:text-gray-400">{t('dashboard.subtitle')}</p>
@@ -470,7 +470,7 @@ function Dashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
           title={t('dashboard.totalRevenue')}
           value={formatCurrency(metrics.totalClientSales)}
@@ -512,7 +512,7 @@ function Dashboard() {
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
           title={t('dashboard.collectionRate')}
           value={`${metrics.collectionRate.toFixed(1)}%`}
@@ -548,11 +548,11 @@ function Dashboard() {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Revenue vs Expenses Trend */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.revenueVsExpensesTrend')}</h2>
-          <ResponsiveContainer width="100%" height={350}>
+        <div className="card p-4">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('dashboard.revenueVsExpensesTrend')}</h2>
+          <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={revenueExpensesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -579,9 +579,9 @@ function Dashboard() {
         </div>
 
         {/* Payment Status Distribution */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.paymentStatusDistribution')}</h2>
-          <ResponsiveContainer width="100%" height={350}>
+        <div className="card p-4">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('dashboard.paymentStatusDistribution')}</h2>
+          <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
                 data={paymentStatusData}
@@ -604,11 +604,11 @@ function Dashboard() {
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top Clients */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topClientsByRevenue')}</h2>
-          <ResponsiveContainer width="100%" height={350}>
+        <div className="card p-4">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('dashboard.topClientsByRevenue')}</h2>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={topClientsData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-300)" />
               <XAxis type="number" stroke="var(--text-tertiary)" />
@@ -622,9 +622,9 @@ function Dashboard() {
         </div>
 
         {/* Top Suppliers */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topSuppliersByPurchases')}</h2>
-          <ResponsiveContainer width="100%" height={350}>
+        <div className="card p-4">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('dashboard.topSuppliersByPurchases')}</h2>
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart data={topSuppliersData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-300)" />
               <XAxis type="number" stroke="var(--text-tertiary)" />
@@ -639,40 +639,40 @@ function Dashboard() {
       </div>
 
       {/* Top Products Table */}
-      <div className="card p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topProductsPerformance')}</h2>
+      <div className="card p-4">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('dashboard.topProductsPerformance')}</h2>
         <div className="overflow-x-auto overflow-y-visible">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[25%] min-w-0">{t('dashboard.product')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">{t('dashboard.qtySold')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.qtyPurchased')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.revenue')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.cost')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.profit')}</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">{t('dashboard.profitMargin')}</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[25%] min-w-0">{t('dashboard.product')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">{t('dashboard.qtySold')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.qtyPurchased')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.revenue')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.cost')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.profit')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">{t('dashboard.profitMargin')}</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {paginatedProductsData.map((product, index) => (
                 <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <td className="table-cell-wrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100" title={product.name}>{product.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">{product.sold}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">{product.purchased}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-blue-600 dark:text-blue-400">{formatCurrencyDetailed(product.revenue)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-purple-600 dark:text-purple-400">{formatCurrencyDetailed(product.cost)}</td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${product.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  <td className="table-cell-wrap px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100" title={product.name}>{product.name}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">{product.sold}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">{product.purchased}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-blue-600 dark:text-blue-400">{formatCurrencyDetailed(product.revenue)}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-purple-600 dark:text-purple-400">{formatCurrencyDetailed(product.cost)}</td>
+                  <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-semibold ${product.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {formatCurrencyDetailed(product.profit)}
                   </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${product.revenue > 0 && (product.profit / product.revenue) >= 0.2 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                  <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-medium ${product.revenue > 0 && (product.profit / product.revenue) >= 0.2 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
                     {product.revenue > 0 ? `${((product.profit / product.revenue) * 100).toFixed(1)}%` : 'N/A'}
                   </td>
                 </tr>
               ))}
               {topProductsData.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan="7" className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
                     {t('dashboard.noProductData')}
                   </td>
                 </tr>
@@ -724,8 +724,8 @@ function MetricCard({ title, value, subtitle, icon: Icon, color = 'blue', small 
     <div className={`metric-card ${colorClasses[color]}`}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{title}</p>
-          <p className={`${small ? 'text-2xl' : 'text-3xl'} font-bold text-gray-900 dark:text-gray-100 mb-1`}>{value}</p>
+          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{title}</p>
+          <p className={`${small ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-gray-100 mb-0.5`}>{value}</p>
           {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>}
           
           {change !== null && change !== undefined && (

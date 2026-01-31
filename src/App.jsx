@@ -220,7 +220,7 @@ function AppContent() {
     <>
       <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell ? 'pb-0' : ''}`}>
         {showAppShell && <Navigation />}
-        <main className={showAppShell ? 'flex-1 min-h-0 overflow-auto max-w-7xl w-full mx-auto py-4 sm:py-6 sm:px-6 lg:px-8 px-4' : ''}>
+        <main className={showAppShell ? 'flex-1 min-h-0 overflow-auto max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6' : ''}>
           {showAppShell && <Breadcrumbs />}
           <Routes>
             {/* Public: Sign in only (credentials configured in Supabase) */}
