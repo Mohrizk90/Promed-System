@@ -62,10 +62,17 @@ html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+html.light {
+  color-scheme: light;
 }
 
 body {
   margin: 0;
+  height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -74,6 +81,11 @@ body {
   background-color: var(--color-surface-100);
   color: var(--text-primary);
   transition: background-color 0.2s ease, color 0.2s ease;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
 }
 
 /* Custom Scrollbar */
@@ -332,7 +344,7 @@ body {
 
   /* Metric Card */
   .metric-card {
-    @apply card p-5 relative overflow-hidden;
+    @apply card p-3 relative overflow-hidden;
   }
 
   .metric-card::before {

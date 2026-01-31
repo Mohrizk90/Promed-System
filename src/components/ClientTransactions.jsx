@@ -733,7 +733,7 @@ function ClientTransactions() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-3">
         <div className="flex justify-between items-center">
           <div className="h-8 bg-gray-200 rounded w-64"></div>
           <div className="h-10 bg-gray-200 rounded w-40"></div>
