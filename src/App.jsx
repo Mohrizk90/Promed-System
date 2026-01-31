@@ -6,7 +6,6 @@ import Dashboard from './components/Dashboard'
 import ClientsSuppliers from './components/ClientsSuppliers'
 import ToastContainer from './components/ToastContainer'
 import LanguageSwitcher from './components/LanguageSwitcher'
-import ThemeToggle from './components/ThemeToggle'
 import BottomNav from './components/BottomNav'
 import Login from './components/Auth/Login'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -25,7 +24,6 @@ import {
 } from './components/ui/Icons'
 import { ToastProvider, useToast } from './context/ToastContext'
 import { LanguageProvider, useLanguage } from './context/LanguageContext'
-import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from './context/KeyboardShortcutsContext'
 
@@ -106,9 +104,6 @@ function Navigation() {
             >
               <HelpCircle size={20} />
             </button>
-            
-            {/* Theme Toggle */}
-            <ThemeToggle />
             
             {/* Language Switcher */}
             <LanguageSwitcher />
@@ -252,17 +247,15 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <ThemeProvider>
-        <LanguageProvider>
-          <AuthProvider>
-            <ToastProvider>
-              <KeyboardShortcutsProvider>
-                <AppContent />
-              </KeyboardShortcutsProvider>
-            </ToastProvider>
-          </AuthProvider>
-        </LanguageProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <KeyboardShortcutsProvider>
+              <AppContent />
+            </KeyboardShortcutsProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </Router>
   )
 }

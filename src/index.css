@@ -57,43 +57,11 @@
   --radius-2xl: 1rem;
 }
 
-/* Dark Theme */
-.dark {
-  --color-primary-50: #1e3a8a;
-  --color-primary-100: #1e40af;
-  --color-primary-200: #1d4ed8;
-  --color-primary-300: #2563eb;
-  --color-primary-400: #3b82f6;
-  --color-primary-500: #60a5fa;
-  --color-primary-600: #93c5fd;
-  --color-primary-700: #bfdbfe;
-  --color-primary-800: #dbeafe;
-  --color-primary-900: #eff6ff;
-
-  --color-surface-50: #111827;
-  --color-surface-100: #1f2937;
-  --color-surface-200: #374151;
-  --color-surface-300: #4b5563;
-  --color-surface-400: #6b7280;
-  --color-surface-500: #9ca3af;
-  --color-surface-600: #d1d5db;
-  --color-surface-700: #e5e7eb;
-  --color-surface-800: #f3f4f6;
-  --color-surface-900: #f9fafb;
-
-  --text-primary: #f9fafb;
-  --text-secondary: #e5e7eb;
-  --text-tertiary: #d1d5db;
-  --text-muted: #9ca3af;
-
-  --color-success-light: #064e3b;
-  --color-warning-light: #78350f;
-  --color-error-light: #7f1d1d;
-  --color-info-light: #1e3a8a;
-
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+/* Prevent zoom issues on mobile - explicit base font size */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
