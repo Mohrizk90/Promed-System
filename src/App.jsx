@@ -59,7 +59,7 @@ function Navigation() {
   }
 
   return (
-    <nav className="bg-blue-700 dark:bg-gray-800 text-white shadow-lg sticky top-0 z-30">
+    <nav className="bg-blue-700 text-white shadow-lg flex-shrink-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo and Desktop Nav */}
@@ -81,8 +81,8 @@ function Navigation() {
                     to={item.path}
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       isActive(item.path)
-                        ? 'bg-blue-800 dark:bg-gray-700 text-white shadow-inner'
-                        : 'text-blue-100 hover:bg-blue-600 dark:hover:bg-gray-700 hover:text-white'
+                        ? 'bg-blue-800 text-white shadow-inner'
+                        : 'text-blue-100 hover:bg-blue-600 hover:text-white'
                     }`}
                   >
                     <Icon size={18} />
@@ -99,7 +99,7 @@ function Navigation() {
             {/* Help button */}
             <button
               onClick={() => setShowHelp(true)}
-              className="hidden sm:flex p-2 rounded-lg text-blue-200 hover:text-white hover:bg-blue-600 dark:hover:bg-gray-700 transition-colors"
+              className="hidden sm:flex p-2 rounded-lg text-blue-200 hover:text-white hover:bg-blue-600 transition-colors"
               title="Keyboard shortcuts (?)"
             >
               <HelpCircle size={20} />
@@ -112,9 +112,9 @@ function Navigation() {
             <div className="relative hidden sm:block">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-blue-600 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-blue-600 transition-colors"
               >
-                <div className="w-8 h-8 bg-blue-500 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                   <UserIcon size={18} />
                 </div>
               </button>
@@ -125,9 +125,9 @@ function Navigation() {
                     className="fixed inset-0 z-10" 
                     onClick={() => setUserMenuOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
-                    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                    <div className="px-4 py-2 border-b border-gray-200">
+              <p className="text-sm font-medium text-gray-900 truncate">
                 {user?.email}
               </p>
             </div>
@@ -136,7 +136,7 @@ function Navigation() {
                         setUserMenuOpen(false)
                         navigate('/settings')
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <Settings size={16} />
                       Settings
@@ -146,7 +146,7 @@ function Navigation() {
                         setUserMenuOpen(false)
                         handleSignOut()
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                     >
                       <LogOut size={16} />
                       Sign Out
@@ -159,7 +159,7 @@ function Navigation() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-blue-600 dark:hover:bg-gray-700"
+              className="md:hidden p-2 rounded-lg hover:bg-blue-600"
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -169,7 +169,7 @@ function Navigation() {
       
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-blue-600 dark:border-gray-700 animate-slide-up">
+        <div className="md:hidden border-t border-blue-600 animate-slide-up">
           <div className="px-2 pt-2 pb-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon
@@ -180,8 +180,8 @@ function Navigation() {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium ${
                     isActive(item.path)
-                      ? 'bg-blue-800 dark:bg-gray-700 text-white'
-                      : 'text-blue-100 hover:bg-blue-600 dark:hover:bg-gray-700 hover:text-white'
+                      ? 'bg-blue-800 text-white'
+                      : 'text-blue-100 hover:bg-blue-600 hover:text-white'
                   }`}
                 >
                   <Icon size={20} />
@@ -189,13 +189,13 @@ function Navigation() {
                 </Link>
               )
             })}
-            <div className="border-t border-blue-600 dark:border-gray-700 pt-2 mt-2">
+            <div className="border-t border-blue-600 pt-2 mt-2">
               <button
                 onClick={() => {
                   setMobileMenuOpen(false)
                   handleSignOut()
                 }}
-                className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-red-300 hover:bg-blue-600 dark:hover:bg-gray-700 w-full"
+                className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-red-300 hover:bg-blue-600 w-full"
               >
                 <LogOut size={20} />
                 Sign Out
@@ -218,9 +218,9 @@ function AppContent() {
 
   return (
     <>
-      <div className={`min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors ${showAppShell ? 'pb-16 sm:pb-0' : ''}`}>
+      <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell ? 'pb-0' : ''}`}>
         {showAppShell && <Navigation />}
-        <main className={showAppShell ? 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 px-4' : ''}>
+        <main className={showAppShell ? 'flex-1 min-h-0 overflow-auto max-w-7xl w-full mx-auto py-4 sm:py-6 sm:px-6 lg:px-8 px-4' : ''}>
           {showAppShell && <Breadcrumbs />}
           <Routes>
             {/* Public: Sign in only (credentials configured in Supabase) */}

@@ -17,7 +17,7 @@ export default function BottomNav({ onAddClick }) {
   const isActive = (path) => location.pathname === path
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-2 pb-safe z-40 sm:hidden">
+    <nav className="flex-shrink-0 bg-white border-t border-gray-200 px-2 pb-safe z-40 sm:hidden">
       <div className="flex items-center justify-around">
         {navItems.map((item, index) => {
           const Icon = item.icon
@@ -40,8 +40,8 @@ export default function BottomNav({ onAddClick }) {
               to={item.path}
               className={`flex flex-col items-center justify-center py-2 px-3 min-h-[56px] transition-colors ${
                 isActive(item.path)
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 dark:text-gray-400'
+                  ? 'text-blue-600'
+                  : 'text-gray-500'
               }`}
             >
               <Icon size={22} />
