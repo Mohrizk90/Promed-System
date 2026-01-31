@@ -61,9 +61,9 @@ function Navigation() {
   return (
     <nav className="bg-blue-700 dark:bg-gray-800 text-white shadow-lg sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="rtl-flip flex justify-between h-16">
           {/* Logo and Desktop Nav */}
-          <div className="flex">
+          <div className="rtl-flip flex">
             <Link to="/dashboard" className="flex-shrink-0 flex items-center gap-2">
               <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                 <span className="text-blue-700 font-bold text-lg">P</span>
@@ -72,7 +72,7 @@ function Navigation() {
             </Link>
             
             {/* Desktop Navigation */}
-            <div className="hidden md:ml-8 md:flex md:space-x-1 md:items-center">
+            <div className="rtl-flip hidden md:ml-8 md:flex md:space-x-1 md:items-center">
               {navItems.map((item) => {
                 const Icon = item.icon
                 return (
@@ -95,7 +95,7 @@ function Navigation() {
           </div>
 
           {/* Right side controls */}
-          <div className="flex items-center gap-2">
+          <div className="rtl-flip flex items-center gap-2">
             {/* Help button */}
             <button
               onClick={() => setShowHelp(true)}
@@ -218,10 +218,11 @@ function AppContent() {
 
   return (
     <>
-      <div className={`min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors ${showAppShell ? 'pb-16 sm:pb-0' : ''}`}>
+      <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell ? 'pb-0' : ''}`}>
         {showAppShell && <Navigation />}
-        <main className={showAppShell ? 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 px-4' : ''}>
+        <main className={showAppShell ? 'flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6' : ''}>
           {showAppShell && <Breadcrumbs />}
+          <div className={showAppShell ? 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col' : ''}>
           <Routes>
             {/* Public: Sign in only (credentials configured in Supabase) */}
             <Route path="/login" element={<Login />} />
@@ -231,7 +232,10 @@ function AppContent() {
             <Route path="/" element={<ProtectedRoute><ClientTransactions /></ProtectedRoute>} />
             <Route path="/suppliers" element={<ProtectedRoute><SupplierTransactions /></ProtectedRoute>} />
             <Route path="/entities" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
+            <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
+            <Route path="/entities/suppliers" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
           </Routes>
+          </div>
         </main>
 
         {showAppShell && (

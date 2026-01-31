@@ -24,7 +24,21 @@ export const translations = {
       save: 'Save',
       cancel: 'Cancel',
       noClients: 'No clients yet',
-      noSuppliers: 'No suppliers yet'
+      noSuppliers: 'No suppliers yet',
+      searchPlaceholder: 'Search by name, contact or address…',
+      deleteClientConfirm: 'Are you sure you want to delete this client?',
+      deleteSupplierConfirm: 'Are you sure you want to delete this supplier?',
+      editingClient: 'Editing client',
+      editingSupplier: 'Editing supplier',
+      noMatchingClients: 'No matching clients',
+      noMatchingSuppliers: 'No matching suppliers',
+      addFirstClientHint: 'Add your first client to get started.',
+      addFirstSupplierHint: 'Add your first supplier to get started.',
+      tryDifferentSearch: 'Try a different search.',
+      viewDetails: 'View details',
+      transactionHistory: 'Transaction history',
+      noTransactionsForEntity: 'No transactions yet',
+      contactAndAddress: 'Contact & address'
     },
     // Dashboard
     dashboard: {
@@ -197,7 +211,8 @@ export const translations = {
       adding: 'Adding...',
       paymentAdded: 'Payment added successfully!',
       paymentDeleted: 'Payment deleted successfully!',
-      deleteConfirm: 'Are you sure you want to delete this payment?'
+      deleteConfirm: 'Are you sure you want to delete this payment?',
+      paymentExceedsRemaining: 'Payment amount cannot exceed remaining amount'
     },
     // Common
     common: {
@@ -309,7 +324,21 @@ export const translations = {
       save: 'حفظ',
       cancel: 'إلغاء',
       noClients: 'لا يوجد عملاء حالياً',
-      noSuppliers: 'لا يوجد موردون حالياً'
+      noSuppliers: 'لا يوجد موردون حالياً',
+      searchPlaceholder: 'البحث بالاسم أو التواصل أو العنوان…',
+      deleteClientConfirm: 'هل أنت متأكد من حذف هذا العميل؟',
+      deleteSupplierConfirm: 'هل أنت متأكد من حذف هذا المورد؟',
+      editingClient: 'تعديل العميل',
+      editingSupplier: 'تعديل المورد',
+      noMatchingClients: 'لا يوجد عملاء مطابقون',
+      noMatchingSuppliers: 'لا يوجد موردون مطابقون',
+      addFirstClientHint: 'أضف أول عميل للبدء.',
+      addFirstSupplierHint: 'أضف أول مورد للبدء.',
+      tryDifferentSearch: 'جرب بحثاً مختلفاً.',
+      viewDetails: 'عرض التفاصيل',
+      transactionHistory: 'سجل المعاملات',
+      noTransactionsForEntity: 'لا توجد معاملات بعد',
+      contactAndAddress: 'التواصل والعنوان'
     },
     // Dashboard
     dashboard: {
@@ -482,7 +511,8 @@ export const translations = {
       adding: 'جاري الإضافة...',
       paymentAdded: 'تم إضافة الدفعة بنجاح!',
       paymentDeleted: 'تم حذف الدفعة بنجاح!',
-      deleteConfirm: 'هل أنت متأكد من حذف هذه الدفعة؟'
+      deleteConfirm: 'هل أنت متأكد من حذف هذه الدفعة؟',
+      paymentExceedsRemaining: 'المبلغ المدفوع لا يمكن أن يتجاوز المبلغ المتبقي'
     },
     // Common
     common: {

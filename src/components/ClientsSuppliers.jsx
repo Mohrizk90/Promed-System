@@ -1,10 +1,21 @@
 import React, { useEffect, useState, useMemo } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useLanguage } from '../context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
 import Pagination from './ui/Pagination'
+import EmptyState from './ui/EmptyState'
+import ConfirmDialog from './ui/ConfirmDialog'
+import Modal from './ui/Modal'
+import { User, Truck, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
+
+const matchSearch = (text, query) => {
+  if (!query.trim()) return true
+  const q = query.trim().toLowerCase()
+  return (text || '').toLowerCase().includes(q)
+}
 
 function ClientsSuppliers() {
   const [clients, setClients] = useState([])
@@ -17,6 +28,9 @@ function ClientsSuppliers() {
   const [clientForm, setClientForm] = useState({ client_name: '', contact_info: '', address: '' })
   const [supplierForm, setSupplierForm] = useState({ supplier_name: '', contact_info: '', address: '' })
 
+  const [clientSearch, setClientSearch] = useState('')
+  const [supplierSearch, setSupplierSearch] = useState('')
+
   const [savingClient, setSavingClient] = useState(false)
   const [savingSupplier, setSavingSupplier] = useState(false)
   const [clientPage, setClientPage] = useState(1)
@@ -24,24 +38,101 @@ function ClientsSuppliers() {
   const [supplierPage, setSupplierPage] = useState(1)
   const [supplierPageSize, setSupplierPageSize] = useState(10)
 
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const [detailEntity, setDetailEntity] = useState(null)
+  const [detailTransactions, setDetailTransactions] = useState([])
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  const [showClientFormModal, setShowClientFormModal] = useState(false)
+  const [showSupplierFormModal, setShowSupplierFormModal] = useState(false)
+
+  const location = useLocation()
+  const navigate = useNavigate()
+  const pathname = location.pathname
+  const currentView = pathname === '/entities/clients' ? 'clients' : pathname === '/entities/suppliers' ? 'suppliers' : 'choice'
+
   const { success, error: showError } = useToast()
   const { t } = useLanguage()
 
-  const clientTotalPages = Math.max(1, Math.ceil(clients.length / clientPageSize))
+  const filteredClients = useMemo(() => {
+    if (!clientSearch.trim()) return clients
+    return clients.filter(
+      (c) =>
+        matchSearch(c.client_name, clientSearch) ||
+        matchSearch(c.contact_info, clientSearch) ||
+        matchSearch(c.address, clientSearch)
+    )
+  }, [clients, clientSearch])
+
+  const filteredSuppliers = useMemo(() => {
+    if (!supplierSearch.trim()) return suppliers
+    return suppliers.filter(
+      (s) =>
+        matchSearch(s.supplier_name, supplierSearch) ||
+        matchSearch(s.contact_info, supplierSearch) ||
+        matchSearch(s.address, supplierSearch)
+    )
+  }, [suppliers, supplierSearch])
+
+  const clientTotalPages = Math.max(1, Math.ceil(filteredClients.length / clientPageSize))
   const paginatedClients = useMemo(() => {
     const start = (clientPage - 1) * clientPageSize
-    return clients.slice(start, start + clientPageSize)
-  }, [clients, clientPage, clientPageSize])
+    return filteredClients.slice(start, start + clientPageSize)
+  }, [filteredClients, clientPage, clientPageSize])
 
-  const supplierTotalPages = Math.max(1, Math.ceil(suppliers.length / supplierPageSize))
+  const supplierTotalPages = Math.max(1, Math.ceil(filteredSuppliers.length / supplierPageSize))
   const paginatedSuppliers = useMemo(() => {
     const start = (supplierPage - 1) * supplierPageSize
-    return suppliers.slice(start, start + supplierPageSize)
-  }, [suppliers, supplierPage, supplierPageSize])
+    return filteredSuppliers.slice(start, start + supplierPageSize)
+  }, [filteredSuppliers, supplierPage, supplierPageSize])
 
   useEffect(() => {
     fetchData()
   }, [])
+
+  useEffect(() => {
+    if (!detailEntity) {
+      setDetailTransactions([])
+      return
+    }
+    const fetchDetailTransactions = async () => {
+      setDetailLoading(true)
+      try {
+        if (detailEntity.type === 'client') {
+          const { data, error } = await supabase
+            .from('client_transactions')
+            .select(`
+              *,
+              products:product_id (product_name, model, unit_price)
+            `)
+            .eq('client_id', detailEntity.data.client_id)
+            .order('transaction_date', { ascending: false })
+          if (error) throw error
+          setDetailTransactions(data || [])
+        } else {
+          const { data, error } = await supabase
+            .from('supplier_transactions')
+            .select(`
+              *,
+              products:product_id (product_name, model, unit_price)
+            `)
+            .eq('supplier_id', detailEntity.data.supplier_id)
+            .order('transaction_date', { ascending: false })
+          if (error) throw error
+          setDetailTransactions(data || [])
+        }
+      } catch (err) {
+        console.error('Error loading entity transactions:', err)
+        showError('Error loading transactions: ' + err.message)
+        setDetailTransactions([])
+      } finally {
+        setDetailLoading(false)
+      }
+    }
+    fetchDetailTransactions()
+  }, [detailEntity, showError])
 
   const fetchData = async () => {
     try {
@@ -67,11 +158,25 @@ function ClientsSuppliers() {
   const resetClientForm = () => {
     setEditingClient(null)
     setClientForm({ client_name: '', contact_info: '', address: '' })
+    setShowClientFormModal(false)
   }
 
   const resetSupplierForm = () => {
     setEditingSupplier(null)
     setSupplierForm({ supplier_name: '', contact_info: '', address: '' })
+    setShowSupplierFormModal(false)
+  }
+
+  const openAddClientModal = () => {
+    setEditingClient(null)
+    setClientForm({ client_name: '', contact_info: '', address: '' })
+    setShowClientFormModal(true)
+  }
+
+  const openAddSupplierModal = () => {
+    setEditingSupplier(null)
+    setSupplierForm({ supplier_name: '', contact_info: '', address: '' })
+    setShowSupplierFormModal(true)
   }
 
   const handleClientSubmit = async (e) => {
@@ -106,6 +211,7 @@ function ClientsSuppliers() {
       }
 
       resetClientForm()
+      setShowClientFormModal(false)
       await fetchData()
     } catch (err) {
       console.error('Error saving client:', err)
@@ -147,6 +253,7 @@ function ClientsSuppliers() {
       }
 
       resetSupplierForm()
+      setShowSupplierFormModal(false)
       await fetchData()
     } catch (err) {
       console.error('Error saving supplier:', err)
@@ -163,6 +270,7 @@ function ClientsSuppliers() {
       contact_info: client.contact_info || '',
       address: client.address || ''
     })
+    setShowClientFormModal(true)
   }
 
   const handleSupplierEditClick = (supplier) => {
@@ -172,42 +280,62 @@ function ClientsSuppliers() {
       contact_info: supplier.contact_info || '',
       address: supplier.address || ''
     })
+    setShowSupplierFormModal(true)
   }
 
-  const handleClientDelete = async (clientId) => {
-    if (!window.confirm(t('clientTransactions.deleteConfirm'))) return
+  useEffect(() => {
+    setClientPage(1)
+  }, [clientSearch])
 
+  useEffect(() => {
+    setSupplierPage(1)
+  }, [supplierSearch])
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('client_id', clientId)
-
-      if (error) throw error
-      success(t('entities.delete'))
+      setDeleting(true)
+      if (deleteTarget.type === 'client') {
+        const { error } = await supabase.from('clients').delete().eq('client_id', deleteTarget.id)
+        if (error) throw error
+        success(t('entities.delete'))
+      } else {
+        const { error } = await supabase.from('suppliers').delete().eq('supplier_id', deleteTarget.id)
+        if (error) throw error
+        success(t('entities.delete'))
+      }
+      setDeleteTarget(null)
       await fetchData()
     } catch (err) {
-      console.error('Error deleting client:', err)
-      showError('Error deleting client: ' + err.message)
+      console.error('Error deleting:', err)
+      showError(deleteTarget.type === 'client' ? 'Error deleting client: ' + err.message : 'Error deleting supplier: ' + err.message)
+    } finally {
+      setDeleting(false)
     }
   }
 
-  const handleSupplierDelete = async (supplierId) => {
-    if (!window.confirm(t('supplierTransactions.deleteConfirm'))) return
+  const handleClientDeleteClick = (client) => {
+    setDeleteTarget({ type: 'client', id: client.client_id, name: client.client_name })
+  }
 
-    try {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('supplier_id', supplierId)
+  const handleSupplierDeleteClick = (supplier) => {
+    setDeleteTarget({ type: 'supplier', id: supplier.supplier_id, name: supplier.supplier_name })
+  }
 
-      if (error) throw error
-      success(t('entities.delete'))
-      await fetchData()
-    } catch (err) {
-      console.error('Error deleting supplier:', err)
-      showError('Error deleting supplier: ' + err.message)
-    }
+  const openClientDetail = (client) => {
+    setDetailEntity({ type: 'client', data: client })
+  }
+
+  const openSupplierDetail = (supplier) => {
+    setDetailEntity({ type: 'supplier', data: supplier })
+  }
+
+  const closeDetail = () => setDetailEntity(null)
+
+  const formatCurrency = (value) => {
+    const n = Number(value)
+    if (Number.isNaN(n)) return '—'
+    return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
   const handleExportClientsCsv = () => {
@@ -240,306 +368,410 @@ function ClientsSuppliers() {
     downloadCsv('suppliers.csv', rows)
   }
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('entities.title')}</h1>
-        <p className="text-gray-600 text-sm">{t('entities.subtitle')}</p>
-      </div>
-
-      {loading && (
-        <div className="flex justify-center py-8">
-          <LoadingSpinner />
+  // —— Choice view: two buttons to open Clients or Suppliers page ——
+  if (currentView === 'choice') {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">{t('entities.title')}</h1>
+          <p className="text-gray-600 text-sm mt-1 max-w-xl">{t('entities.subtitle')}</p>
         </div>
-      )}
 
-      {!loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Clients */}
-          <section className="bg-white border border-gray-200 rounded-md p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-800">{t('entities.clientsSection')}</h2>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleExportClientsCsv}
-                  className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl">
+          <button
+            type="button"
+            onClick={() => navigate('/entities/clients')}
+            className="flex items-center gap-4 p-6 rounded-xl border-2 border-gray-200 bg-white hover:border-blue-300 hover:shadow-md transition-all text-left group"
+          >
+            <div className="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+              <User size={28} className="text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{t('entities.clientsSection')}</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{t('entities.viewDetails')} & {t('entities.edit')}</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/entities/suppliers')}
+            className="flex items-center gap-4 p-6 rounded-xl border-2 border-gray-200 bg-white hover:border-purple-300 hover:shadow-md transition-all text-left group"
+          >
+            <div className="w-14 h-14 rounded-xl bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+              <Truck size={28} className="text-purple-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{t('entities.suppliersSection')}</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{t('entities.viewDetails')} & {t('entities.edit')}</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // —— Clients page ——
+  if (currentView === 'clients') {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => navigate('/entities')}
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium w-fit"
+          >
+            <ArrowLeft size={18} />
+            {t('entities.title')}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-12"><LoadingSpinner /></div>
+        ) : (
+          <section className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <User size={20} className="text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">{t('entities.clientsSection')}</h2>
+                  <span className="text-xs text-gray-500">{filteredClients.length} {filteredClients.length === 1 ? 'client' : 'clients'}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={handleExportClientsCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                  <Download size={16} />
                   {t('common.exportCsv')}
                 </button>
-                <button
-                  type="button"
-                  onClick={resetClientForm}
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
+                <button type="button" onClick={openAddClientModal} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <Plus size={16} />
                   {t('entities.addClient')}
                 </button>
               </div>
             </div>
 
-            <form onSubmit={handleClientSubmit} className="space-y-2 mb-4">
-              <div className="grid grid-cols-1 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t('entities.name')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                    value={clientForm.client_name}
-                    onChange={(e) => setClientForm({ ...clientForm, client_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t('entities.contactInfo')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                    value={clientForm.contact_info}
-                    onChange={(e) => setClientForm({ ...clientForm, contact_info: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t('entities.address')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                    value={clientForm.address}
-                    onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
-                  />
-                </div>
+            <div className="p-5">
+              <div className="relative mb-4">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder={t('entities.searchPlaceholder')}
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="input py-2.5 pl-10 pr-4 text-sm w-full rounded-xl border-gray-300"
+                />
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="submit"
-                  disabled={savingClient}
-                  className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-60"
-                >
-                  {savingClient ? t('clientTransactions.saving') : t('entities.save')}
-                </button>
-                {editingClient && (
-                  <button
-                    type="button"
-                    onClick={resetClientForm}
-                    className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                  >
-                    {t('entities.cancel')}
-                  </button>
-                )}
-              </div>
-            </form>
 
-            <div className="overflow-x-auto overflow-y-visible">
-              <table className="min-w-full text-sm table-fixed">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 w-[20%] min-w-0">{t('entities.name')}</th>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 w-[30%] min-w-0">{t('entities.contactInfo')}</th>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 w-[35%] min-w-0">{t('entities.address')}</th>
-                    <th className="px-3 py-2 text-right text-gray-700 dark:text-gray-300 w-[15%]">{t('clientTransactions.actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedClients.map((client) => (
-                    <tr key={client.client_id} className="border-t border-gray-100 dark:border-gray-700">
-                      <td className="table-cell-wrap px-3 py-2 text-gray-800 dark:text-gray-200" title={client.client_name}>{client.client_name}</td>
-                      <td className="table-cell-wrap px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap" title={client.contact_info || ''}>
-                        {client.contact_info || ''}
-                      </td>
-                      <td className="table-cell-wrap px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap" title={client.address || ''}>
-                        {client.address || ''}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleClientEditClick(client)}
-                          className="text-blue-700 dark:text-blue-400 text-xs mr-2"
+              {filteredClients.length === 0 ? (
+                <EmptyState
+                  icon="clients"
+                  title={clients.length === 0 ? t('entities.noClients') : t('entities.noMatchingClients')}
+                  description={clients.length === 0 ? t('entities.addFirstClientHint') : t('entities.tryDifferentSearch')}
+                  actionLabel={clients.length === 0 ? t('entities.addClient') : undefined}
+                  onAction={clients.length === 0 ? openAddClientModal : undefined}
+                />
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {paginatedClients.map((client) => (
+                      <div
+                        key={client.client_id}
+                        className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+                      >
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer group"
+                          onClick={() => openClientDetail(client)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === 'Enter' && openClientDetail(client)}
+                          aria-label={t('entities.viewDetails')}
                         >
-                          {t('entities.edit')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleClientDelete(client.client_id)}
-                          className="text-red-700 dark:text-red-400 text-xs"
-                        >
-                          {t('entities.delete')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {clients.length === 0 && (
-                    <tr>
-                      <td colSpan="4" className="px-3 py-3 text-center text-gray-500 dark:text-gray-400 text-sm">
-                        {t('entities.noClients')}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                          <p className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate" title={client.client_name}>
+                            {client.client_name}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2" title={client.contact_info || client.address || ''}>
+                            {[client.contact_info, client.address].filter(Boolean).join(' · ') || '—'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openClientDetail(client) }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                            title={t('entities.viewDetails')}
+                          >
+                            <Eye size={16} />
+                            <span className="hidden sm:inline">{t('entities.viewDetails')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleClientEditClick(client) }}
+                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                            title={t('entities.edit')}
+                            aria-label={t('entities.edit')}
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleClientDeleteClick(client) }}
+                            className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                            title={t('entities.delete')}
+                            aria-label={t('entities.delete')}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Pagination
+                    currentPage={clientPage}
+                    totalPages={clientTotalPages}
+                    onPageChange={setClientPage}
+                    pageSize={clientPageSize}
+                    onPageSizeChange={(size) => { setClientPageSize(size); setClientPage(1) }}
+                    totalItems={filteredClients.length}
+                  />
+                </>
+              )}
             </div>
-            {clients.length > 0 && (
-              <Pagination
-                currentPage={clientPage}
-                totalPages={clientTotalPages}
-                onPageChange={setClientPage}
-                pageSize={clientPageSize}
-                onPageSizeChange={(size) => {
-                  setClientPageSize(size)
-                  setClientPage(1)
-                }}
-                totalItems={clients.length}
-              />
-            )}
           </section>
+        )}
 
-          {/* Suppliers */}
-          <section className="bg-white border border-gray-200 rounded-md p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-800">{t('entities.suppliersSection')}</h2>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleExportSuppliersCsv}
-                  className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                >
-                  {t('common.exportCsv')}
-                </button>
-                <button
-                  type="button"
-                  onClick={resetSupplierForm}
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  {t('entities.addSupplier')}
-                </button>
+        {/* Client add/edit modal */}
+        <Modal
+          isOpen={showClientFormModal}
+          onClose={() => { setShowClientFormModal(false); setEditingClient(null); setClientForm({ client_name: '', contact_info: '', address: '' }) }}
+          title={editingClient ? t('entities.editingClient') : t('entities.addClient')}
+          size="md"
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => { setShowClientFormModal(false); setEditingClient(null); setClientForm({ client_name: '', contact_info: '', address: '' }) }} className="btn btn-secondary">
+                {t('entities.cancel')}
+              </button>
+              <button type="submit" form="client-form" disabled={savingClient} className="btn btn-success">
+                {savingClient ? t('clientTransactions.saving') : t('entities.save')}
+              </button>
+            </div>
+          }
+        >
+          <form id="client-form" onSubmit={handleClientSubmit} className="space-y-3">
+            <div>
+              <label className="label text-xs">{t('entities.name')}</label>
+              <input type="text" className="input py-2 text-sm" value={clientForm.client_name} onChange={(e) => setClientForm({ ...clientForm, client_name: e.target.value })} required />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.contactInfo')}</label>
+              <input type="text" className="input py-2 text-sm" value={clientForm.contact_info} onChange={(e) => setClientForm({ ...clientForm, contact_info: e.target.value })} />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.address')}</label>
+              <input type="text" className="input py-2 text-sm" value={clientForm.address} onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })} />
+            </div>
+          </form>
+        </Modal>
+
+        {/* Detail modal */}
+        <Modal isOpen={!!detailEntity} onClose={closeDetail} title={detailEntity ? ( <span className="flex items-center gap-2"> {detailEntity.type === 'client' ? <User size={22} className="text-blue-600 flex-shrink-0" /> : <Truck size={22} className="text-purple-600 flex-shrink-0" />} {detailEntity.type === 'client' ? detailEntity.data.client_name : detailEntity.data.supplier_name} <span className="text-sm font-normal text-gray-500">— {t('entities.transactionHistory')}</span> </span> ) : ''} size="xl" showClose={true} footer={<button type="button" onClick={closeDetail} className="btn btn-secondary">{t('common.close')}</button>}>
+          {detailEntity && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('entities.contactAndAddress')}</h3>
+                <p className="text-sm text-gray-600"><span className="font-medium">{t('entities.contactInfo')}:</span> {detailEntity.data.contact_info || '—'}</p>
+                <p className="text-sm text-gray-600 mt-1"><span className="font-medium">{t('entities.address')}:</span> {detailEntity.data.address || '—'}</p>
+              </div>
+              {!detailLoading && detailTransactions.length > 0 && (
+                <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
+                  <span className="font-medium text-gray-700">{detailTransactions.length} {detailTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
+                  <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
+                  <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
+                  <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
+                </div>
+              )}
+              <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
+              {detailLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 py-4">{t('entities.noTransactionsForEntity')}</p> : (
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50"><tr>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{t('clientTransactions.quantity')}</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{detailEntity.type === 'client' ? t('clientTransactions.unitPrice') : t('supplierTransactions.unitPrice')}</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{t('clientTransactions.total')}</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{t('clientTransactions.paid')}</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{t('clientTransactions.remaining')}</th>
+                    </tr></thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {detailTransactions.map((tx) => (
+                        <tr key={tx.transaction_id} className="hover:bg-gray-50">
+                          <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{tx.transaction_date}</td>
+                          <td className="px-4 py-2.5 text-gray-800">{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
+                          <td className="px-4 py-2.5 text-right text-gray-700">{tx.quantity}</td>
+                          <td className="px-4 py-2.5 text-right text-gray-700">{formatCurrency(tx.unit_price)}</td>
+                          <td className="px-4 py-2.5 text-right font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
+                          <td className="px-4 py-2.5 text-right text-green-700">{formatCurrency(tx.paid_amount)}</td>
+                          <td className="px-4 py-2.5 text-right text-red-700 font-medium">{formatCurrency(tx.remaining_amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </Modal>
+
+        <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
+      </div>
+    )
+  }
+
+  // —— Suppliers page ——
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <button type="button" onClick={() => navigate('/entities')} className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium w-fit">
+          <ArrowLeft size={18} />
+          {t('entities.title')}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><LoadingSpinner /></div>
+      ) : (
+        <section className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-50 to-white border-b border-gray-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
+                <Truck size={20} className="text-purple-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">{t('entities.suppliersSection')}</h2>
+                <span className="text-xs text-gray-500">{filteredSuppliers.length} {filteredSuppliers.length === 1 ? 'supplier' : 'suppliers'}</span>
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={handleExportSuppliersCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                <Download size={16} />
+                {t('common.exportCsv')}
+              </button>
+              <button type="button" onClick={openAddSupplierModal} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                <Plus size={16} />
+                {t('entities.addSupplier')}
+              </button>
+            </div>
+          </div>
 
-            <form onSubmit={handleSupplierSubmit} className="space-y-2 mb-4">
-              <div className="grid grid-cols-1 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t('entities.name')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                    value={supplierForm.supplier_name}
-                    onChange={(e) => setSupplierForm({ ...supplierForm, supplier_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t('entities.contactInfo')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                    value={supplierForm.contact_info}
-                    onChange={(e) => setSupplierForm({ ...supplierForm, contact_info: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {t('entities.address')}
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                    value={supplierForm.address}
-                    onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="submit"
-                  disabled={savingSupplier}
-                  className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-60"
-                >
-                  {savingSupplier ? t('supplierTransactions.saving') : t('entities.save')}
-                </button>
-                {editingSupplier && (
-                  <button
-                    type="button"
-                    onClick={resetSupplierForm}
-                    className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                  >
-                    {t('entities.cancel')}
-                  </button>
-                )}
-              </div>
-            </form>
+          <div className="p-5">
+            <div className="relative mb-4">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input type="text" placeholder={t('entities.searchPlaceholder')} value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} className="input py-2.5 pl-10 pr-4 text-sm w-full rounded-xl border-gray-300" />
+            </div>
 
-            <div className="overflow-x-auto overflow-y-visible">
-              <table className="min-w-full text-sm table-fixed">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 w-[20%] min-w-0">{t('entities.name')}</th>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 w-[30%] min-w-0">{t('entities.contactInfo')}</th>
-                    <th className="px-3 py-2 text-left text-gray-700 dark:text-gray-300 w-[35%] min-w-0">{t('entities.address')}</th>
-                    <th className="px-3 py-2 text-right text-gray-700 dark:text-gray-300 w-[15%]">{t('supplierTransactions.actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+            {filteredSuppliers.length === 0 ? (
+              <EmptyState icon="suppliers" title={suppliers.length === 0 ? t('entities.noSuppliers') : t('entities.noMatchingSuppliers')} description={suppliers.length === 0 ? t('entities.addFirstSupplierHint') : t('entities.tryDifferentSearch')} actionLabel={suppliers.length === 0 ? t('entities.addSupplier') : undefined} onAction={suppliers.length === 0 ? openAddSupplierModal : undefined} />
+            ) : (
+              <>
+                <div className="space-y-2">
                   {paginatedSuppliers.map((supplier) => (
-                    <tr key={supplier.supplier_id} className="border-t border-gray-100 dark:border-gray-700">
-                      <td className="table-cell-wrap px-3 py-2 text-gray-800 dark:text-gray-200" title={supplier.supplier_name}>{supplier.supplier_name}</td>
-                      <td className="table-cell-wrap px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap" title={supplier.contact_info || ''}>
-                        {supplier.contact_info || ''}
-                      </td>
-                      <td className="table-cell-wrap px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap" title={supplier.address || ''}>
-                        {supplier.address || ''}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleSupplierEditClick(supplier)}
-                          className="text-blue-700 dark:text-blue-400 text-xs mr-2"
-                        >
-                          {t('entities.edit')}
+                    <div key={supplier.supplier_id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-purple-200 hover:shadow-sm transition-all">
+                      <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => openSupplierDetail(supplier)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && openSupplierDetail(supplier)} aria-label={t('entities.viewDetails')}>
+                        <p className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors truncate" title={supplier.supplier_name}>{supplier.supplier_name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2" title={supplier.contact_info || supplier.address || ''}>{[supplier.contact_info, supplier.address].filter(Boolean).join(' · ') || '—'}</p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); openSupplierDetail(supplier) }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors" title={t('entities.viewDetails')}>
+                          <Eye size={16} />
+                          <span className="hidden sm:inline">{t('entities.viewDetails')}</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSupplierDelete(supplier.supplier_id)}
-                          className="text-red-700 dark:text-red-400 text-xs"
-                        >
-                          {t('entities.delete')}
-                        </button>
-                      </td>
-                    </tr>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleSupplierEditClick(supplier) }} className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors" title={t('entities.edit')} aria-label={t('entities.edit')}><Edit size={18} /></button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleSupplierDeleteClick(supplier) }} className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title={t('entities.delete')} aria-label={t('entities.delete')}><Trash2 size={18} /></button>
+                      </div>
+                    </div>
                   ))}
-                  {suppliers.length === 0 && (
-                    <tr>
-                      <td colSpan="4" className="px-3 py-3 text-center text-gray-500 dark:text-gray-400 text-sm">
-                        {t('entities.noSuppliers')}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {suppliers.length > 0 && (
-              <Pagination
-                currentPage={supplierPage}
-                totalPages={supplierTotalPages}
-                onPageChange={setSupplierPage}
-                pageSize={supplierPageSize}
-                onPageSizeChange={(size) => {
-                  setSupplierPageSize(size)
-                  setSupplierPage(1)
-                }}
-                totalItems={suppliers.length}
-              />
+                </div>
+                <Pagination currentPage={supplierPage} totalPages={supplierTotalPages} onPageChange={setSupplierPage} pageSize={supplierPageSize} onPageSizeChange={(size) => { setSupplierPageSize(size); setSupplierPage(1) }} totalItems={filteredSuppliers.length} />
+              </>
             )}
-          </section>
-        </div>
+          </div>
+        </section>
       )}
+
+      {/* Supplier add/edit modal */}
+      <Modal isOpen={showSupplierFormModal} onClose={() => { setShowSupplierFormModal(false); setEditingSupplier(null); setSupplierForm({ supplier_name: '', contact_info: '', address: '' }) }} title={editingSupplier ? t('entities.editingSupplier') : t('entities.addSupplier')} size="md" footer={
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={() => { setShowSupplierFormModal(false); setEditingSupplier(null); setSupplierForm({ supplier_name: '', contact_info: '', address: '' }) }} className="btn btn-secondary">{t('entities.cancel')}</button>
+          <button type="submit" form="supplier-form" disabled={savingSupplier} className="btn btn-success">{savingSupplier ? t('supplierTransactions.saving') : t('entities.save')}</button>
+        </div>
+      }>
+        <form id="supplier-form" onSubmit={handleSupplierSubmit} className="space-y-3">
+          <div>
+            <label className="label text-xs">{t('entities.name')}</label>
+            <input type="text" className="input py-2 text-sm" value={supplierForm.supplier_name} onChange={(e) => setSupplierForm({ ...supplierForm, supplier_name: e.target.value })} required />
+          </div>
+          <div>
+            <label className="label text-xs">{t('entities.contactInfo')}</label>
+            <input type="text" className="input py-2 text-sm" value={supplierForm.contact_info} onChange={(e) => setSupplierForm({ ...supplierForm, contact_info: e.target.value })} />
+          </div>
+          <div>
+            <label className="label text-xs">{t('entities.address')}</label>
+            <input type="text" className="input py-2 text-sm" value={supplierForm.address} onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })} />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Detail modal (same as clients) */}
+      <Modal isOpen={!!detailEntity} onClose={closeDetail} title={detailEntity ? ( <span className="flex items-center gap-2"> {detailEntity.type === 'client' ? <User size={22} className="text-blue-600 flex-shrink-0" /> : <Truck size={22} className="text-purple-600 flex-shrink-0" />} {detailEntity.type === 'client' ? detailEntity.data.client_name : detailEntity.data.supplier_name} <span className="text-sm font-normal text-gray-500">— {t('entities.transactionHistory')}</span> </span> ) : ''} size="xl" showClose={true} footer={<button type="button" onClick={closeDetail} className="btn btn-secondary">{t('common.close')}</button>}>
+        {detailEntity && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('entities.contactAndAddress')}</h3>
+              <p className="text-sm text-gray-600"><span className="font-medium">{t('entities.contactInfo')}:</span> {detailEntity.data.contact_info || '—'}</p>
+              <p className="text-sm text-gray-600 mt-1"><span className="font-medium">{t('entities.address')}:</span> {detailEntity.data.address || '—'}</p>
+            </div>
+            {!detailLoading && detailTransactions.length > 0 && (
+              <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
+                <span className="font-medium text-gray-700">{detailTransactions.length} {detailTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
+                <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
+                <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
+                <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
+              </div>
+            )}
+            <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
+            {detailLoading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 py-4">{t('entities.noTransactionsForEntity')}</p> : (
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50"><tr>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{t('clientTransactions.quantity')}</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{detailEntity.type === 'client' ? t('clientTransactions.unitPrice') : t('supplierTransactions.unitPrice')}</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{t('clientTransactions.total')}</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{t('clientTransactions.paid')}</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 uppercase">{t('clientTransactions.remaining')}</th>
+                  </tr></thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {detailTransactions.map((tx) => (
+                      <tr key={tx.transaction_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap">{tx.transaction_date}</td>
+                        <td className="px-4 py-2.5 text-gray-800">{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-700">{tx.quantity}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-700">{formatCurrency(tx.unit_price)}</td>
+                        <td className="px-4 py-2.5 text-right font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
+                        <td className="px-4 py-2.5 text-right text-green-700">{formatCurrency(tx.paid_amount)}</td>
+                        <td className="px-4 py-2.5 text-right text-red-700 font-medium">{formatCurrency(tx.remaining_amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
     </div>
   )
 }

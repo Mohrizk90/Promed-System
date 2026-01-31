@@ -547,11 +547,12 @@ function Dashboard() {
         />
       </div>
 
-      {/* Charts Row 1 */}
+      {/* Charts Row 1 - LTR so charts render correctly in Arabic/RTL */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue vs Expenses Trend */}
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.revenueVsExpensesTrend')}</h2>
+          <div dir="ltr" className="min-w-0 w-full">
           <ResponsiveContainer width="100%" height={350}>
             <AreaChart data={revenueExpensesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
@@ -576,11 +577,13 @@ function Dashboard() {
               <Area type="monotone" dataKey="expenses" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorExpenses)" name={t('dashboard.totalExpenses')} />
             </AreaChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Payment Status Distribution */}
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.paymentStatusDistribution')}</h2>
+          <div dir="ltr" className="min-w-0 w-full">
           <ResponsiveContainer width="100%" height={350}>
             <PieChart>
               <Pie
@@ -600,14 +603,16 @@ function Dashboard() {
               <RechartsTooltip formatter={(value) => formatCurrency(value)} />
             </PieChart>
           </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* Charts Row 2 */}
+      {/* Charts Row 2 - LTR so charts render correctly in Arabic/RTL */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Clients */}
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topClientsByRevenue')}</h2>
+          <div dir="ltr" className="min-w-0 w-full">
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={topClientsData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-300)" />
@@ -619,11 +624,13 @@ function Dashboard() {
               <Bar dataKey="remaining" fill="#ef4444" name={t('dashboard.outstandingLabel')} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Top Suppliers */}
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topSuppliersByPurchases')}</h2>
+          <div dir="ltr" className="min-w-0 w-full">
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={topSuppliersData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-300)" />
@@ -635,6 +642,7 @@ function Dashboard() {
               <Bar dataKey="remaining" fill="#f59e0b" name={t('dashboard.outstandingLabel')} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
@@ -743,9 +751,9 @@ function MetricCard({ title, value, subtitle, icon: Icon, color = 'blue', small 
             </div>
           )}
           
-          {/* Mini Sparkline */}
+          {/* Mini Sparkline - LTR so chart renders correctly in Arabic/RTL */}
           {sparklineData && sparklineData.length > 0 && (
-            <div className="w-16 h-8">
+            <div dir="ltr" className="w-16 h-8">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={sparklineData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                   <defs>

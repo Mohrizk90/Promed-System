@@ -36,7 +36,7 @@ export default function Breadcrumbs() {
 
   return (
     <nav aria-label="Breadcrumb" className="mb-4">
-      <ol className="flex items-center gap-1 text-sm">
+      <ol className="rtl-flip flex items-center gap-1 text-sm">
         <li>
           <Link
             to="/"
@@ -54,7 +54,7 @@ export default function Breadcrumbs() {
           
           return (
             <li key={path} className="flex items-center gap-1">
-              <ChevronRight size={16} className="text-gray-400" />
+              <ChevronRight size={16} className="text-gray-400 rtl-chevron-flip" />
               {isLast ? (
                 <span className="font-medium text-gray-900 dark:text-gray-100">
                   {name}

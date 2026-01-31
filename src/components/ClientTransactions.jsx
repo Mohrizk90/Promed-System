@@ -49,7 +49,7 @@ function ClientTransactions() {
     payment_date: new Date().toISOString().split('T')[0]
   })
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(5)
   const { success, error: showError } = useToast()
   const { t } = useLanguage()
 
@@ -443,8 +443,19 @@ function ClientTransactions() {
         throw new Error('This transaction ID exists in supplier transactions. Cannot add payment to client transaction.')
       }
 
+      const remainingAmount = parseFloat(transaction.remaining_amount ?? 0)
+      const paymentAmount = parseFloat(paymentFormData.payment_amount)
+      if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        throw new Error('Please enter a valid payment amount.')
+      }
+      if (paymentAmount > remainingAmount) {
+        throw new Error(
+          `${t('paymentsBreakdown.paymentExceedsRemaining')}. Remaining: ${remainingAmount.toFixed(2)}, entered: ${paymentAmount.toFixed(2)}`
+        )
+      }
+
       // Calculate new amounts before inserting
-      const newPaidAmount = parseFloat(transaction.paid_amount || 0) + parseFloat(paymentFormData.payment_amount)
+      const newPaidAmount = parseFloat(transaction.paid_amount || 0) + paymentAmount
       const newRemainingAmount = parseFloat(transaction.total_amount) - newPaidAmount
 
       // Insert the payment with transaction_type
@@ -453,7 +464,7 @@ function ClientTransactions() {
         .insert([{
           transaction_id: transactionId,
           transaction_type: 'client',
-          payment_amount: parseFloat(paymentFormData.payment_amount),
+          payment_amount: paymentAmount,
           payment_date: paymentFormData.payment_date
         }])
         .select()
@@ -741,202 +752,81 @@ function ClientTransactions() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">{t('clientTransactions.title')}</h2>
-          <p className="text-gray-600 mt-1 text-lg">{t('clientTransactions.subtitle')}</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded text-base"
-          >
-            {t('common.exportCsv')}
-          </button>
-          <button
-            onClick={() => {
-              resetForm()
-              setShowModal(true)
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded shadow-md text-lg"
-          >
-            {t('clientTransactions.addTransaction')}
-          </button>
-        </div>
-      </div>
-
-      {/* Month Filter - Improved UX */}
-      <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-base font-semibold text-gray-700">{t('clientTransactions.selectMonth')}:</span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  if (selectedMonth) {
-                    const [year, month] = selectedMonth.split('-')
-                    const date = new Date(parseInt(year), parseInt(month) - 2, 1)
-                    setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
-                  }
-                }}
-                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-base font-medium"
-                title="Previous Month"
-              >
-                ‹
-              </button>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="px-4 py-2 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[160px]"
-              />
-              <button
-                onClick={() => {
-                  if (selectedMonth) {
-                    const [year, month] = selectedMonth.split('-')
-                    const date = new Date(parseInt(year), parseInt(month), 1)
-                    setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`)
-                  }
-                }}
-                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-base font-medium"
-                title="Next Month"
-              >
-                ›
-              </button>
-            </div>
+    <div className="h-full flex flex-col overflow-hidden min-h-0">
+      <div className="flex-shrink-0 space-y-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">{t('clientTransactions.title')}</h2>
+            <p className="text-gray-600 text-sm">{t('clientTransactions.subtitle')}</p>
           </div>
-          <button
-            onClick={() => {
-              const now = new Date()
-              setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
-            }}
-            className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-base font-medium"
-          >
-            {t('clientTransactions.currentMonth')}
-          </button>
-          <button
-            onClick={() => setSelectedMonth('')}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-base font-medium"
-          >
-            {t('clientTransactions.allMonths')}
-          </button>
-        </div>
-        {selectedMonth && (
-          <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="text-sm text-gray-600">
-              Showing transactions for: <span className="font-semibold">
-                {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </span>
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includePastRemaining}
-                onChange={(e) => setIncludePastRemaining(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Include past remaining amounts</span>
-            </label>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={handleExportCsv} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded text-sm">
+              {t('common.exportCsv')}
+            </button>
+            <button onClick={() => { resetForm(); setShowModal(true) }} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded text-sm">
+              {t('clientTransactions.addTransaction')}
+            </button>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-gray-600">{t('common.filters')}:</span>
-            <input
-              type="text"
-              placeholder={t('common.searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px]"
-            />
-            <select
-              value={filterClientId}
-              onChange={(e) => setFilterClientId(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[120px]"
-            >
-              <option value="">{t('common.filterByClient')} – {t('common.all')}</option>
-              {clients.map((c) => (
-                <option key={c.client_id} value={c.client_id}>{c.client_name}</option>
-              ))}
+        {/* Unified toolbar: month + filters */}
+        <div className="bg-white p-2 rounded-lg shadow border border-gray-200">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+              <button onClick={() => { if (selectedMonth) { const [y,m] = selectedMonth.split('-'); const d = new Date(parseInt(y), parseInt(m)-2,1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`) } }} className="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm" title="Previous month">‹</button>
+              <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs w-[110px]" />
+              <button onClick={() => { if (selectedMonth) { const [y,m] = selectedMonth.split('-'); const d = new Date(parseInt(y), parseInt(m),1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`) } }} className="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm" title="Next month">›</button>
+              <button onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`) }} className="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-xs">{t('clientTransactions.currentMonth')}</button>
+              <button onClick={() => setSelectedMonth('')} className="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs">{t('clientTransactions.allMonths')}</button>
+            </div>
+            <input type="text" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs w-[100px]" />
+            <select value={filterClientId} onChange={(e) => setFilterClientId(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs">
+              <option value="">{t('common.filterByClient')}</option>
+              {clients.map((c) => <option key={c.client_id} value={c.client_id}>{c.client_name}</option>)}
             </select>
-            <select
-              value={filterProductId}
-              onChange={(e) => setFilterProductId(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px]"
-            >
-              <option value="">{t('common.filterByProduct')} – {t('common.all')}</option>
-              {products.map((p) => (
-                <option key={p.product_id} value={p.product_id}>
-                  {p.product_name}{p.model ? ` (${p.model})` : ''}
-                </option>
-              ))}
+            <select value={filterProductId} onChange={(e) => setFilterProductId(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs">
+              <option value="">{t('common.filterByProduct')}</option>
+              {products.map((p) => <option key={p.product_id} value={p.product_id}>{p.product_name}{p.model ? ` (${p.model})` : ''}</option>)}
             </select>
-            <select
-              value={filterPaymentStatus}
-              onChange={(e) => setFilterPaymentStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[130px]"
-            >
-              <option value="all">{t('common.paymentStatus')}: {t('common.all')}</option>
+            <select value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs">
+              <option value="all">{t('common.paymentStatus')}</option>
               <option value="outstanding">{t('common.outstanding')}</option>
               <option value="paid">{t('common.paidInFull')}</option>
             </select>
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                {t('common.clearFilters')}
-              </button>
-            )}
+            {hasActiveFilters && <button type="button" onClick={clearFilters} className="px-1.5 py-0.5 text-xs text-gray-500 hover:bg-gray-100 rounded">{t('common.clearFilters')}</button>}
+            {selectedMonth && <label className="flex items-center gap-1 ml-auto text-xs text-gray-600 cursor-pointer"><input type="checkbox" checked={includePastRemaining} onChange={(e) => setIncludePastRemaining(e.target.checked)} className="w-3 h-3 text-blue-600 border-gray-300 rounded" /><span>Include past</span></label>}
           </div>
         </div>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-600 text-white p-6 rounded shadow-md">
-          <p className="text-lg font-medium mb-2">{t('clientTransactions.totalAmount')}</p>
-          <p className="text-3xl font-bold">${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-        </div>
-        <div className="bg-green-600 text-white p-6 rounded shadow-md">
-          <p className="text-lg font-medium mb-2">{t('clientTransactions.paidAmount')}</p>
-          <p className="text-3xl font-bold">${calculatePaid().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-        </div>
-        <div className="bg-red-600 text-white p-6 rounded shadow-md">
-          <p className="text-lg font-medium mb-2">{t('clientTransactions.remainingAmount')}</p>
-          <p className="text-3xl font-bold">${calculateRemaining().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        {/* Summary cards - compact */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="bg-blue-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.totalAmount')}</p><p className="text-lg font-bold">${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
+          <div className="bg-green-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.paidAmount')}</p><p className="text-lg font-bold">${calculatePaid().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
+          <div className="bg-red-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.remainingAmount')}</p><p className="text-lg font-bold">${calculateRemaining().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
         </div>
       </div>
 
-      {/* Transactions Table */}
-      <div className="bg-white dark:bg-gray-800 shadow-md rounded overflow-hidden">
-        <div className="overflow-x-auto overflow-y-visible">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
-            <thead className="bg-gray-100 dark:bg-gray-700">
+      {/* Table - no scroll, fits viewport */}
+      <div className="flex-1 min-h-0 bg-white shadow rounded overflow-hidden flex flex-col mt-2">
+        <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed text-sm">
+            <thead className="bg-gray-100 sticky top-0">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-24">{t('clientTransactions.date')}</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-[14%] min-w-0">{t('clientTransactions.client')}</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-[14%] min-w-0">{t('clientTransactions.product')}</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-20">{t('clientTransactions.quantity')}</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-24">{t('clientTransactions.unitPrice')}</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-24">{t('clientTransactions.total')}</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-24">{t('clientTransactions.paid')}</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-24">{t('clientTransactions.remaining')}</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase w-40">{t('clientTransactions.actions')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.date')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-[14%] min-w-0">{t('clientTransactions.client')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-[14%] min-w-0">{t('clientTransactions.product')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-14">{t('clientTransactions.quantity')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.unitPrice')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.total')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.paid')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.remaining')}</th>
+                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-32">{t('clientTransactions.actions')}</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white divide-y divide-gray-200">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-6 py-8 text-center text-gray-500 dark:text-gray-400 text-lg">
+                  <td colSpan="9" className="px-2 py-4 text-center text-gray-500 text-sm">
                     {t('clientTransactions.noTransactions')}
                   </td>
                 </tr>
@@ -946,82 +836,36 @@ function ClientTransactions() {
                 const isExpanded = expandedRows.has(transaction.transaction_id)
                 return (
                   <React.Fragment key={transaction.transaction_id}>
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
-                        {new Date(transaction.transaction_date).toLocaleDateString()}
-                      </td>
-                      <td className="table-cell-wrap font-medium text-base" title={transaction.clients?.client_name || 'N/A'}>
-                        {transaction.clients?.client_name || 'N/A'}
-                      </td>
-                      <td className="table-cell-wrap text-base" title={`${transaction.products?.product_name || 'N/A'}${transaction.products?.model ? ` (${transaction.products.model})` : ''}`}>
-                        {transaction.products?.product_name || 'N/A'}
-                        {transaction.products?.model && (
-                          <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">({transaction.products.model})</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
-                        {transaction.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100">
-                        ${(transaction.unit_price ?? (transaction.quantity ? parseFloat(transaction.total_amount) / transaction.quantity : 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900 dark:text-gray-100">
-                        ${parseFloat(transaction.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-green-700 dark:text-green-400">
-                        ${parseFloat(transaction.paid_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-red-700 dark:text-red-400">
-                        ${parseFloat(transaction.remaining_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-6 py-4 text-base font-medium min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            onClick={() => toggleRowExpansion(transaction.transaction_id)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                              isExpanded
-                                ? 'bg-blue-100 text-blue-800 ring-2 ring-blue-200'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900'
-                            }`}
-                          >
-                            <span className={`inline-block transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
-                            {t('paymentsBreakdown.payments')}
-                            <span className={`ml-0.5 px-1.5 py-0.5 rounded-md text-xs font-semibold ${isExpanded ? 'bg-blue-200 text-blue-900' : 'bg-gray-200 text-gray-600'}`}>
-                              {transactionPayments.length}
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => handleEdit(transaction)}
-                            className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg hover:text-blue-800 text-sm font-medium transition-colors"
-                          >
-                            {t('clientTransactions.edit')}
-                          </button>
-                          <button
-                            onClick={() => handleDelete(transaction.transaction_id)}
-                            className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg hover:text-red-800 text-sm font-medium transition-colors"
-                          >
-                            {t('clientTransactions.delete')}
-                          </button>
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
+                      <td className="table-cell-wrap px-2 py-1.5 font-medium text-sm" title={transaction.clients?.client_name || 'N/A'}>{transaction.clients?.client_name || 'N/A'}</td>
+                      <td className="table-cell-wrap px-2 py-1.5 text-sm" title={`${transaction.products?.product_name || 'N/A'}${transaction.products?.model ? ` (${transaction.products.model})` : ''}`}>{transaction.products?.product_name || 'N/A'}{transaction.products?.model && <span className="text-gray-500 text-xs ml-0.5">({transaction.products.model})</span>}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">{transaction.quantity}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">${(transaction.unit_price ?? (transaction.quantity ? parseFloat(transaction.total_amount) / transaction.quantity : 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap text-sm font-semibold text-gray-900">${parseFloat(transaction.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap text-sm font-medium text-green-700">${parseFloat(transaction.paid_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap text-sm font-medium text-red-700">${parseFloat(transaction.remaining_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-2 py-1 text-xs min-w-0">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => toggleRowExpansion(transaction.transaction_id)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${isExpanded ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}>{t('paymentsBreakdown.payments')} <span className={isExpanded ? 'bg-white/30 px-1 rounded text-[10px]' : 'bg-blue-200 px-1 rounded text-[10px]'}>{transactionPayments.length}</span></button>
+                          <button onClick={() => handleEdit(transaction)} className="px-1.5 py-0.5 text-blue-600 hover:bg-blue-50 rounded text-xs">{t('clientTransactions.edit')}</button>
+                          <button onClick={() => handleDelete(transaction.transaction_id)} className="px-1.5 py-0.5 text-red-600 hover:bg-red-50 rounded text-xs">{t('clientTransactions.delete')}</button>
                         </div>
                       </td>
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan="9" className="px-6 py-0 align-top">
-                          <div className="py-4 pl-4 pr-2 -mr-2 border-l-4 border-blue-200 bg-gradient-to-r from-blue-50/80 to-transparent rounded-r-lg mb-2">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                              <div className="flex items-center gap-4">
-                                <h4 className="font-semibold text-gray-800 text-base flex items-center gap-2">
-                                  <span className="w-2 h-5 bg-blue-500 rounded"></span>
+                        <td colSpan="9" className="px-2 py-0 align-top">
+                          <div className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-blue-200 bg-gradient-to-r from-blue-50/80 to-transparent rounded-r mb-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h4 className="font-semibold text-gray-800 text-xs flex items-center gap-1">
+                                  <span className="w-1.5 h-4 bg-blue-500 rounded"></span>
                                   {t('paymentsBreakdown.payments')}
                                 </h4>
-                                <div className="flex gap-3 text-sm">
-                                  <span className="text-green-700 font-medium">
-                                    {t('dashboard.paid')}: ${parseFloat(transaction.paid_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                  </span>
-                                  <span className="text-red-600 font-medium">
-                                    {t('dashboard.remaining')}: ${parseFloat(transaction.remaining_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                  </span>
+                                <div className="flex gap-2 text-xs">
+                                  <span className="text-green-700 font-medium">{t('dashboard.paid')}: ${parseFloat(transaction.paid_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                  <span className="text-red-600 font-medium">{t('dashboard.remaining')}: ${parseFloat(transaction.remaining_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                                 </div>
                               </div>
                               <button
@@ -1033,34 +877,30 @@ function ClientTransactions() {
                                   })
                                   setShowPaymentModal(true)
                                 }}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors shrink-0"
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded shadow shrink-0"
                               >
                                 <span>+</span> {t('paymentsBreakdown.addPayment')}
                               </button>
                             </div>
                             {transactionPayments.length > 0 ? (
-                              <div className="space-y-2">
+                              <div className="space-y-1">
                                 {transactionPayments.map((payment, idx) => (
                                   <div
                                     key={payment.payment_id}
-                                    className="flex items-center justify-between gap-4 p-3 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+                                    className="flex items-center justify-between gap-2 py-1.5 px-2 bg-white rounded border border-gray-200"
                                   >
-                                    <div className="flex items-center gap-4 min-w-0">
-                                      <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-green-100 text-green-700 font-semibold text-sm">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-green-100 text-green-700 font-semibold text-xs">
                                         {idx + 1}
                                       </span>
                                       <div>
-                                        <p className="font-semibold text-green-700 text-base">
-                                          ${parseFloat(payment.payment_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </p>
-                                        <p className="text-gray-500 text-sm">
-                                          {new Date(payment.payment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                        </p>
+                                        <p className="font-semibold text-green-700 text-sm">${parseFloat(payment.payment_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                        <p className="text-gray-500 text-xs">{new Date(payment.payment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                                       </div>
                                     </div>
                                     <button
                                       onClick={() => handleDeletePayment(payment.payment_id, transaction.transaction_id)}
-                                      className="flex-shrink-0 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                                      className="flex-shrink-0 px-2 py-0.5 text-red-600 hover:bg-red-50 rounded text-xs font-medium"
                                     >
                                       {t('paymentsBreakdown.deletePayment')}
                                     </button>
@@ -1068,7 +908,7 @@ function ClientTransactions() {
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-gray-500 text-sm py-4 text-center bg-white rounded-lg border border-dashed border-gray-300">
+                              <p className="text-gray-500 text-xs py-2 text-center bg-white rounded border border-dashed border-gray-300">
                                 {t('paymentsBreakdown.noClientPayments')}
                               </p>
                             )}
@@ -1082,9 +922,9 @@ function ClientTransactions() {
             </tbody>
           </table>
           {transactions.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">{t('clientTransactions.noTransactions')}</p>
-              <p className="text-gray-400 text-base mt-2">{t('clientTransactions.noTransactionsDesc')}</p>
+            <div className="text-center py-4">
+              <p className="text-gray-500 text-sm font-medium">{t('clientTransactions.noTransactions')}</p>
+              <p className="text-gray-400 text-xs mt-1">{t('clientTransactions.noTransactionsDesc')}</p>
             </div>
           )}
         </div>
