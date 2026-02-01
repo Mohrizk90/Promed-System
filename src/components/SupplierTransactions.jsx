@@ -921,9 +921,10 @@ function SupplierTransactions() {
             onPageChange={setCurrentPage}
             pageSize={pageSize}
             onPageSizeChange={(size) => {
-              setPageSize(size)
+              setPageSize(Number(size))
               setCurrentPage(1)
             }}
+            pageSizeOptions={[5, 10, 25, 50, 100]}
             totalItems={filteredTransactions.length}
           />
         )}
@@ -931,234 +932,96 @@ function SupplierTransactions() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div 
-              className="fixed inset-0 bg-gray-900 bg-opacity-75" 
-              onClick={() => setShowModal(false)}
-            ></div>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-purple-600 px-6 py-4">
-                <h3 className="text-xl font-bold text-white">
-                  {editingTransaction ? t('supplierTransactions.editTransaction') : t('supplierTransactions.addTransaction')}
-                </h3>
-              </div>
-              <form onSubmit={handleSubmit}>
-                <div className="bg-white px-6 pt-6 pb-4 space-y-4">
-                  <div className="relative autocomplete-container">
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('supplierTransactions.supplier')} *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.supplier_name}
-                      onChange={(e) => handleSupplierInput(e.target.value)}
-                      onFocus={() => formData.supplier_name && handleSupplierInput(formData.supplier_name)}
-                      placeholder={t('supplierTransactions.selectSupplier')}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                    {showSupplierSuggestions && supplierSuggestions.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
-                        {supplierSuggestions.map((supplier) => (
-                          <div
-                            key={supplier.supplier_id}
-                            onClick={() => handleSupplierSelect(supplier)}
-                            className="px-4 py-2 hover:bg-purple-50 cursor-pointer text-base"
-                          >
-                            {supplier.supplier_name}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="relative autocomplete-container">
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('supplierTransactions.product')} *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.product_name}
-                      onChange={(e) => handleProductInput(e.target.value)}
-                      onFocus={() => formData.product_name && handleProductInput(formData.product_name)}
-                      placeholder={t('supplierTransactions.selectProduct')}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                    {showProductSuggestions && productSuggestions.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded shadow-lg max-h-60 overflow-auto">
-                        {productSuggestions.map((product) => (
-                          <div
-                            key={product.product_id}
-                            onClick={() => handleProductSelect(product)}
-                            className="px-4 py-2 hover:bg-purple-50 cursor-pointer text-base"
-                          >
-                            {product.product_name} - ${product.unit_price}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('supplierTransactions.unitPrice')} *</label>
-                    <input
-                      type="number"
-                      required
-                      step="0.01"
-                      min="0"
-                      value={formData.product_price}
-                      onChange={(e) => {
-                        const price = e.target.value
-                        setFormData({ 
-                          ...formData, 
-                          product_price: price,
-                          total_amount: price && formData.quantity ? (parseFloat(price) * formData.quantity).toFixed(2) : formData.total_amount
-                        })
-                      }}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('supplierTransactions.quantity')} *</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={formData.quantity}
-                      onChange={(e) => {
-                        const quantity = e.target.value
-                        const price = formData.product_price || (formData.product_id ? products.find(p => p.product_id === parseInt(formData.product_id))?.unit_price : 0)
-                        setFormData({ 
-                          ...formData, 
-                          quantity,
-                          total_amount: price ? (parseFloat(price) * quantity).toFixed(2) : formData.total_amount
-                        })
-                      }}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('supplierTransactions.totalAmount')} *</label>
-                    <input
-                      type="number"
-                      required
-                      step="0.01"
-                      min="0"
-                      value={formData.total_amount}
-                      onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('supplierTransactions.paidAmount')}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.paid_amount}
-                      onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('supplierTransactions.transactionDate')} *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.transaction_date}
-                      onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
-                </div>
-                <div className="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 space-y-2 space-y-reverse sm:space-y-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 rounded text-gray-700 font-semibold hover:bg-gray-100 text-base"
-                  >
-                    {t('supplierTransactions.cancel')}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full sm:w-auto px-6 py-3 bg-purple-600 text-white font-semibold rounded hover:bg-purple-700 shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-base flex items-center justify-center space-x-2"
-                  >
-                    {submitting ? (
-                      <>
-                        <LoadingSpinner size="sm" />
-                        <span>{t('supplierTransactions.saving')}</span>
-                      </>
-                    ) : (
-                      <span>{editingTransaction ? t('supplierTransactions.updateTransaction') : t('supplierTransactions.createTransaction')}</span>
-                    )}
-                  </button>
-                </div>
-              </form>
+        <div className="fixed z-50 inset-0 flex items-center justify-center p-2 overflow-y-auto">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75" onClick={() => setShowModal(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] flex flex-col my-auto">
+            <div className="bg-purple-600 px-4 py-2 flex-shrink-0">
+              <h3 className="text-lg font-bold text-white">
+                {editingTransaction ? t('supplierTransactions.editTransaction') : t('supplierTransactions.addTransaction')}
+              </h3>
             </div>
+            <form onSubmit={handleSubmit} className="flex flex-col min-h-0">
+              <div className="bg-white px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto">
+                <div className="relative autocomplete-container sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplierTransactions.supplier')} *</label>
+                  <input type="text" required value={formData.supplier_name} onChange={(e) => handleSupplierInput(e.target.value)} onFocus={() => formData.supplier_name && handleSupplierInput(formData.supplier_name)} placeholder={t('supplierTransactions.selectSupplier')} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                  {showSupplierSuggestions && supplierSuggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-auto">
+                      {supplierSuggestions.map((s) => (
+                        <div key={s.supplier_id} onClick={() => handleSupplierSelect(s)} className="px-3 py-1.5 hover:bg-purple-50 cursor-pointer text-sm">{s.supplier_name}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="relative autocomplete-container sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplierTransactions.product')} *</label>
+                  <input type="text" required value={formData.product_name} onChange={(e) => handleProductInput(e.target.value)} onFocus={() => formData.product_name && handleProductInput(formData.product_name)} placeholder={t('supplierTransactions.selectProduct')} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                  {showProductSuggestions && productSuggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-auto">
+                      {productSuggestions.map((p) => (
+                        <div key={p.product_id} onClick={() => handleProductSelect(p)} className="px-3 py-1.5 hover:bg-purple-50 cursor-pointer text-sm">{p.product_name} - ${p.unit_price}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplierTransactions.unitPrice')} *</label>
+                  <input type="number" required step="0.01" min="0" value={formData.product_price} onChange={(e) => { const price = e.target.value; setFormData({ ...formData, product_price: price, total_amount: price && formData.quantity ? (parseFloat(price) * formData.quantity).toFixed(2) : formData.total_amount }); }} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplierTransactions.quantity')} *</label>
+                  <input type="number" required min="1" value={formData.quantity} onChange={(e) => { const quantity = e.target.value; const price = formData.product_price || (formData.product_id ? products.find(p => p.product_id === parseInt(formData.product_id))?.unit_price : 0); setFormData({ ...formData, quantity, total_amount: price ? (parseFloat(price) * quantity).toFixed(2) : formData.total_amount }); }} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplierTransactions.totalAmount')} *</label>
+                  <input type="number" required step="0.01" min="0" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplierTransactions.paidAmount')}</label>
+                  <input type="number" step="0.01" min="0" value={formData.paid_amount} onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplierTransactions.transactionDate')} *</label>
+                  <input type="date" required value={formData.transaction_date} onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 border-t">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded text-gray-700 text-sm font-medium hover:bg-gray-100">{t('supplierTransactions.cancel')}</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                  {submitting ? <><LoadingSpinner size="sm" /><span>{t('supplierTransactions.saving')}</span></> : <span>{editingTransaction ? t('supplierTransactions.updateTransaction') : t('supplierTransactions.createTransaction')}</span>}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
       {/* Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div 
-              className="fixed inset-0 bg-gray-900 bg-opacity-75" 
-              onClick={() => setShowPaymentModal(false)}
-            ></div>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-green-600 px-6 py-4">
-                <h3 className="text-xl font-bold text-white">{t('paymentsBreakdown.addPayment')}</h3>
-              </div>
-              <form onSubmit={handleAddPayment}>
-                <div className="bg-white px-6 pt-6 pb-4 space-y-4">
-                  <div>
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('paymentsBreakdown.paymentAmount')} *</label>
-                    <input
-                      type="number"
-                      required
-                      step="0.01"
-                      min="0.01"
-                      value={paymentFormData.payment_amount}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-base font-semibold text-gray-700 mb-2">{t('paymentsBreakdown.paymentDate')} *</label>
-                    <input
-                      type="date"
-                      required
-                      value={paymentFormData.payment_date}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_date: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded text-base focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    />
-                  </div>
-                </div>
-                <div className="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 space-y-2 space-y-reverse sm:space-y-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowPaymentModal(false)}
-                    className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 rounded text-gray-700 font-semibold hover:bg-gray-100 text-base"
-                  >
-                    {t('supplierTransactions.cancel')}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded hover:bg-green-700 shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-base flex items-center justify-center space-x-2"
-                  >
-                    {submitting ? (
-                      <>
-                        <LoadingSpinner size="sm" />
-                        <span>{t('paymentsBreakdown.adding')}</span>
-                      </>
-                    ) : (
-                      <span>{t('paymentsBreakdown.addPayment')}</span>
-                    )}
-                  </button>
-                </div>
-              </form>
+        <div className="fixed z-50 inset-0 flex items-center justify-center p-2 overflow-y-auto">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75" onClick={() => setShowPaymentModal(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md max-h-[95vh] flex flex-col my-auto">
+            <div className="bg-green-600 px-4 py-2 flex-shrink-0">
+              <h3 className="text-lg font-bold text-white">{t('paymentsBreakdown.addPayment')}</h3>
             </div>
+            <form onSubmit={handleAddPayment} className="flex flex-col min-h-0">
+              <div className="bg-white px-4 py-3 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentsBreakdown.paymentAmount')} *</label>
+                  <input type="number" required step="0.01" min="0.01" value={paymentFormData.payment_amount} onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentsBreakdown.paymentDate')} *</label>
+                  <input type="date" required value={paymentFormData.payment_date} onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 border-t">
+                <button type="button" onClick={() => setShowPaymentModal(false)} className="px-4 py-2 border border-gray-300 rounded text-gray-700 text-sm font-medium hover:bg-gray-100">{t('supplierTransactions.cancel')}</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                  {submitting ? <><LoadingSpinner size="sm" /><span>{t('paymentsBreakdown.adding')}</span></> : <span>{t('paymentsBreakdown.addPayment')}</span>}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

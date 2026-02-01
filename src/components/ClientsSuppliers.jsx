@@ -530,7 +530,8 @@ function ClientsSuppliers() {
                     totalPages={clientTotalPages}
                     onPageChange={setClientPage}
                     pageSize={clientPageSize}
-                    onPageSizeChange={(size) => { setClientPageSize(size); setClientPage(1) }}
+                    onPageSizeChange={(size) => { setClientPageSize(Number(size)); setClientPage(1) }}
+                    pageSizeOptions={[5, 10, 25, 50, 100]}
                     totalItems={filteredClients.length}
                   />
                 </>
@@ -691,7 +692,7 @@ function ClientsSuppliers() {
                     </div>
                   ))}
                 </div>
-                <Pagination currentPage={supplierPage} totalPages={supplierTotalPages} onPageChange={setSupplierPage} pageSize={supplierPageSize} onPageSizeChange={(size) => { setSupplierPageSize(size); setSupplierPage(1) }} totalItems={filteredSuppliers.length} />
+                <Pagination currentPage={supplierPage} totalPages={supplierTotalPages} onPageChange={setSupplierPage} pageSize={supplierPageSize} onPageSizeChange={(size) => { setSupplierPageSize(Number(size)); setSupplierPage(1) }} totalItems={filteredSuppliers.length} pageSizeOptions={[5, 10, 25, 50, 100]} />
               </>
             )}
           </div>
