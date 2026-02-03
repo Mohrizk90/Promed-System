@@ -45,6 +45,7 @@ function Dashboard() {
   const [clientTransactions, setClientTransactions] = useState([])
   const [supplierTransactions, setSupplierTransactions] = useState([])
   const [payments, setPayments] = useState([])
+  const [liabilities, setLiabilities] = useState([])
   const [dateRange, setDateRange] = useState({ start: null, end: null })
   const [quickFilter, setQuickFilter] = useState('all') // all, month, quarter, year
   const [showComparison, setShowComparison] = useState(false)
@@ -63,7 +64,7 @@ function Dashboard() {
     try {
       setLoading(true)
 
-      const [clientTxResult, supplierTxResult, paymentsResult] = await Promise.all([
+      const [clientTxResult, supplierTxResult, paymentsResult, liabilitiesResult] = await Promise.all([
         supabase
           .from('client_transactions')
           .select(`*, clients:client_id (client_name), products:product_id (product_name)`)
@@ -76,6 +77,7 @@ function Dashboard() {
           .from('payments')
           .select('*')
           .order('payment_date', { ascending: false }),
+        supabase.from('liabilities').select('*').order('created_at', { ascending: false }),
       ])
 
       if (clientTxResult.error) throw clientTxResult.error
@@ -85,6 +87,7 @@ function Dashboard() {
       setClientTransactions(clientTxResult.data || [])
       setSupplierTransactions(supplierTxResult.data || [])
       setPayments(paymentsResult.data || [])
+      setLiabilities(liabilitiesResult.error ? [] : (liabilitiesResult.data || []))
     } catch (err) {
       console.error('Error loading dashboard data:', err)
       showError('Error loading dashboard: ' + err.message)
@@ -297,6 +300,12 @@ function Dashboard() {
     () => calculateMetrics(prevClientTransactions, prevSupplierTransactions),
     [prevClientTransactions, prevSupplierTransactions]
   )
+
+  const totalOtherLiabilitiesRemaining = useMemo(
+    () => liabilities.reduce((s, l) => s + parseFloat(l.remaining_amount || 0), 0),
+    [liabilities]
+  )
+  const totalLiabilitiesRemaining = metrics.totalSupplierRemaining + totalOtherLiabilitiesRemaining
 
   // Calculate percentage change
   const calculateChange = (current, previous) => {
@@ -661,6 +670,14 @@ function Dashboard() {
           value={formatCurrency(metrics.netPosition)}
           subtitle={metrics.netPosition >= 0 ? t('dashboard.positive') : t('dashboard.negative')}
           color={metrics.netPosition >= 0 ? 'green' : 'red'}
+          small
+        />
+
+        <MetricCard
+          title={t('dashboard.totalLiabilities')}
+          value={formatCurrency(totalLiabilitiesRemaining)}
+          subtitle={t('dashboard.supplierPayablesAndOther')}
+          color="red"
           small
         />
       </div>

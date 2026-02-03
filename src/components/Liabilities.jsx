@@ -20,11 +20,13 @@ const CATEGORY_KEYS = [
   'salaries',
   'insurance',
   'liabilities',
-  'other'
+  'other',
+  'custom'
 ]
 
 function Liabilities() {
   const [liabilities, setLiabilities] = useState([])
+  const [supplierPayables, setSupplierPayables] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -81,12 +83,18 @@ function Liabilities() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('liabilities')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setLiabilities(data || [])
+      const [liabResult, supplierResult] = await Promise.all([
+        supabase.from('liabilities').select('*').order('created_at', { ascending: false }),
+        supabase
+          .from('supplier_transactions')
+          .select('*, suppliers:supplier_id (supplier_name), products:product_id (product_name)')
+          .gt('remaining_amount', 0)
+          .order('transaction_date', { ascending: false })
+      ])
+      if (liabResult.error) throw liabResult.error
+      if (supplierResult.error) throw supplierResult.error
+      setLiabilities(liabResult.data || [])
+      setSupplierPayables(supplierResult.data || [])
     } catch (err) {
       console.error('Error loading liabilities:', err)
       showError('Error loading liabilities: ' + err.message)
@@ -99,16 +107,32 @@ function Liabilities() {
     fetchData()
   }, [])
 
-  const totalAmountSum = useMemo(() => liabilities.reduce((s, l) => s + parseFloat(l.total_amount || 0), 0), [liabilities])
-  const paidSum = useMemo(() => liabilities.reduce((s, l) => s + parseFloat(l.paid_amount || 0), 0), [liabilities])
-  const remainingSum = useMemo(() => liabilities.reduce((s, l) => s + parseFloat(l.remaining_amount || 0), 0), [liabilities])
+  // Combined list: liabilities (source: 'liability') + supplier payables (source: 'supplier')
+  const combinedList = useMemo(() => {
+    const liabilityRows = (liabilities || []).map((l) => ({ ...l, source: 'liability', rowId: `liability-${l.id}` }))
+    const supplierRows = (supplierPayables || []).map((st) => ({
+      source: 'supplier',
+      rowId: `supplier-${st.transaction_id}`,
+      transaction_id: st.transaction_id,
+      category: 'supplier',
+      description: [st.suppliers?.supplier_name, st.products?.product_name, st.transaction_date].filter(Boolean).join(' · ') || '–',
+      total_amount: st.total_amount,
+      paid_amount: st.paid_amount,
+      remaining_amount: st.remaining_amount
+    }))
+    return [...liabilityRows, ...supplierRows]
+  }, [liabilities, supplierPayables])
 
-  const totalPages = Math.max(1, Math.ceil(liabilities.length / pageSize))
+  const totalAmountSum = useMemo(() => combinedList.reduce((s, l) => s + parseFloat(l.total_amount || 0), 0), [combinedList])
+  const paidSum = useMemo(() => combinedList.reduce((s, l) => s + parseFloat(l.paid_amount || 0), 0), [combinedList])
+  const remainingSum = useMemo(() => combinedList.reduce((s, l) => s + parseFloat(l.remaining_amount || 0), 0), [combinedList])
+
+  const totalPages = Math.max(1, Math.ceil(combinedList.length / pageSize))
   const effectivePage = Math.min(currentPage, totalPages)
   const paginatedList = useMemo(() => {
     const start = (effectivePage - 1) * pageSize
-    return liabilities.slice(start, start + pageSize)
-  }, [liabilities, effectivePage, pageSize])
+    return combinedList.slice(start, start + pageSize)
+  }, [combinedList, effectivePage, pageSize])
 
   const openAdd = () => {
     setEditingLiability(null)
@@ -117,6 +141,7 @@ function Liabilities() {
   }
 
   const openEdit = (row) => {
+    if (row.source === 'supplier') return
     setEditingLiability(row)
     setFormData({
       category: row.category || 'other',
@@ -134,11 +159,17 @@ function Liabilities() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const description = formData.description.trim()
+    if (!description) {
+      showError(t('liabilities.descriptionRequired'))
+      return
+    }
     const total = parseFloat(formData.total_amount)
     if (isNaN(total) || total < 0) {
       showError(t('liabilities.invalidAmount'))
       return
     }
+    const category = formData.category
     try {
       setSubmitting(true)
       if (editingLiability) {
@@ -147,8 +178,8 @@ function Liabilities() {
         const { error } = await supabase
           .from('liabilities')
           .update({
-            category: formData.category,
-            description: formData.description.trim() || null,
+            category,
+            description: description || null,
             total_amount: total,
             paid_amount: paid,
             remaining_amount: remaining
@@ -160,8 +191,8 @@ function Liabilities() {
         const { error } = await supabase
           .from('liabilities')
           .insert([{
-            category: formData.category,
-            description: formData.description.trim() || null,
+            category,
+            description: description || null,
             total_amount: total,
             paid_amount: 0,
             remaining_amount: total
@@ -194,14 +225,26 @@ function Liabilities() {
     }
     try {
       setSubmitting(true)
-      const { error } = await supabase
-        .from('liability_payments')
-        .insert([{
-          liability_id: paymentLiability.id,
-          payment_amount: amount,
-          payment_date: paymentFormData.payment_date
-        }])
-      if (error) throw error
+      if (paymentLiability.source === 'supplier') {
+        const { error } = await supabase
+          .from('payments')
+          .insert([{
+            transaction_id: paymentLiability.transaction_id,
+            transaction_type: 'supplier',
+            payment_amount: amount,
+            payment_date: paymentFormData.payment_date
+          }])
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('liability_payments')
+          .insert([{
+            liability_id: paymentLiability.id,
+            payment_amount: amount,
+            payment_date: paymentFormData.payment_date
+          }])
+        if (error) throw error
+      }
       success(t('liabilities.paymentRecorded'))
       setShowPaymentModal(false)
       setPaymentLiability(null)
@@ -215,7 +258,7 @@ function Liabilities() {
   }
 
   const handleDelete = async () => {
-    if (!deleteTarget) return
+    if (!deleteTarget || deleteTarget.source === 'supplier') return
     try {
       setDeleting(true)
       const { error } = await supabase.from('liabilities').delete().eq('id', deleteTarget.id)
@@ -248,7 +291,7 @@ function Liabilities() {
         </button>
       </div>
 
-      {liabilities.length === 0 ? (
+      {combinedList.length === 0 ? (
         <EmptyState
           icon="payments"
           title={t('liabilities.noLiabilities')}
@@ -283,12 +326,16 @@ function Liabilities() {
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {paginatedList.map((row) => (
-                    <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <tr key={row.rowId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white rtl-flip">
-                        {t('liabilities.categoryOption_' + (row.category || 'other'))}
+                        {row.source === 'supplier'
+                          ? t('liabilities.supplier')
+                          : row.category === 'custom'
+                            ? (row.description || t('liabilities.categoryOption_custom'))
+                            : t('liabilities.categoryOption_' + (row.category || 'other'))}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 rtl-flip">
-                        {row.description || '–'}
+                        {row.source === 'supplier' ? row.description : (row.category === 'custom' ? '–' : (row.description || '–'))}
                       </td>
                       <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-900 dark:text-white">
                         {formatNum(row.total_amount)}
@@ -312,24 +359,28 @@ function Liabilities() {
                               <DollarSign size={18} />
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => openEdit(row)}
-                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
-                            title={t('common.edit')}
-                            aria-label={t('common.edit')}
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteTarget(row)}
-                            className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            title={t('common.delete')}
-                            aria-label={t('common.delete')}
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          {row.source === 'liability' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openEdit(row)}
+                                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
+                                title={t('common.edit')}
+                                aria-label={t('common.edit')}
+                              >
+                                <Edit size={18} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget(row)}
+                                className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                title={t('common.delete')}
+                                aria-label={t('common.delete')}
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -404,13 +455,14 @@ function Liabilities() {
             </select>
           </div>
           <div>
-            <label className="label text-xs">{t('liabilities.description')}</label>
+            <label className="label text-xs">{t('liabilities.description')} <span className="text-red-500">*</span></label>
             <input
               type="text"
               className="input w-full py-2 text-sm"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder={t('liabilities.descriptionPlaceholder')}
+              placeholder={formData.category === 'custom' ? t('liabilities.customCategoryPlaceholder') : t('liabilities.descriptionPlaceholder')}
+              required
             />
           </div>
           <div>

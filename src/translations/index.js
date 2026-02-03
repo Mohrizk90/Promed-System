@@ -82,6 +82,8 @@ export const translations = {
       collected: 'collected',
       outstandingFromClients: 'Outstanding from clients',
       owedToSuppliers: 'Owed to suppliers',
+      totalLiabilities: 'Total Liabilities',
+      supplierPayablesAndOther: 'Supplier payables + Other liabilities',
       positive: 'Positive',
       negative: 'Negative',
       allTime: 'All Time',
@@ -324,7 +326,10 @@ export const translations = {
       invalidAmount: 'Please enter a valid amount',
       invalidPaymentAmount: 'Please enter a valid payment amount',
       paymentExceedsRemaining: 'Payment cannot exceed remaining amount',
+      descriptionRequired: 'Description (statement) is required',
       descriptionPlaceholder: 'e.g. Bank, person name, operating dues',
+      customCategoryPlaceholder: 'e.g. Rent, Bank loan, Electricity',
+      supplier: 'Supplier',
       categoryOption_taxes: 'Taxes',
       categoryOption_tax_accountant: 'Tax Accountant',
       categoryOption_invoices_accountant: 'Invoices Accountant',
@@ -333,7 +338,8 @@ export const translations = {
       categoryOption_salaries: 'Salaries',
       categoryOption_insurance: 'Insurance',
       categoryOption_liabilities: 'Liabilities / Debtor',
-      categoryOption_other: 'Other'
+      categoryOption_other: 'Other',
+      categoryOption_custom: 'Custom'
     }
   },
   ar: {
@@ -403,7 +409,10 @@ export const translations = {
       invalidAmount: 'أدخل مبلغاً صحيحاً',
       invalidPaymentAmount: 'أدخل مبلغ دفعة صحيحاً',
       paymentExceedsRemaining: 'لا يمكن أن يتجاوز الدفع المبلغ المتبقي',
+      descriptionRequired: 'البيان مطلوب',
       descriptionPlaceholder: 'مثال: بنك، اسم شخص، مستحقات تشغيل',
+      customCategoryPlaceholder: 'مثال: إيجار، قرض بنك، كهرباء',
+      supplier: 'مورد',
       categoryOption_taxes: 'ضرائب',
       categoryOption_tax_accountant: 'محاسب ضرائب',
       categoryOption_invoices_accountant: 'محاسب فواتير',
@@ -412,7 +421,8 @@ export const translations = {
       categoryOption_salaries: 'مرتبات',
       categoryOption_insurance: 'تأمينات',
       categoryOption_liabilities: 'مديون',
-      categoryOption_other: 'أخرى'
+      categoryOption_other: 'أخرى',
+      categoryOption_custom: 'أخرى (اكتب البيان أدناه)'
     },
     // Dashboard
     dashboard: {
@@ -455,6 +465,8 @@ export const translations = {
       collected: 'محصل',
       outstandingFromClients: 'مستحق من العملاء',
       owedToSuppliers: 'مستحق للموردين',
+      totalLiabilities: 'إجمالي الالتزامات',
+      supplierPayablesAndOther: 'مستحق الموردين + التزامات أخرى',
       positive: 'إيجابي',
       negative: 'سلبي',
       allTime: 'كل الفترة',
