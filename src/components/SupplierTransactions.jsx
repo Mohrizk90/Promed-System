@@ -150,6 +150,29 @@ function SupplierTransactions() {
     }
   }
 
+  const SUPPLIER_TRANSACTION_SELECT = `
+    *,
+    suppliers:supplier_id (
+      supplier_name,
+      contact_info
+    ),
+    products:product_id (
+      product_name,
+      model,
+      unit_price
+    )
+  `
+
+  const fetchOneTransaction = async (id) => {
+    const { data, error } = await supabase
+      .from('supplier_transactions')
+      .select(SUPPLIER_TRANSACTION_SELECT)
+      .eq('id', id)
+      .single()
+    if (error) return null
+    return data
+  }
+
   const subscribeToChanges = () => {
     const channel1 = supabase
       .channel('supplier_transactions_changes')
@@ -160,8 +183,19 @@ function SupplierTransactions() {
           schema: 'public',
           table: 'supplier_transactions'
         },
-        () => {
-          fetchData()
+        async (payload) => {
+          const eventType = payload.eventType ?? (payload.old == null ? 'INSERT' : payload.new == null ? 'DELETE' : 'UPDATE')
+          const newRow = payload.new
+          const oldRow = payload.old
+          if (eventType === 'INSERT' && newRow?.id) {
+            const row = await fetchOneTransaction(newRow.id)
+            if (row) setTransactions((prev) => [row, ...prev])
+          } else if (eventType === 'UPDATE' && newRow?.id) {
+            const row = await fetchOneTransaction(newRow.id)
+            if (row) setTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          } else if (eventType === 'DELETE' && oldRow?.id) {
+            setTransactions((prev) => prev.filter((t) => t.id !== oldRow.id))
+          }
         }
       )
       .subscribe()
@@ -175,8 +209,26 @@ function SupplierTransactions() {
           schema: 'public',
           table: 'payments'
         },
-        () => {
-          fetchData()
+        async (payload) => {
+          const eventType = payload.eventType ?? (payload.old == null ? 'INSERT' : payload.new == null ? 'DELETE' : 'UPDATE')
+          const newRow = payload.new
+          const oldRow = payload.old
+          const isSupplier = (r) => r?.transaction_type === 'supplier'
+          const transactionId = newRow?.transaction_id ?? oldRow?.transaction_id
+          if (!transactionId) return
+          if (eventType === 'INSERT' && isSupplier(newRow)) {
+            setPayments((prev) => [newRow, ...prev])
+            const row = await fetchOneTransaction(transactionId)
+            if (row) setTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          } else if (eventType === 'UPDATE' && (isSupplier(newRow) || isSupplier(oldRow))) {
+            if (isSupplier(newRow)) setPayments((prev) => prev.map((p) => (p.id === newRow.id ? newRow : p)))
+            const row = await fetchOneTransaction(transactionId)
+            if (row) setTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          } else if (eventType === 'DELETE' && isSupplier(oldRow)) {
+            setPayments((prev) => prev.filter((p) => p.id !== oldRow.id))
+            const row = await fetchOneTransaction(transactionId)
+            if (row) setTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          }
         }
       )
       .subscribe()

@@ -93,12 +93,90 @@ function Dashboard() {
     }
   }
 
+  const CLIENT_TX_SELECT = `*, clients:client_id (client_name), products:product_id (product_name)`
+  const SUPPLIER_TX_SELECT = `*, suppliers:supplier_id (supplier_name), products:product_id (product_name)`
+
+  const fetchOneClientTransaction = async (id) => {
+    const { data, error } = await supabase
+      .from('client_transactions')
+      .select(CLIENT_TX_SELECT)
+      .eq('id', id)
+      .single()
+    return error ? null : data
+  }
+
+  const fetchOneSupplierTransaction = async (id) => {
+    const { data, error } = await supabase
+      .from('supplier_transactions')
+      .select(SUPPLIER_TX_SELECT)
+      .eq('id', id)
+      .single()
+    return error ? null : data
+  }
+
   const subscribeToChanges = () => {
     const channel = supabase
       .channel('dashboard_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'client_transactions' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'supplier_transactions' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => fetchData())
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_transactions' },
+        async (payload) => {
+          const eventType = payload.eventType ?? (payload.old == null ? 'INSERT' : payload.new == null ? 'DELETE' : 'UPDATE')
+          const newRow = payload.new
+          const oldRow = payload.old
+          if (eventType === 'INSERT' && newRow?.id) {
+            const row = await fetchOneClientTransaction(newRow.id)
+            if (row) setClientTransactions((prev) => [...prev, row].sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date)))
+          } else if (eventType === 'UPDATE' && newRow?.id) {
+            const row = await fetchOneClientTransaction(newRow.id)
+            if (row) setClientTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          } else if (eventType === 'DELETE' && oldRow?.id) {
+            setClientTransactions((prev) => prev.filter((t) => t.id !== oldRow.id))
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'supplier_transactions' },
+        async (payload) => {
+          const eventType = payload.eventType ?? (payload.old == null ? 'INSERT' : payload.new == null ? 'DELETE' : 'UPDATE')
+          const newRow = payload.new
+          const oldRow = payload.old
+          if (eventType === 'INSERT' && newRow?.id) {
+            const row = await fetchOneSupplierTransaction(newRow.id)
+            if (row) setSupplierTransactions((prev) => [...prev, row].sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date)))
+          } else if (eventType === 'UPDATE' && newRow?.id) {
+            const row = await fetchOneSupplierTransaction(newRow.id)
+            if (row) setSupplierTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          } else if (eventType === 'DELETE' && oldRow?.id) {
+            setSupplierTransactions((prev) => prev.filter((t) => t.id !== oldRow.id))
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments' },
+        async (payload) => {
+          const eventType = payload.eventType ?? (payload.old == null ? 'INSERT' : payload.new == null ? 'DELETE' : 'UPDATE')
+          const newRow = payload.new
+          const oldRow = payload.old
+          const transactionId = newRow?.transaction_id ?? oldRow?.transaction_id
+          const isClient = newRow?.transaction_type === 'client' || oldRow?.transaction_type === 'client'
+          const isSupplier = newRow?.transaction_type === 'supplier' || oldRow?.transaction_type === 'supplier'
+          if (!transactionId) return
+          if (eventType === 'INSERT' && newRow) setPayments((prev) => [newRow, ...prev])
+          else if (eventType === 'UPDATE' && newRow) setPayments((prev) => prev.map((p) => (p.id === newRow.id ? newRow : p)))
+          else if (eventType === 'DELETE' && oldRow) setPayments((prev) => prev.filter((p) => p.id !== oldRow.id))
+          if (isClient) {
+            const row = await fetchOneClientTransaction(transactionId)
+            if (row) setClientTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          }
+          if (isSupplier) {
+            const row = await fetchOneSupplierTransaction(transactionId)
+            if (row) setSupplierTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          }
+        }
+      )
       .subscribe()
 
     return () => supabase.removeChannel(channel)

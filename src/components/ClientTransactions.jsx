@@ -151,6 +151,29 @@ function ClientTransactions() {
     }
   }
 
+  const TRANSACTION_SELECT = `
+    *,
+    clients:client_id (
+      client_name,
+      contact_info
+    ),
+    products:product_id (
+      product_name,
+      model,
+      unit_price
+    )
+  `
+
+  const fetchOneTransaction = async (id) => {
+    const { data, error } = await supabase
+      .from('client_transactions')
+      .select(TRANSACTION_SELECT)
+      .eq('id', id)
+      .single()
+    if (error) return null
+    return data
+  }
+
   const subscribeToChanges = () => {
     const channel1 = supabase
       .channel('client_transactions_changes')
@@ -161,8 +184,17 @@ function ClientTransactions() {
           schema: 'public',
           table: 'client_transactions'
         },
-        () => {
-          fetchData()
+        async (payload) => {
+          const { eventType, new: newRow, old: oldRow } = payload
+          if (eventType === 'INSERT' && newRow?.id) {
+            const row = await fetchOneTransaction(newRow.id)
+            if (row) setTransactions((prev) => [row, ...prev])
+          } else if (eventType === 'UPDATE' && newRow?.id) {
+            const row = await fetchOneTransaction(newRow.id)
+            if (row) setTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          } else if (eventType === 'DELETE' && oldRow?.id) {
+            setTransactions((prev) => prev.filter((t) => t.id !== oldRow.id))
+          }
         }
       )
       .subscribe()
@@ -176,8 +208,24 @@ function ClientTransactions() {
           schema: 'public',
           table: 'payments'
         },
-        () => {
-          fetchData()
+        async (payload) => {
+          const { eventType, new: newRow, old: oldRow } = payload
+          const isClient = (r) => r?.transaction_type === 'client'
+          const transactionId = newRow?.transaction_id ?? oldRow?.transaction_id
+          if (!transactionId) return
+          if (eventType === 'INSERT' && isClient(newRow)) {
+            setPayments((prev) => [newRow, ...prev])
+            const row = await fetchOneTransaction(transactionId)
+            if (row) setTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          } else if (eventType === 'UPDATE' && (isClient(newRow) || isClient(oldRow))) {
+            if (isClient(newRow)) setPayments((prev) => prev.map((p) => (p.id === newRow.id ? newRow : p)))
+            const row = await fetchOneTransaction(transactionId)
+            if (row) setTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          } else if (eventType === 'DELETE' && isClient(oldRow)) {
+            setPayments((prev) => prev.filter((p) => p.id !== oldRow.id))
+            const row = await fetchOneTransaction(transactionId)
+            if (row) setTransactions((prev) => prev.map((t) => (t.id === row.id ? row : t)))
+          }
         }
       )
       .subscribe()
