@@ -8,6 +8,7 @@ import LoadingSpinner from './LoadingSpinner'
 import TableSkeleton from './TableSkeleton'
 import Pagination from './ui/Pagination'
 import { downloadCsv } from '../utils/exportCsv'
+import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 
 function SupplierTransactions() {
   const [transactions, setTransactions] = useState([])
@@ -51,6 +52,21 @@ function SupplierTransactions() {
   })
   const [searchParams, setSearchParams] = useSearchParams()
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
+  const ROUTE_KEY = 'supplierTransactions'
+
+  useEffect(() => {
+    if (searchParams.has('pageSize')) return
+    const prefs = getPaginationPrefs(ROUTE_KEY)
+    if (prefs && PAGE_SIZE_OPTIONS.includes(prefs.pageSize)) {
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev)
+        p.set('page', String(prefs.page))
+        p.set('pageSize', String(prefs.pageSize))
+        return p
+      })
+    }
+  }, [])
+
   const currentPage = Math.max(1, parseInt(searchParams.get('page'), 10) || 1)
   const pageSizeParam = searchParams.get('pageSize')
   const pageSize = PAGE_SIZE_OPTIONS.includes(Number(pageSizeParam)) ? Number(pageSizeParam) : 5
@@ -61,6 +77,7 @@ function SupplierTransactions() {
       p.set('page', String(page))
       return p
     })
+    setPaginationPrefs(ROUTE_KEY, { page, pageSize })
   }
   const setPageSizeAndReset = (size) => {
     setSearchParams((prev) => {
@@ -69,6 +86,7 @@ function SupplierTransactions() {
       p.set('page', '1')
       return p
     })
+    setPaginationPrefs(ROUTE_KEY, { page: 1, pageSize: size })
   }
 
   const { success, error: showError } = useToast()

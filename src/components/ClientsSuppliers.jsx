@@ -10,6 +10,7 @@ import ConfirmDialog from './ui/ConfirmDialog'
 import Modal from './ui/Modal'
 import { User, Truck, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
+import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 
 const matchSearch = (text, query) => {
   if (!query.trim()) return true
@@ -36,6 +37,31 @@ function ClientsSuppliers() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
+  const CLIENT_ROUTE_KEY = 'entities_client'
+  const SUPPLIER_ROUTE_KEY = 'entities_supplier'
+
+  useEffect(() => {
+    if (searchParams.has('clientPageSize') && searchParams.has('supplierPageSize')) return
+    const clientPrefs = !searchParams.has('clientPageSize') ? getPaginationPrefs(CLIENT_ROUTE_KEY) : null
+    const supplierPrefs = !searchParams.has('supplierPageSize') ? getPaginationPrefs(SUPPLIER_ROUTE_KEY) : null
+    const needClient = clientPrefs && PAGE_SIZE_OPTIONS.includes(clientPrefs.pageSize)
+    const needSupplier = supplierPrefs && PAGE_SIZE_OPTIONS.includes(supplierPrefs.pageSize)
+    if (needClient || needSupplier) {
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev)
+        if (needClient) {
+          p.set('clientPage', String(clientPrefs.page))
+          p.set('clientPageSize', String(clientPrefs.pageSize))
+        }
+        if (needSupplier) {
+          p.set('supplierPage', String(supplierPrefs.page))
+          p.set('supplierPageSize', String(supplierPrefs.pageSize))
+        }
+        return p
+      })
+    }
+  }, [])
+
   const clientPage = Math.max(1, parseInt(searchParams.get('clientPage'), 10) || 1)
   const clientPageSizeParam = searchParams.get('clientPageSize')
   const clientPageSize = PAGE_SIZE_OPTIONS.includes(Number(clientPageSizeParam)) ? Number(clientPageSizeParam) : 10
@@ -49,6 +75,7 @@ function ClientsSuppliers() {
       p.set('clientPage', String(page))
       return p
     })
+    setPaginationPrefs(CLIENT_ROUTE_KEY, { page, pageSize: clientPageSize })
   }
   const setClientPageSizeAndReset = (size) => {
     setSearchParams((prev) => {
@@ -57,6 +84,7 @@ function ClientsSuppliers() {
       p.set('clientPage', '1')
       return p
     })
+    setPaginationPrefs(CLIENT_ROUTE_KEY, { page: 1, pageSize: size })
   }
   const setSupplierPage = (page) => {
     setSearchParams((prev) => {
@@ -64,6 +92,7 @@ function ClientsSuppliers() {
       p.set('supplierPage', String(page))
       return p
     })
+    setPaginationPrefs(SUPPLIER_ROUTE_KEY, { page, pageSize: supplierPageSize })
   }
   const setSupplierPageSizeAndReset = (size) => {
     setSearchParams((prev) => {
@@ -72,6 +101,7 @@ function ClientsSuppliers() {
       p.set('supplierPage', '1')
       return p
     })
+    setPaginationPrefs(SUPPLIER_ROUTE_KEY, { page: 1, pageSize: size })
   }
 
   const [deleteTarget, setDeleteTarget] = useState(null)

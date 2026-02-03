@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 import { useToast } from '../context/ToastContext'
 import { useLanguage } from '../context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
@@ -369,6 +370,21 @@ function Dashboard() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const PRODUCTS_PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
+  const ROUTE_KEY = 'dashboard'
+
+  useEffect(() => {
+    if (searchParams.has('productsPageSize')) return
+    const prefs = getPaginationPrefs(ROUTE_KEY)
+    if (prefs && PRODUCTS_PAGE_SIZE_OPTIONS.includes(prefs.pageSize)) {
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev)
+        p.set('productsPage', String(prefs.page))
+        p.set('productsPageSize', String(prefs.pageSize))
+        return p
+      })
+    }
+  }, [])
+
   const productsPage = Math.max(1, parseInt(searchParams.get('productsPage'), 10) || 1)
   const productsPageSizeParam = searchParams.get('productsPageSize')
   const productsPageSize = PRODUCTS_PAGE_SIZE_OPTIONS.includes(Number(productsPageSizeParam)) ? Number(productsPageSizeParam) : 10
@@ -379,6 +395,7 @@ function Dashboard() {
       p.set('productsPage', String(page))
       return p
     })
+    setPaginationPrefs(ROUTE_KEY, { page, pageSize: productsPageSize })
   }
   const setProductsPageSizeAndReset = (size) => {
     setSearchParams((prev) => {
@@ -387,6 +404,7 @@ function Dashboard() {
       p.set('productsPage', '1')
       return p
     })
+    setPaginationPrefs(ROUTE_KEY, { page: 1, pageSize: size })
   }
 
   const productsTotalPages = Math.max(1, Math.ceil(topProductsData.length / productsPageSize))
