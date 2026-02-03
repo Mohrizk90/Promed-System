@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 import { useToast } from '../context/ToastContext'
@@ -673,13 +673,15 @@ function Dashboard() {
           small
         />
 
-        <MetricCard
-          title={t('dashboard.totalLiabilities')}
-          value={formatCurrency(totalLiabilitiesRemaining)}
-          subtitle={t('dashboard.supplierPayablesAndOther')}
-          color="red"
-          small
-        />
+        <Link to="/liabilities" className="block">
+          <MetricCard
+            title={t('dashboard.totalLiabilities')}
+            value={formatCurrency(totalLiabilitiesRemaining)}
+            subtitle={t('dashboard.supplierPayablesAndOther')}
+            color="red"
+            small
+          />
+        </Link>
       </div>
 
       {/* Charts Row 1 - LTR so charts render correctly in Arabic/RTL */}

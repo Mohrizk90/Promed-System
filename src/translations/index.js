@@ -339,7 +339,24 @@ export const translations = {
       categoryOption_insurance: 'Insurance',
       categoryOption_liabilities: 'Liabilities / Debtor',
       categoryOption_other: 'Other',
-      categoryOption_custom: 'Custom'
+      categoryOption_custom: 'Custom',
+      dueDate: 'Due date',
+      overdue: 'Overdue',
+      notes: 'Notes',
+      notesPlaceholder: 'Optional notes',
+      recurring: 'Recurring',
+      filterAllCategories: 'All categories',
+      outstandingOnly: 'Outstanding only',
+      dueAll: 'All dates',
+      dueOverdue: 'Overdue',
+      dueThisMonth: 'Due this month',
+      dueNoDate: 'No due date',
+      viewPayments: 'View payments',
+      paymentHistory: 'Payment history',
+      noPayments: 'No payments recorded',
+      deletePaymentConfirm: 'Delete this payment?',
+      paymentDeleted: 'Payment deleted',
+      remainingByCategory: 'Remaining by category'
     }
   },
   ar: {
@@ -422,7 +439,24 @@ export const translations = {
       categoryOption_insurance: 'تأمينات',
       categoryOption_liabilities: 'مديون',
       categoryOption_other: 'أخرى',
-      categoryOption_custom: 'أخرى (اكتب البيان أدناه)'
+      categoryOption_custom: 'أخرى (اكتب البيان أدناه)',
+      dueDate: 'تاريخ الاستحقاق',
+      overdue: 'متأخر',
+      notes: 'ملاحظات',
+      notesPlaceholder: 'ملاحظات اختيارية',
+      recurring: 'متكرر',
+      filterAllCategories: 'كل الفئات',
+      outstandingOnly: 'المتبقي فقط',
+      dueAll: 'كل التواريخ',
+      dueOverdue: 'متأخر',
+      dueThisMonth: 'مستحق هذا الشهر',
+      dueNoDate: 'بدون تاريخ',
+      viewPayments: 'عرض المدفوعات',
+      paymentHistory: 'سجل المدفوعات',
+      noPayments: 'لا توجد مدفوعات',
+      deletePaymentConfirm: 'حذف هذه الدفعة؟',
+      paymentDeleted: 'تم حذف الدفعة',
+      remainingByCategory: 'المتبقي حسب الفئة'
     },
     // Dashboard
     dashboard: {
