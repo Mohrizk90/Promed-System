@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import React from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -48,8 +49,28 @@ function ClientTransactions() {
     payment_amount: '',
     payment_date: new Date().toISOString().split('T')[0]
   })
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(5)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
+  const currentPage = Math.max(1, parseInt(searchParams.get('page'), 10) || 1)
+  const pageSizeParam = searchParams.get('pageSize')
+  const pageSize = PAGE_SIZE_OPTIONS.includes(Number(pageSizeParam)) ? Number(pageSizeParam) : 5
+
+  const setPage = (page) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('page', String(page))
+      return p
+    })
+  }
+  const setPageSizeAndReset = (size) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('pageSize', String(size))
+      p.set('page', '1')
+      return p
+    })
+  }
+
   const { success, error: showError } = useToast()
   const { t } = useLanguage()
 
@@ -625,13 +646,23 @@ function ClientTransactions() {
   const filteredTransactions = getFilteredTransactions()
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize))
+  const effectivePage = Math.min(currentPage, totalPages)
   const paginatedTransactions = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
+    const start = (effectivePage - 1) * pageSize
     return filteredTransactions.slice(start, start + pageSize)
-  }, [filteredTransactions, currentPage, pageSize])
+  }, [filteredTransactions, effectivePage, pageSize])
 
+  const prevFiltersRef = React.useRef(null)
   useEffect(() => {
-    setCurrentPage(1)
+    const key = `${filterClientId}|${filterProductId}|${filterPaymentStatus}|${searchQuery}|${selectedMonth}|${includePastRemaining}`
+    if (prevFiltersRef.current !== null && prevFiltersRef.current !== key) {
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev)
+        p.set('page', '1')
+        return p
+      })
+    }
+    prevFiltersRef.current = key
   }, [filterClientId, filterProductId, filterPaymentStatus, searchQuery, selectedMonth, includePastRemaining])
 
   const getPastRemainingTotal = () => {
@@ -930,16 +961,13 @@ function ClientTransactions() {
         </div>
         {filteredTransactions.length > 0 && (
           <Pagination
-            currentPage={currentPage}
+            currentPage={effectivePage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+            onPageChange={setPage}
             pageSize={pageSize}
-            onPageSizeChange={(size) => {
-              setPageSize(Number(size))
-              setCurrentPage(1)
-            }}
+            onPageSizeChange={(size) => setPageSizeAndReset(Number(size))}
             totalItems={filteredTransactions.length}
-            pageSizeOptions={[5, 10, 25, 50, 100]}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
           />
         )}
       </div>

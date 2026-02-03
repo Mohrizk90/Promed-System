@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -366,13 +367,34 @@ function Dashboard() {
       .sort((a, b) => b.revenue - a.revenue)
   }, [filteredClientTransactions, filteredSupplierTransactions])
 
-  const [productsPage, setProductsPage] = useState(1)
-  const [productsPageSize, setProductsPageSize] = useState(10)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const PRODUCTS_PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
+  const productsPage = Math.max(1, parseInt(searchParams.get('productsPage'), 10) || 1)
+  const productsPageSizeParam = searchParams.get('productsPageSize')
+  const productsPageSize = PRODUCTS_PAGE_SIZE_OPTIONS.includes(Number(productsPageSizeParam)) ? Number(productsPageSizeParam) : 10
+
+  const setProductsPage = (page) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('productsPage', String(page))
+      return p
+    })
+  }
+  const setProductsPageSizeAndReset = (size) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('productsPageSize', String(size))
+      p.set('productsPage', '1')
+      return p
+    })
+  }
+
   const productsTotalPages = Math.max(1, Math.ceil(topProductsData.length / productsPageSize))
+  const effectiveProductsPage = Math.min(productsPage, productsTotalPages)
   const paginatedProductsData = useMemo(() => {
-    const start = (productsPage - 1) * productsPageSize
+    const start = (effectiveProductsPage - 1) * productsPageSize
     return topProductsData.slice(start, start + productsPageSize)
-  }, [topProductsData, productsPage, productsPageSize])
+  }, [topProductsData, effectiveProductsPage, productsPageSize])
 
   const hasAnyData = clientTransactions.length > 0 || supplierTransactions.length > 0
 
@@ -690,15 +712,13 @@ function Dashboard() {
         </div>
         {topProductsData.length > 0 && (
           <Pagination
-            currentPage={productsPage}
+            currentPage={effectiveProductsPage}
             totalPages={productsTotalPages}
             onPageChange={setProductsPage}
             pageSize={productsPageSize}
-            onPageSizeChange={(size) => {
-              setProductsPageSize(size)
-              setProductsPage(1)
-            }}
+            onPageSizeChange={(size) => setProductsPageSizeAndReset(Number(size))}
             totalItems={topProductsData.length}
+            pageSizeOptions={PRODUCTS_PAGE_SIZE_OPTIONS}
           />
         )}
       </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../context/ToastContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -33,10 +33,46 @@ function ClientsSuppliers() {
 
   const [savingClient, setSavingClient] = useState(false)
   const [savingSupplier, setSavingSupplier] = useState(false)
-  const [clientPage, setClientPage] = useState(1)
-  const [clientPageSize, setClientPageSize] = useState(10)
-  const [supplierPage, setSupplierPage] = useState(1)
-  const [supplierPageSize, setSupplierPageSize] = useState(10)
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
+  const clientPage = Math.max(1, parseInt(searchParams.get('clientPage'), 10) || 1)
+  const clientPageSizeParam = searchParams.get('clientPageSize')
+  const clientPageSize = PAGE_SIZE_OPTIONS.includes(Number(clientPageSizeParam)) ? Number(clientPageSizeParam) : 10
+  const supplierPage = Math.max(1, parseInt(searchParams.get('supplierPage'), 10) || 1)
+  const supplierPageSizeParam = searchParams.get('supplierPageSize')
+  const supplierPageSize = PAGE_SIZE_OPTIONS.includes(Number(supplierPageSizeParam)) ? Number(supplierPageSizeParam) : 10
+
+  const setClientPage = (page) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('clientPage', String(page))
+      return p
+    })
+  }
+  const setClientPageSizeAndReset = (size) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('clientPageSize', String(size))
+      p.set('clientPage', '1')
+      return p
+    })
+  }
+  const setSupplierPage = (page) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('supplierPage', String(page))
+      return p
+    })
+  }
+  const setSupplierPageSizeAndReset = (size) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('supplierPageSize', String(size))
+      p.set('supplierPage', '1')
+      return p
+    })
+  }
 
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -77,16 +113,18 @@ function ClientsSuppliers() {
   }, [suppliers, supplierSearch])
 
   const clientTotalPages = Math.max(1, Math.ceil(filteredClients.length / clientPageSize))
+  const effectiveClientPage = Math.min(clientPage, clientTotalPages)
   const paginatedClients = useMemo(() => {
-    const start = (clientPage - 1) * clientPageSize
+    const start = (effectiveClientPage - 1) * clientPageSize
     return filteredClients.slice(start, start + clientPageSize)
-  }, [filteredClients, clientPage, clientPageSize])
+  }, [filteredClients, effectiveClientPage, clientPageSize])
 
   const supplierTotalPages = Math.max(1, Math.ceil(filteredSuppliers.length / supplierPageSize))
+  const effectiveSupplierPage = Math.min(supplierPage, supplierTotalPages)
   const paginatedSuppliers = useMemo(() => {
-    const start = (supplierPage - 1) * supplierPageSize
+    const start = (effectiveSupplierPage - 1) * supplierPageSize
     return filteredSuppliers.slice(start, start + supplierPageSize)
-  }, [filteredSuppliers, supplierPage, supplierPageSize])
+  }, [filteredSuppliers, effectiveSupplierPage, supplierPageSize])
 
   useEffect(() => {
     fetchData()
@@ -526,12 +564,12 @@ function ClientsSuppliers() {
                     ))}
                   </div>
                   <Pagination
-                    currentPage={clientPage}
+                    currentPage={effectiveClientPage}
                     totalPages={clientTotalPages}
                     onPageChange={setClientPage}
                     pageSize={clientPageSize}
-                    onPageSizeChange={(size) => { setClientPageSize(Number(size)); setClientPage(1) }}
-                    pageSizeOptions={[5, 10, 25, 50, 100]}
+                    onPageSizeChange={(size) => setClientPageSizeAndReset(Number(size))}
+                    pageSizeOptions={PAGE_SIZE_OPTIONS}
                     totalItems={filteredClients.length}
                   />
                 </>
@@ -692,7 +730,7 @@ function ClientsSuppliers() {
                     </div>
                   ))}
                 </div>
-                <Pagination currentPage={supplierPage} totalPages={supplierTotalPages} onPageChange={setSupplierPage} pageSize={supplierPageSize} onPageSizeChange={(size) => { setSupplierPageSize(Number(size)); setSupplierPage(1) }} totalItems={filteredSuppliers.length} pageSizeOptions={[5, 10, 25, 50, 100]} />
+                <Pagination currentPage={effectiveSupplierPage} totalPages={supplierTotalPages} onPageChange={setSupplierPage} pageSize={supplierPageSize} onPageSizeChange={(size) => setSupplierPageSizeAndReset(Number(size))} totalItems={filteredSuppliers.length} pageSizeOptions={PAGE_SIZE_OPTIONS} />
               </>
             )}
           </div>
