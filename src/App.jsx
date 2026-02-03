@@ -4,6 +4,7 @@ import ClientTransactions from './components/ClientTransactions'
 import SupplierTransactions from './components/SupplierTransactions'
 import Dashboard from './components/Dashboard'
 import ClientsSuppliers from './components/ClientsSuppliers'
+import Liabilities from './components/Liabilities'
 import ToastContainer from './components/ToastContainer'
 import LanguageSwitcher from './components/LanguageSwitcher'
 import BottomNav from './components/BottomNav'
@@ -15,6 +16,7 @@ import {
   FileText, 
   Truck, 
   Users, 
+  Wallet,
   Menu, 
   X,
   HelpCircle,
@@ -42,7 +44,8 @@ function Navigation() {
     { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, shortcut: 'd' },
     { path: '/', label: t('nav.clientTransactions'), icon: FileText, shortcut: 'c' },
     { path: '/suppliers', label: t('nav.supplierTransactions'), icon: Truck, shortcut: 's' },
-    { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e' }
+    { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e' },
+    { path: '/liabilities', label: t('nav.liabilities'), icon: Wallet, shortcut: 'l' }
   ]
 
   // Register keyboard shortcuts for navigation
@@ -234,6 +237,7 @@ function AppContent() {
             <Route path="/entities" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
             <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
             <Route path="/entities/suppliers" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
+            <Route path="/liabilities" element={<ProtectedRoute><Liabilities /></ProtectedRoute>} />
           </Routes>
           </div>
         </main>

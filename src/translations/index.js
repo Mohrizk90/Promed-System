@@ -6,6 +6,7 @@ export const translations = {
       clientsSuppliers: 'Clients & Suppliers',
       clientTransactions: 'Client Transactions',
       supplierTransactions: 'Supplier Transactions',
+      liabilities: 'Liabilities & Expenses',
       paymentsBreakdown: 'Payments Breakdown'
     },
     // Clients & Suppliers page
@@ -297,6 +298,42 @@ export const translations = {
       passwordTooShort: 'Password must be at least 6 characters',
       passwordMismatch: 'Passwords do not match',
       nameRequired: 'Name is required'
+    },
+    // Liabilities & Expenses (الجه، البيان، القيمة، مدفوع، متبقى)
+    liabilities: {
+      title: 'Liabilities & Expenses',
+      subtitle: 'Track loans, taxes, salaries, insurance and other obligations',
+      category: 'Category',
+      description: 'Description',
+      value: 'Value',
+      paid: 'Paid',
+      remaining: 'Remaining',
+      total: 'Total',
+      addLiability: 'Add Liability',
+      editLiability: 'Edit Liability',
+      recordPayment: 'Record Payment',
+      paymentAmount: 'Payment Amount',
+      paymentDate: 'Payment Date',
+      noLiabilities: 'No liabilities yet',
+      addFirstHint: 'Add your first liability or expense to get started.',
+      added: 'Liability added',
+      updated: 'Liability updated',
+      deleted: 'Liability deleted',
+      paymentRecorded: 'Payment recorded',
+      deleteConfirm: 'Are you sure you want to delete this liability?',
+      invalidAmount: 'Please enter a valid amount',
+      invalidPaymentAmount: 'Please enter a valid payment amount',
+      paymentExceedsRemaining: 'Payment cannot exceed remaining amount',
+      descriptionPlaceholder: 'e.g. Bank, person name, operating dues',
+      categoryOption_taxes: 'Taxes',
+      categoryOption_tax_accountant: 'Tax Accountant',
+      categoryOption_invoices_accountant: 'Invoices Accountant',
+      categoryOption_municipal: 'Municipal',
+      categoryOption_lawyer: 'Lawyer',
+      categoryOption_salaries: 'Salaries',
+      categoryOption_insurance: 'Insurance',
+      categoryOption_liabilities: 'Liabilities / Debtor',
+      categoryOption_other: 'Other'
     }
   },
   ar: {
@@ -306,6 +343,7 @@ export const translations = {
       clientsSuppliers: 'العملاء والموردون',
       clientTransactions: 'معاملات العملاء',
       supplierTransactions: 'معاملات الموردين',
+      liabilities: 'الالتزامات والمصروفات',
       paymentsBreakdown: 'تفاصيل المدفوعات'
     },
     // Clients & Suppliers page
@@ -339,6 +377,42 @@ export const translations = {
       transactionHistory: 'سجل المعاملات',
       noTransactionsForEntity: 'لا توجد معاملات بعد',
       contactAndAddress: 'التواصل والعنوان'
+    },
+    // Liabilities & Expenses (الجه، البيان، القيمة، مدفوع، متبقى)
+    liabilities: {
+      title: 'الالتزامات والمصروفات',
+      subtitle: 'تتبع القروض والضرائب والمرتبات والتأمينات وغيرها',
+      category: 'الجه',
+      description: 'البيان',
+      value: 'القيمة',
+      paid: 'مدفوع',
+      remaining: 'متبقى',
+      total: 'الإجمالي',
+      addLiability: 'إضافة التزام',
+      editLiability: 'تعديل التزام',
+      recordPayment: 'تسجيل دفعة',
+      paymentAmount: 'مبلغ الدفعة',
+      paymentDate: 'تاريخ الدفعة',
+      noLiabilities: 'لا توجد التزامات بعد',
+      addFirstHint: 'أضف أول التزام أو مصروف للبدء.',
+      added: 'تمت إضافة الالتزام',
+      updated: 'تم تحديث الالتزام',
+      deleted: 'تم حذف الالتزام',
+      paymentRecorded: 'تم تسجيل الدفعة',
+      deleteConfirm: 'هل أنت متأكد من حذف هذا الالتزام؟',
+      invalidAmount: 'أدخل مبلغاً صحيحاً',
+      invalidPaymentAmount: 'أدخل مبلغ دفعة صحيحاً',
+      paymentExceedsRemaining: 'لا يمكن أن يتجاوز الدفع المبلغ المتبقي',
+      descriptionPlaceholder: 'مثال: بنك، اسم شخص، مستحقات تشغيل',
+      categoryOption_taxes: 'ضرائب',
+      categoryOption_tax_accountant: 'محاسب ضرائب',
+      categoryOption_invoices_accountant: 'محاسب فواتير',
+      categoryOption_municipal: 'جهاز مدينة',
+      categoryOption_lawyer: 'محامي',
+      categoryOption_salaries: 'مرتبات',
+      categoryOption_insurance: 'تأمينات',
+      categoryOption_liabilities: 'مديون',
+      categoryOption_other: 'أخرى'
     },
     // Dashboard
     dashboard: {
