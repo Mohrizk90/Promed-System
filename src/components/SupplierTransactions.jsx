@@ -67,6 +67,12 @@ function SupplierTransactions() {
     }
   }, [])
 
+  // Apply paymentStatus from URL when navigating from Dashboard (e.g. /suppliers?paymentStatus=outstanding)
+  useEffect(() => {
+    const status = searchParams.get('paymentStatus')
+    if (status === 'outstanding' || status === 'paid') setFilterPaymentStatus(status)
+  }, [searchParams])
+
   const currentPage = Math.max(1, parseInt(searchParams.get('page'), 10) || 1)
   const pageSizeParam = searchParams.get('pageSize')
   const pageSize = PAGE_SIZE_OPTIONS.includes(Number(pageSizeParam)) ? Number(pageSizeParam) : 5

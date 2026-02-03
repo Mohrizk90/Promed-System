@@ -640,30 +640,36 @@ function Dashboard() {
 
       {/* Secondary Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricCard
-          title={t('dashboard.collectionRate')}
-          value={`${metrics.collectionRate.toFixed(1)}%`}
-          subtitle={`${formatCurrency(metrics.totalClientPaid)} ${t('dashboard.collected')}`}
-          color="green"
-          small
-          change={showComparison ? calculateChange(metrics.collectionRate, prevMetrics.collectionRate) : null}
-        />
+        <Link to="/" className="block transition-opacity hover:opacity-90">
+          <MetricCard
+            title={t('dashboard.collectionRate')}
+            value={`${metrics.collectionRate.toFixed(1)}%`}
+            subtitle={`${formatCurrency(metrics.totalClientPaid)} ${t('dashboard.collected')}`}
+            color="green"
+            small
+            change={showComparison ? calculateChange(metrics.collectionRate, prevMetrics.collectionRate) : null}
+          />
+        </Link>
 
-        <MetricCard
-          title={t('dashboard.accountsReceivable')}
-          value={formatCurrency(metrics.totalClientRemaining)}
-          subtitle={t('dashboard.outstandingFromClients')}
-          color="orange"
-          small
-        />
+        <Link to="/?paymentStatus=outstanding" className="block transition-opacity hover:opacity-90">
+          <MetricCard
+            title={t('dashboard.accountsReceivable')}
+            value={formatCurrency(metrics.totalClientRemaining)}
+            subtitle={t('dashboard.outstandingFromClients')}
+            color="orange"
+            small
+          />
+        </Link>
 
-        <MetricCard
-          title={t('dashboard.accountsPayable')}
-          value={formatCurrency(metrics.totalSupplierRemaining)}
-          subtitle={t('dashboard.owedToSuppliers')}
-          color="red"
-          small
-        />
+        <Link to="/suppliers?paymentStatus=outstanding" className="block transition-opacity hover:opacity-90">
+          <MetricCard
+            title={t('dashboard.accountsPayable')}
+            value={formatCurrency(metrics.totalSupplierRemaining)}
+            subtitle={t('dashboard.owedToSuppliers')}
+            color="red"
+            small
+          />
+        </Link>
 
         <MetricCard
           title={t('dashboard.netPositionShort')}
@@ -673,7 +679,7 @@ function Dashboard() {
           small
         />
 
-        <Link to="/liabilities" className="block">
+        <Link to="/liabilities" className="block transition-opacity hover:opacity-90">
           <MetricCard
             title={t('dashboard.totalLiabilities')}
             value={formatCurrency(totalLiabilitiesRemaining)}
@@ -747,6 +753,7 @@ function Dashboard() {
       {/* Charts Row 2 - LTR so charts render correctly in Arabic/RTL */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Clients */}
+        <Link to="/" className="block transition-opacity hover:opacity-95">
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topClientsByRevenue')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
@@ -763,8 +770,10 @@ function Dashboard() {
           </ResponsiveContainer>
           </div>
         </div>
+        </Link>
 
         {/* Top Suppliers */}
+        <Link to="/suppliers" className="block transition-opacity hover:opacity-95">
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topSuppliersByPurchases')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
@@ -781,6 +790,7 @@ function Dashboard() {
           </ResponsiveContainer>
           </div>
         </div>
+        </Link>
       </div>
 
       {/* Top Products Table */}

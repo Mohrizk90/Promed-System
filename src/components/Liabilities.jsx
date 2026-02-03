@@ -455,9 +455,29 @@ function Liabilities() {
         </div>
       </div>
 
+      {/* Summary metrics card */}
+      {filteredList.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 print:hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.value')}</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{formatNum(totalAmountSum)}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.paid')}</p>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatNum(paidSum)}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.remaining')}</p>
+            <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatNum(remainingSum)}</p>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       {combinedList.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 print:hidden">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{t('common.filters') || 'Filters'}</p>
+          <div className="flex flex-wrap items-center gap-2">
           <select
             className="input py-2 text-sm w-40"
             value={categoryFilter}
@@ -490,6 +510,7 @@ function Liabilities() {
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
           />
+          </div>
         </div>
       )}
 
@@ -546,13 +567,14 @@ function Liabilities() {
                     const isOverdue = row.due_date && row.due_date < today && parseFloat(row.remaining_amount || 0) > 0
                     return (
                       <React.Fragment key={row.rowId}>
-                        <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                           <td className="px-4 py-3 text-sm text-gray-900 dark:text-white rtl-flip">
-                            {row.source === 'supplier'
-                              ? t('liabilities.supplier')
-                              : row.category === 'custom'
-                                ? (row.description || t('liabilities.categoryOption_custom'))
-                                : t('liabilities.categoryOption_' + (row.category || 'other'))}
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium mr-1.5 ${row.source === 'supplier' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'}`}>
+                              {row.source === 'supplier' ? t('liabilities.supplier') : (t('liabilities.liability') || 'Liability')}
+                            </span>
+                            {row.source === 'liability' && (row.category === 'custom'
+                              ? (row.description || t('liabilities.categoryOption_custom'))
+                              : t('liabilities.categoryOption_' + (row.category || 'other')))}
                             {row.source === 'liability' && row.recurring && (
                               <span className="ml-1 text-xs text-blue-600 dark:text-blue-400" title={t('liabilities.recurring')}>↻</span>
                             )}
@@ -603,23 +625,42 @@ function Liabilities() {
                         {expandedRowId === row.rowId && (
                           <tr className="bg-gray-50 dark:bg-gray-700/30">
                             <td colSpan={8} className="px-4 py-3 text-sm rtl-flip">
-                              <div className="font-medium mb-2">{t('liabilities.paymentHistory')}</div>
-                              {loadingPayments ? (
-                                <span className="text-gray-500">{t('common.loading')}</span>
-                              ) : paymentsForRow.length === 0 ? (
-                                <span className="text-gray-500">{t('liabilities.noPayments')}</span>
-                              ) : (
-                                <ul className="space-y-1">
-                                  {paymentsForRow.map((p) => (
-                                    <li key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between gap-2 py-1 border-b border-gray-200 dark:border-gray-600 last:border-0">
-                                      <span>{p.payment_date} – {formatNum(p.payment_amount)}</span>
-                                      {row.source === 'liability' && (
-                                        <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-xs">{t('common.delete')}</button>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
+                              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm p-4">
+                                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                                  {t('liabilities.paymentHistory')} – {row.source === 'supplier' ? row.description : (row.description || row.category)}
+                                </h3>
+                                {loadingPayments ? (
+                                  <p className="text-gray-500 text-sm">{t('common.loading')}</p>
+                                ) : paymentsForRow.length === 0 ? (
+                                  <div className="flex flex-col items-center gap-2 py-4 text-gray-500">
+                                    <DollarSign size={24} className="opacity-50" />
+                                    <p className="text-sm">{t('liabilities.noPayments')}</p>
+                                    {parseFloat(row.remaining_amount || 0) > 0 && (
+                                      <button type="button" onClick={() => openPayment(row)} className="btn btn-primary btn-sm mt-1">
+                                        {t('liabilities.recordPayment')}
+                                      </button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <>
+                                    <ul className="space-y-1 mb-3">
+                                      {paymentsForRow.map((p) => (
+                                        <li key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-600 last:border-0">
+                                          <span className="text-gray-900 dark:text-white">{p.payment_date} – {formatNum(p.payment_amount)}</span>
+                                          {row.source === 'liability' && (
+                                            <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-xs">{t('common.delete')}</button>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    {parseFloat(row.remaining_amount || 0) > 0 && (
+                                      <button type="button" onClick={() => openPayment(row)} className="btn btn-secondary btn-sm">
+                                        {t('liabilities.recordPayment')}
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )}
@@ -786,25 +827,33 @@ function Liabilities() {
         }
       >
         {paymentLiability && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-            {t('liabilities.category')}: {t('liabilities.categoryOption_' + (paymentLiability.category || 'other'))}
-            {paymentLiability.description && ` – ${paymentLiability.description}`}
-            <br />
-            {t('liabilities.remaining')}: {formatNum(paymentLiability.remaining_amount)}
-          </p>
+          <div className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 mb-4 border border-gray-200 dark:border-gray-600">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              {paymentLiability.source === 'supplier' ? t('liabilities.supplier') : (t('liabilities.categoryOption_' + (paymentLiability.category || 'other')))}
+              {paymentLiability.description && ` – ${paymentLiability.description}`}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {t('liabilities.remaining')}: <strong className="text-red-600 dark:text-red-400">{formatNum(paymentLiability.remaining_amount)}</strong>
+            </p>
+          </div>
         )}
         <form id="payment-form" onSubmit={handlePaymentSubmit} className="space-y-3">
           <div>
             <label className="label text-xs">{t('liabilities.paymentAmount')}</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              className="input w-full py-2 text-sm"
-              value={paymentFormData.payment_amount}
-              onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
-              required
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                className="input w-full py-2 text-sm"
+                value={paymentFormData.payment_amount}
+                onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
+                required
+              />
+              {paymentLiability && parseFloat(paymentLiability.remaining_amount || 0) > 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t('common.max') || 'Max'}: {formatNum(paymentLiability.remaining_amount)}</span>
+              )}
+            </div>
           </div>
           <div>
             <label className="label text-xs">{t('liabilities.paymentDate')}</label>
