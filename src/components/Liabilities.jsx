@@ -11,7 +11,7 @@ import Modal from './ui/Modal'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Pagination from './ui/Pagination'
 import Dropdown from './ui/Dropdown'
-import { Plus, Download, Printer, ChevronDown, ChevronUp, Wallet, Edit as EditIcon, Trash2 } from './ui/Icons'
+import { Plus, Download, Printer, ChevronDown, ChevronUp, Wallet, Edit as EditIcon, Trash2, Filter } from './ui/Icons'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 const CATEGORY_KEYS = [
@@ -559,43 +559,74 @@ function Liabilities() {
 
       {/* Filters */}
         {combinedList.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-2 print:hidden">
-            <div className="flex flex-wrap items-center gap-2">
-              <select className="input py-1.5 text-sm w-36" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}>
-                <option value="all">{t('liabilities.filterAllCategories')}</option>
-                <option value="supplier">{t('liabilities.supplier')}</option>
-                {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => (
-                  <option key={key} value={key}>{t('liabilities.categoryOption_' + key)}</option>
-                ))}
-              </select>
-              <label className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" checked={outstandingOnly} onChange={(e) => { setOutstandingOnly(e.target.checked); setPage(1) }} className="rounded" />
-                {t('liabilities.outstandingOnly')}
-              </label>
-              <label className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" checked={recurringOnly} onChange={(e) => { setRecurringOnly(e.target.checked); setPage(1) }} className="rounded" />
-                {t('liabilities.recurringOnly')}
-              </label>
-              <select className="input py-1.5 text-sm w-36" value={dueFilter} onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}>
-                <option value="all">{t('liabilities.dueAll')}</option>
-                <option value="overdue">{t('liabilities.dueOverdue')}{overdueCount > 0 ? ` (${overdueCount})` : ''}</option>
-                <option value="due_next_7_days">{t('liabilities.dueNext7Days')}</option>
-                <option value="due_this_month">{t('liabilities.dueThisMonth')}</option>
-                <option value="no_date">{t('liabilities.dueNoDate')}</option>
-              </select>
-              <input type="search" className="input py-1.5 text-sm w-40" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} />
-              <span className="text-xs text-gray-500 dark:text-gray-400">{t('liabilities.dueDateRange')}:</span>
-              <input type="date" className="input py-1.5 text-sm w-32" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setPage(1) }} title={t('liabilities.dueFrom')} />
-              <span className="text-gray-400">–</span>
-              <input type="date" className="input py-1.5 text-sm w-32" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setPage(1) }} title={t('liabilities.dueTo')} />
-              <span className="text-xs text-gray-500 dark:text-gray-400">{t('liabilities.remainingRange')}:</span>
-              <input type="number" step="0.01" min="0" className="input py-1.5 text-sm w-24" placeholder={t('liabilities.min')} value={amountMin} aria-label={t('liabilities.min')} onChange={(e) => { setAmountMin(e.target.value); setPage(1) }} />
-              <span className="text-gray-400">–</span>
-              <input type="number" step="0.01" min="0" className="input py-1.5 text-sm w-24" placeholder={t('liabilities.maxAmount')} value={amountMax} aria-label={t('liabilities.maxAmount')} onChange={(e) => { setAmountMax(e.target.value); setPage(1) }} />
-              <label className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" checked={showPaidColumn} onChange={(e) => setShowPaidColumn(e.target.checked)} className="rounded" />
-                {t('liabilities.showPaidColumn')}
-              </label>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 print:hidden overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                <Filter size={16} className="text-gray-500 dark:text-gray-400" />
+                {t('common.filters')}
+              </h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.category')}</label>
+                  <select className="input py-2 text-sm w-40 rounded-lg border-gray-300 dark:border-gray-600" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}>
+                    <option value="all">{t('liabilities.filterAllCategories')}</option>
+                    <option value="supplier">{t('liabilities.supplier')}</option>
+                    {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => (
+                      <option key={key} value={key}>{t('liabilities.categoryOption_' + key)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.searchPlaceholder')}</label>
+                  <input type="search" className="input py-2 text-sm w-44 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} />
+                </div>
+                <div className="h-8 w-px bg-gray-200 dark:bg-gray-600 hidden sm:block" aria-hidden />
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                    <input type="checkbox" checked={outstandingOnly} onChange={(e) => { setOutstandingOnly(e.target.checked); setPage(1) }} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{t('liabilities.outstandingOnly')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                    <input type="checkbox" checked={recurringOnly} onChange={(e) => { setRecurringOnly(e.target.checked); setPage(1) }} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{t('liabilities.recurringOnly')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                    <input type="checkbox" checked={showPaidColumn} onChange={(e) => setShowPaidColumn(e.target.checked)} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{t('liabilities.showPaidColumn')}</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-end gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.dueDate')}</label>
+                  <select className="input py-2 text-sm w-40 rounded-lg border-gray-300 dark:border-gray-600" value={dueFilter} onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}>
+                    <option value="all">{t('liabilities.dueAll')}</option>
+                    <option value="overdue">{t('liabilities.dueOverdue')}{overdueCount > 0 ? ` (${overdueCount})` : ''}</option>
+                    <option value="due_next_7_days">{t('liabilities.dueNext7Days')}</option>
+                    <option value="due_this_month">{t('liabilities.dueThisMonth')}</option>
+                    <option value="no_date">{t('liabilities.dueNoDate')}</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.dueDateRange')}</label>
+                  <div className="flex items-center gap-2">
+                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setPage(1) }} title={t('liabilities.dueFrom')} aria-label={t('liabilities.dueFrom')} />
+                    <span className="text-gray-400 dark:text-gray-500 text-sm">–</span>
+                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setPage(1) }} title={t('liabilities.dueTo')} aria-label={t('liabilities.dueTo')} />
+                  </div>
+                </div>
+                <div className="h-8 w-px bg-gray-200 dark:bg-gray-600 hidden sm:block" aria-hidden />
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.remainingRange')} ($)</label>
+                  <div className="flex items-center gap-2">
+                    <input type="number" step="0.01" min="0" className="input py-2 text-sm w-28 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('liabilities.min')} value={amountMin} aria-label={t('liabilities.min')} onChange={(e) => { setAmountMin(e.target.value); setPage(1) }} />
+                    <span className="text-gray-400 dark:text-gray-500 text-sm">–</span>
+                    <input type="number" step="0.01" min="0" className="input py-2 text-sm w-28 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('liabilities.maxAmount')} value={amountMax} aria-label={t('liabilities.maxAmount')} onChange={(e) => { setAmountMax(e.target.value); setPage(1) }} />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
