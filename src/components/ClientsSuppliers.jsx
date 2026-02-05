@@ -120,7 +120,8 @@ function ClientsSuppliers() {
   const currentView = pathname === '/entities/clients' ? 'clients' : pathname === '/entities/suppliers' ? 'suppliers' : 'choice'
 
   const { success, error: showError } = useToast()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
+  const currency = t('common.currency')
 
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return clients
@@ -403,7 +404,8 @@ function ClientsSuppliers() {
   const formatCurrency = (value) => {
     const n = Number(value)
     if (Number.isNaN(n)) return '—'
-    return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const str = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return language === 'ar' ? str + ' ' + currency : currency + ' ' + str
   }
 
   const handleExportClientsCsv = () => {

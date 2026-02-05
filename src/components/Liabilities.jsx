@@ -11,7 +11,7 @@ import Modal from './ui/Modal'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Pagination from './ui/Pagination'
 import Dropdown from './ui/Dropdown'
-import { Plus, Download, Printer, ChevronDown, ChevronUp, Wallet, Edit as EditIcon, Trash2, Filter } from './ui/Icons'
+import { Plus, Download, Printer, ChevronDown, ChevronUp, Wallet, Edit as EditIcon, Trash2, Filter, MoreVertical } from './ui/Icons'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 const CATEGORY_KEYS = [
@@ -111,7 +111,7 @@ function Liabilities() {
   }
 
   const { success, error: showError } = useToast()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   const fetchData = async () => {
     try {
@@ -476,6 +476,8 @@ function Liabilities() {
   }
 
   const formatNum = (n) => (Number(n) ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  const currency = t('common.currency')
+  const formatCurrency = (n) => (language === 'ar' ? formatNum(n) + ' ' + currency : currency + ' ' + formatNum(n))
 
   const periodLabel = useMemo(() => {
     if (!selectedMonth) return null
@@ -515,15 +517,15 @@ function Liabilities() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 print:hidden">
             <div className="bg-amber-600 text-white p-2.5 rounded shadow">
               <p className="text-xs font-medium">{t('liabilities.value')}</p>
-              <p className="text-lg font-bold">${formatNum(totalAmountSum)}</p>
+              <p className="text-lg font-bold">{formatCurrency(totalAmountSum)}</p>
             </div>
             <div className="bg-green-600 text-white p-2.5 rounded shadow">
               <p className="text-xs font-medium">{t('liabilities.paid')}</p>
-              <p className="text-lg font-bold">${formatNum(paidSum)}</p>
+              <p className="text-lg font-bold">{formatCurrency(paidSum)}</p>
             </div>
             <div className="bg-red-600 text-white p-2.5 rounded shadow">
               <p className="text-xs font-medium">{t('liabilities.remaining')}</p>
-              <p className="text-lg font-bold">${formatNum(remainingSum)}</p>
+              <p className="text-lg font-bold">{formatCurrency(remainingSum)}</p>
             </div>
           </div>
         )}
@@ -650,7 +652,7 @@ function Liabilities() {
                 </div>
                 <div className="h-8 w-px bg-gray-200 dark:bg-gray-600 hidden sm:block" aria-hidden />
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.remainingRange')} ($)</label>
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.remainingRange')} ({currency})</label>
                   <div className="flex items-center gap-2">
                     <input type="number" step="0.01" min="0" className="input py-2 text-sm w-28 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('liabilities.min')} value={amountMin} aria-label={t('liabilities.min')} onChange={(e) => { setAmountMin(e.target.value); setPage(1) }} />
                     <span className="text-gray-400 dark:text-gray-500 text-sm">–</span>
@@ -727,9 +729,9 @@ function Liabilities() {
                           {row.source === 'supplier' ? row.description : (row.description || '–')}
                           {row.source === 'liability' && row.notes && <span className="ml-0.5 text-gray-400 dark:text-gray-500" title={row.notes}>📝</span>}
                         </td>
-                        <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 dark:text-white whitespace-nowrap">${formatNum(row.total_amount)}</td>
-                        {showPaidColumn && <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(row.paid_amount)}</td>}
-                        <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(row.remaining_amount)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 dark:text-white whitespace-nowrap">{formatCurrency(row.total_amount)}</td>
+                        {showPaidColumn && <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">{formatCurrency(row.paid_amount)}</td>}
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 dark:text-red-400 whitespace-nowrap">{formatCurrency(row.remaining_amount)}</td>
                         <td className="px-2 py-1 text-right rtl-flip whitespace-nowrap">
                           {row.due_date ? (
                             <span className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
@@ -740,7 +742,9 @@ function Liabilities() {
                         </td>
                         <td className="px-2 py-1 rtl-flip print:hidden whitespace-nowrap">
                           <Dropdown
+                            trigger={<MoreVertical size={20} />}
                             align="right"
+                            className="inline-block"
                             items={[
                               { label: t('paymentsBreakdown.payments'), icon: Wallet, onClick: () => fetchPaymentsForRow(row) },
                               ...(row.source === 'liability' ? [
@@ -759,8 +763,8 @@ function Liabilities() {
                                 <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                                   <div className="flex items-center gap-2">
                                     <span className="font-semibold text-gray-800 dark:text-white">{t('paymentsBreakdown.payments')}</span>
-                                    <span className="text-green-700 dark:text-green-400">{t('dashboard.paid')}: ${formatNum(row.paid_amount)}</span>
-                                    <span className="text-red-600 dark:text-red-400">{t('dashboard.remaining')}: ${formatNum(row.remaining_amount)}</span>
+                                    <span className="text-green-700 dark:text-green-400">{t('dashboard.paid')}: {formatCurrency(row.paid_amount)}</span>
+                                    <span className="text-red-600 dark:text-red-400">{t('dashboard.remaining')}: {formatCurrency(row.remaining_amount)}</span>
                                   </div>
                                   {parseFloat(row.remaining_amount || 0) > 0 && (
                                     <button type="button" onClick={() => openPayment(row)} className="px-1.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded text-[10px]">
@@ -776,7 +780,7 @@ function Liabilities() {
                                   <div className="space-y-0.5">
                                     {paymentsForRow.map((p) => (
                                       <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
-                                        <span>{p.payment_date} – ${formatNum(p.payment_amount)}</span>
+                                        <span>{p.payment_date} – {formatCurrency(p.payment_amount)}</span>
                                         <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
                                       </div>
                                     ))}
@@ -798,17 +802,17 @@ function Liabilities() {
                 </tr>
                 <tr className="bg-amber-50/80 dark:bg-amber-900/25 font-semibold text-sm">
                   <td colSpan={2} className="px-3 py-2.5 text-gray-800 dark:text-gray-200 rtl-flip">{t('liabilities.total')}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">${formatNum(totalAmountSum)}</td>
-                  {showPaidColumn && <td className="px-3 py-2.5 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(paidSum)}</td>}
-                  <td className="px-3 py-2.5 text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(remainingSum)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">{formatCurrency(totalAmountSum)}</td>
+                  {showPaidColumn && <td className="px-3 py-2.5 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">{formatCurrency(paidSum)}</td>}
+                  <td className="px-3 py-2.5 text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">{formatCurrency(remainingSum)}</td>
                   <td colSpan={2} />
                 </tr>
                 {totalsByCategory.length > 1 && totalsByCategory.map((c, idx) => (
                   <tr key={c.category} className={`text-sm border-t border-gray-200 dark:border-gray-600 ${idx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800/30'}`}>
                     <td colSpan={2} className="px-3 py-1.5 rtl-flip text-gray-600 dark:text-gray-400">{c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">${formatNum(c.total)}</td>
-                    {showPaidColumn && <td className="px-3 py-1.5 text-right tabular-nums text-green-600 dark:text-green-400 whitespace-nowrap">${formatNum(c.paid)}</td>}
-                    <td className="px-3 py-1.5 text-right tabular-nums text-red-600 dark:text-red-400 whitespace-nowrap">${formatNum(c.remaining)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatCurrency(c.total)}</td>
+                    {showPaidColumn && <td className="px-3 py-1.5 text-right tabular-nums text-green-600 dark:text-green-400 whitespace-nowrap">{formatCurrency(c.paid)}</td>}
+                    <td className="px-3 py-1.5 text-right tabular-nums text-red-600 dark:text-red-400 whitespace-nowrap">{formatCurrency(c.remaining)}</td>
                     <td colSpan={2} />
                   </tr>
                 ))}
@@ -838,7 +842,7 @@ function Liabilities() {
                         <Cell key={i} fill={['#d97706', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6366f1'][i % 6]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => '$' + formatNum(v)} />
+                    <Tooltip formatter={(v) => formatCurrency(v)} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -960,7 +964,7 @@ function Liabilities() {
               {paymentLiability.description && ` – ${paymentLiability.description}`}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {t('liabilities.remaining')}: <strong className="text-red-600 dark:text-red-400">{formatNum(paymentLiability.remaining_amount)}</strong>
+              {t('liabilities.remaining')}: <strong className="text-red-600 dark:text-red-400">{formatCurrency(paymentLiability.remaining_amount)}</strong>
             </p>
           </div>
         )}
@@ -983,7 +987,7 @@ function Liabilities() {
               />
               {paymentLiability && parseFloat(paymentLiability.remaining_amount || 0) > 0 && (
                 <>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t('common.max')}: {formatNum(paymentLiability.remaining_amount)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t('common.max')}: {formatCurrency(paymentLiability.remaining_amount)}</span>
                   <button
                     type="button"
                     onClick={() => setPaymentFormData((prev) => ({ ...prev, payment_amount: String(paymentLiability.remaining_amount ?? '') }))}

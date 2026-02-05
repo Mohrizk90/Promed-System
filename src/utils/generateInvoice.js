@@ -13,7 +13,7 @@ export function generateInvoice(transaction, options = {}) {
     companyPhone = '',
     companyEmail = '',
     invoicePrefix = 'INV',
-    currency = '$',
+    currency = 'EGP',
     language = 'en',
   } = options
 

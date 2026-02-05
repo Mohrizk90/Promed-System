@@ -7,7 +7,8 @@ import { useLanguage } from '../context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
 import TableSkeleton from './TableSkeleton'
 import Pagination from './ui/Pagination'
-import { Printer } from './ui/Icons'
+import Dropdown from './ui/Dropdown'
+import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 
@@ -98,7 +99,10 @@ function ClientTransactions() {
   }
 
   const { success, error: showError } = useToast()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
+  const formatNum = (n) => (Number(n) ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  const currency = t('common.currency')
+  const formatCurrency = (n) => (language === 'ar' ? formatNum(n) + ' ' + currency : currency + ' ' + formatNum(n))
 
   useEffect(() => {
     fetchData()
@@ -910,29 +914,29 @@ function ClientTransactions() {
 
         {/* Summary cards - compact */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <div className="bg-blue-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.totalAmount')}</p><p className="text-lg font-bold">${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
-          <div className="bg-green-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.paidAmount')}</p><p className="text-lg font-bold">${calculatePaid().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
-          <div className="bg-red-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.remainingAmount')}</p><p className="text-lg font-bold">${calculateRemaining().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
+          <div className="bg-blue-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.totalAmount')}</p><p className="text-lg font-bold">{formatCurrency(calculateTotal())}</p></div>
+          <div className="bg-green-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.paidAmount')}</p><p className="text-lg font-bold">{formatCurrency(calculatePaid())}</p></div>
+          <div className="bg-red-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t('clientTransactions.remainingAmount')}</p><p className="text-lg font-bold">{formatCurrency(calculateRemaining())}</p></div>
         </div>
       </div>
 
       {/* Table - grows with content, page scrolls */}
-      <div className="bg-white shadow rounded overflow-x-auto mt-2">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-100">
+      <div className="bg-white dark:bg-gray-800 shadow rounded overflow-x-auto overflow-y-visible mt-2">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
+            <thead className="bg-gray-100 dark:bg-gray-700/50 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.date')}</th>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-[14%] min-w-0">{t('clientTransactions.client')}</th>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-[14%] min-w-0">{t('clientTransactions.product')}</th>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-14">{t('clientTransactions.quantity')}</th>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.unitPrice')}</th>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.total')}</th>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.paid')}</th>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.remaining')}</th>
-                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-32">{t('clientTransactions.actions')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.date')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-[14%] min-w-0">{t('clientTransactions.client')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-[14%] min-w-0">{t('clientTransactions.product')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-14">{t('clientTransactions.quantity')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.unitPrice')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.total')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.paid')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.remaining')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 print:hidden">{t('clientTransactions.actions')}</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan="9" className="px-2 py-4 text-center text-gray-500 text-sm">
@@ -943,23 +947,30 @@ function ClientTransactions() {
                 paginatedTransactions.map((transaction) => {
                 const transactionPayments = getPaymentsForTransaction(transaction.transaction_id)
                 const isExpanded = expandedRows.has(transaction.transaction_id)
+                const unitPrice = transaction.unit_price ?? (transaction.quantity ? parseFloat(transaction.total_amount) / transaction.quantity : 0)
                 return (
                   <React.Fragment key={transaction.transaction_id}>
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
-                      <td className="table-cell-wrap px-2 py-1.5 font-medium text-sm" title={transaction.clients?.client_name || 'N/A'}>{transaction.clients?.client_name || 'N/A'}</td>
-                      <td className="table-cell-wrap px-2 py-1.5 text-sm" title={`${transaction.products?.product_name || 'N/A'}${transaction.products?.model ? ` (${transaction.products.model})` : ''}`}>{transaction.products?.product_name || 'N/A'}{transaction.products?.model && <span className="text-gray-500 text-xs ml-0.5">({transaction.products.model})</span>}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">{transaction.quantity}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm text-gray-900">${(transaction.unit_price ?? (transaction.quantity ? parseFloat(transaction.total_amount) / transaction.quantity : 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm font-semibold text-gray-900">${parseFloat(transaction.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm font-medium text-green-700">${parseFloat(transaction.paid_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-sm font-medium text-red-700">${parseFloat(transaction.remaining_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      <td className="px-2 py-1 text-xs min-w-0">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => toggleRowExpansion(transaction.transaction_id)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${isExpanded ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}>{t('paymentsBreakdown.payments')} <span className={isExpanded ? 'bg-white/30 px-1 rounded text-[10px]' : 'bg-blue-200 px-1 rounded text-[10px]'}>{transactionPayments.length}</span></button>
-                          <button onClick={() => handleEdit(transaction)} className="px-1.5 py-0.5 text-blue-600 hover:bg-blue-50 rounded text-xs">{t('clientTransactions.edit')}</button>
-                          <button onClick={() => handleDelete(transaction.transaction_id)} className="px-1.5 py-0.5 text-red-600 hover:bg-red-50 rounded text-xs">{t('clientTransactions.delete')}</button>
-                        </div>
+                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-2 py-1 whitespace-nowrap text-gray-900 dark:text-white">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
+                      <td className="table-cell-wrap px-2 py-1 font-medium max-w-[100px] truncate" title={transaction.clients?.client_name || 'N/A'}>{transaction.clients?.client_name || 'N/A'}</td>
+                      <td className="table-cell-wrap px-2 py-1 max-w-[100px] truncate" title={`${transaction.products?.product_name || 'N/A'}${transaction.products?.model ? ` (${transaction.products.model})` : ''}`}>{transaction.products?.product_name || 'N/A'}{transaction.products?.model && <span className="text-gray-500 dark:text-gray-400 ml-0.5">({transaction.products.model})</span>}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-gray-900 dark:text-white">{transaction.quantity}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-gray-900 dark:text-white">{formatCurrency(unitPrice)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(transaction.total_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(transaction.paid_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700 dark:text-red-400">{formatCurrency(transaction.remaining_amount)}</td>
+                      <td className="px-2 py-1 rtl-flip print:hidden whitespace-nowrap">
+                        <Dropdown
+                          trigger={<MoreVertical size={20} />}
+                          align="right"
+                          className="inline-block"
+                          items={[
+                            { label: t('paymentsBreakdown.payments') + ` (${transactionPayments.length})`, icon: Wallet, onClick: () => toggleRowExpansion(transaction.transaction_id) },
+                            { divider: true },
+                            { label: t('clientTransactions.edit'), icon: EditIcon, onClick: () => handleEdit(transaction) },
+                            { label: t('clientTransactions.delete'), icon: Trash2, danger: true, onClick: () => handleDelete(transaction.transaction_id) }
+                          ]}
+                        />
                       </td>
                     </tr>
                     {isExpanded && (
@@ -973,8 +984,8 @@ function ClientTransactions() {
                                   {t('paymentsBreakdown.payments')}
                                 </h4>
                                 <div className="flex gap-2 text-xs">
-                                  <span className="text-green-700 font-medium">{t('dashboard.paid')}: ${parseFloat(transaction.paid_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                                  <span className="text-red-600 font-medium">{t('dashboard.remaining')}: ${parseFloat(transaction.remaining_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                  <span className="text-green-700 dark:text-green-400 font-medium">{t('dashboard.paid')}: {formatCurrency(transaction.paid_amount)}</span>
+                                  <span className="text-red-600 dark:text-red-400 font-medium">{t('dashboard.remaining')}: {formatCurrency(transaction.remaining_amount)}</span>
                                 </div>
                               </div>
                               <button
@@ -1003,7 +1014,7 @@ function ClientTransactions() {
                                         {idx + 1}
                                       </span>
                                       <div>
-                                        <p className="font-semibold text-green-700 text-sm">${parseFloat(payment.payment_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                        <p className="font-semibold text-green-700 dark:text-green-400 text-sm">{formatCurrency(payment.payment_amount)}</p>
                                         <p className="text-gray-500 text-xs">{new Date(payment.payment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                                       </div>
                                     </div>
@@ -1029,6 +1040,22 @@ function ClientTransactions() {
                 )
               }))}
             </tbody>
+            {filteredTransactions.length > 0 && (
+              <tfoot className="border-t-2 border-blue-200 dark:border-blue-800">
+                <tr className="bg-blue-50 dark:bg-blue-900/20">
+                  <td colSpan="9" className="px-3 py-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-200">{t('liabilities.summary')}</span>
+                  </td>
+                </tr>
+                <tr className="bg-blue-50/80 dark:bg-blue-900/25 font-semibold text-sm">
+                  <td colSpan={5} className="px-3 py-2.5 text-gray-800 dark:text-gray-200">{t('clientTransactions.total')}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-900 dark:text-white">{formatCurrency(filteredTransactions.reduce((s, t) => s + parseFloat(t.total_amount || 0), 0))}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(filteredTransactions.reduce((s, t) => s + parseFloat(t.paid_amount || 0), 0))}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-red-700 dark:text-red-400">{formatCurrency(filteredTransactions.reduce((s, t) => s + parseFloat(t.remaining_amount || 0), 0))}</td>
+                  <td className="print:hidden" />
+                </tr>
+              </tfoot>
+            )}
           </table>
           {transactions.length === 0 && (
             <div className="text-center py-4">
@@ -1109,7 +1136,7 @@ function ClientTransactions() {
                             onClick={() => handleProductSelect(product)}
                             className="px-3 py-1.5 hover:bg-blue-50 cursor-pointer text-sm"
                           >
-                            {product.product_name} - ${product.unit_price}
+                            {product.product_name} - {formatCurrency(product.unit_price)}
                           </div>
                         ))}
                       </div>

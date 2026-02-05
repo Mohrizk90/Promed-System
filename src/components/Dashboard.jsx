@@ -51,7 +51,7 @@ function Dashboard() {
   const [quickFilter, setQuickFilter] = useState('all') // all, month, quarter, year
   const [showComparison, setShowComparison] = useState(false)
   const { error: showError } = useToast()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   useEffect(() => {
     fetchData()
@@ -186,14 +186,17 @@ function Dashboard() {
     return () => supabase.removeChannel(channel)
   }
 
+  const currency = t('common.currency')
   const formatCurrency = (value) => {
     const num = Number(value) || 0
-    return '$' + num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    const str = num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    return language === 'ar' ? str + ' ' + currency : currency + ' ' + str
   }
 
   const formatCurrencyDetailed = (value) => {
     const num = Number(value) || 0
-    return '$' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const str = num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return language === 'ar' ? str + ' ' + currency : currency + ' ' + str
   }
 
   // Get date range based on quick filter or custom range
