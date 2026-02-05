@@ -1036,7 +1036,6 @@ function SupplierTransactions() {
             pageSizeOptions={PAGE_SIZE_OPTIONS}
           />
         )}
-      </div>
 
       {/* Modal */}
       {showModal && (
