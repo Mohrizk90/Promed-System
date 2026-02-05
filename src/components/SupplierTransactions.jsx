@@ -853,8 +853,8 @@ function SupplierTransactions() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden min-h-0">
-      <div className="flex-shrink-0 space-y-2">
+    <div className="flex flex-col space-y-2 pb-4">
+      <div className="space-y-2">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
           <div>
             <h2 className="text-xl font-bold text-gray-900">{t('supplierTransactions.title')}</h2>
@@ -905,10 +905,9 @@ function SupplierTransactions() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 bg-white shadow rounded overflow-hidden flex flex-col mt-2">
-        <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
-          <table className="min-w-full divide-y divide-gray-200 table-fixed text-sm">
-            <thead className="bg-gray-100 sticky top-0">
+      <div className="bg-white shadow rounded overflow-x-auto mt-2">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-100">
               <tr>
                 <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-20">{t('supplierTransactions.date')}</th>
                 <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase w-[14%] min-w-0">{t('supplierTransactions.supplier')}</th>

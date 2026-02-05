@@ -434,8 +434,8 @@ function Liabilities() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <div className="h-full flex flex-col overflow-hidden min-h-0">
-      <div className="flex-shrink-0 space-y-2">
+    <div className="flex flex-col space-y-2 pb-4">
+      <div className="space-y-2">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('liabilities.title')}</h2>
@@ -558,134 +558,105 @@ function Liabilities() {
         />
       ) : (
         <>
-          <div className="flex-1 min-h-0 bg-white dark:bg-gray-800 shadow rounded overflow-hidden flex flex-col mt-2">
-            <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed text-sm">
-                <thead className="bg-gray-100 dark:bg-gray-700/50 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-[16%] min-w-0 rtl-flip">
-                      <button type="button" onClick={() => toggleSort('category')} className="flex items-center gap-0.5 hover:underline">
-                        {t('liabilities.category')} {sortBy === 'category' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
-                      </button>
-                    </th>
-                    <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-[18%] min-w-0 rtl-flip">
-                      <button type="button" onClick={() => toggleSort('description')} className="flex items-center gap-0.5 hover:underline">
-                        {t('liabilities.description')} {sortBy === 'description' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
-                      </button>
-                    </th>
-                    <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 rtl-flip">
-                      <button type="button" onClick={() => toggleSort('total_amount')} className="hover:underline ml-auto">{t('liabilities.value')} {sortBy === 'total_amount' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}</button>
-                    </th>
-                    <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 rtl-flip">
-                      <button type="button" onClick={() => toggleSort('paid_amount')} className="hover:underline ml-auto">{t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}</button>
-                    </th>
-                    <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 rtl-flip">
-                      <button type="button" onClick={() => toggleSort('remaining_amount')} className="hover:underline ml-auto">{t('liabilities.remaining')} {sortBy === 'remaining_amount' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}</button>
-                    </th>
-                    <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-24 rtl-flip">
-                      <button type="button" onClick={() => toggleSort('due_date')} className="hover:underline ml-auto">{t('liabilities.dueDate')} {sortBy === 'due_date' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}</button>
-                    </th>
-                    <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-32 rtl-flip print:hidden">
-                      {t('common.actions')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {paginatedList.map((row) => {
-                    const isOverdue = row.due_date && row.due_date < today && parseFloat(row.remaining_amount || 0) > 0
-                    const isExpanded = expandedRowId === row.rowId
-                    return (
-                      <React.Fragment key={row.rowId}>
-                        <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                          <td className="px-2 py-1.5 text-sm text-gray-900 dark:text-white rtl-flip">
-                            <span className={`inline-block px-1 py-0.5 rounded text-[10px] font-medium mr-1 ${row.source === 'supplier' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'}`}>
-                              {row.source === 'supplier' ? t('liabilities.supplier') : (t('liabilities.liability') || 'Liability')}
+          <div className="bg-white dark:bg-gray-800 shadow rounded overflow-x-auto mt-2">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
+              <thead className="bg-gray-100 dark:bg-gray-700/50">
+                <tr>
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 whitespace-nowrap rtl-flip">
+                    <button type="button" onClick={() => toggleSort('category')} className="flex items-center gap-0.5 hover:underline">
+                      {t('liabilities.category')} {sortBy === 'category' && (sortAsc ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
+                    </button>
+                  </th>
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase min-w-[100px] rtl-flip">
+                    <button type="button" onClick={() => toggleSort('description')} className="flex items-center gap-0.5 hover:underline">
+                      {t('liabilities.description')} {sortBy === 'description' && (sortAsc ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
+                    </button>
+                  </th>
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
+                    <button type="button" onClick={() => toggleSort('total_amount')} className="hover:underline ml-auto">{t('liabilities.value')} {sortBy === 'total_amount' && (sortAsc ? '↑' : '↓')}</button>
+                  </th>
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
+                    <button type="button" onClick={() => toggleSort('paid_amount')} className="hover:underline ml-auto">{t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? '↑' : '↓')}</button>
+                  </th>
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
+                    <button type="button" onClick={() => toggleSort('remaining_amount')} className="hover:underline ml-auto">{t('liabilities.remaining')} {sortBy === 'remaining_amount' && (sortAsc ? '↑' : '↓')}</button>
+                  </th>
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-24 whitespace-nowrap rtl-flip">
+                    <button type="button" onClick={() => toggleSort('due_date')} className="hover:underline ml-auto">{t('liabilities.dueDate')} {sortBy === 'due_date' && (sortAsc ? '↑' : '↓')}</button>
+                  </th>
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 whitespace-nowrap rtl-flip print:hidden">
+                    {t('common.actions')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {paginatedList.map((row) => {
+                  const isOverdue = row.due_date && row.due_date < today && parseFloat(row.remaining_amount || 0) > 0
+                  const isExpanded = expandedRowId === row.rowId
+                  return (
+                    <React.Fragment key={row.rowId}>
+                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <td className="px-2 py-1 text-gray-900 dark:text-white rtl-flip whitespace-nowrap">
+                          <span className={`inline px-1 py-0.5 rounded text-[10px] font-medium ${row.source === 'supplier' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'}`}>
+                            {row.source === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(row.category) ? t('liabilities.categoryOption_' + (row.category || 'other')) : (row.category || t('liabilities.categoryOption_other')))}
+                          </span>
+                          {row.source === 'liability' && row.recurring && <span className="ml-0.5 text-blue-600 dark:text-blue-400" title={t('liabilities.recurring')}>↻</span>}
+                        </td>
+                        <td className="px-2 py-1 text-gray-700 dark:text-gray-300 rtl-flip max-w-[140px] truncate" title={row.source === 'supplier' ? row.description : (row.description || '–')}>
+                          {row.source === 'supplier' ? row.description : (row.description || '–')}
+                        </td>
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 dark:text-white whitespace-nowrap">${formatNum(row.total_amount)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(row.paid_amount)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(row.remaining_amount)}</td>
+                        <td className="px-2 py-1 text-right rtl-flip whitespace-nowrap">
+                          {row.due_date ? (
+                            <span className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
+                              {row.due_date}
+                              {isOverdue && <span className="ml-0.5 text-[10px] bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1 py-0.5 rounded">{t('liabilities.overdue')}</span>}
                             </span>
-                            {row.source === 'liability' && (CATEGORY_KEYS.includes(row.category)
-                              ? t('liabilities.categoryOption_' + (row.category || 'other'))
-                              : (row.category || t('liabilities.categoryOption_other')))}
-                            {row.source === 'liability' && row.recurring && (
-                              <span className="ml-0.5 text-[10px] text-blue-600 dark:text-blue-400" title={t('liabilities.recurring')}>↻</span>
+                          ) : '–'}
+                        </td>
+                        <td className="px-2 py-1 rtl-flip print:hidden whitespace-nowrap">
+                          <div className="flex items-center gap-0.5">
+                            <button type="button" onClick={() => fetchPaymentsForRow(row)} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${isExpanded ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200'}`}>
+                              {t('paymentsBreakdown.payments')}
+                            </button>
+                            {row.source === 'liability' && (
+                              <>
+                                <button type="button" onClick={() => openEdit(row)} className="px-1 py-0.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded text-[10px]">{t('common.edit')}</button>
+                                <button type="button" onClick={() => setDeleteTarget(row)} className="px-1 py-0.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-[10px]">{t('common.delete')}</button>
+                              </>
                             )}
-                          </td>
-                          <td className="px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 rtl-flip max-w-0 truncate" title={row.source === 'supplier' ? row.description : (row.description || '–')}>
-                            {row.source === 'supplier' ? row.description : (row.description || '–')}
-                          </td>
-                          <td className="px-2 py-1.5 text-sm text-right tabular-nums font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-                            ${formatNum(row.total_amount)}
-                          </td>
-                          <td className="px-2 py-1.5 text-sm text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">
-                            ${formatNum(row.paid_amount)}
-                          </td>
-                          <td className="px-2 py-1.5 text-sm text-right tabular-nums font-medium text-red-700 dark:text-red-400 whitespace-nowrap">
-                            ${formatNum(row.remaining_amount)}
-                          </td>
-                          <td className="px-2 py-1.5 text-sm text-right rtl-flip whitespace-nowrap">
-                            {row.due_date ? (
-                              <span className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
-                                {row.due_date}
-                                {isOverdue && <span className="ml-0.5 text-[10px] bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1 py-0.5 rounded">{t('liabilities.overdue')}</span>}
-                              </span>
-                            ) : '–'}
-                          </td>
-                          <td className="px-2 py-1 text-xs min-w-0 rtl-flip print:hidden">
-                            <div className="flex items-center gap-1 flex-wrap">
-                              <button
-                                type="button"
-                                onClick={() => fetchPaymentsForRow(row)}
-                                className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-medium shrink-0 ${isExpanded ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60'}`}
-                              >
-                                {t('paymentsBreakdown.payments')}
-                              </button>
-                              {row.source === 'liability' && (
-                                <>
-                                  <button type="button" onClick={() => openEdit(row)} className="px-1.5 py-0.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded text-xs shrink-0">
-                                    {t('common.edit')}
-                                  </button>
-                                  <button type="button" onClick={() => setDeleteTarget(row)} className="px-1.5 py-0.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-xs shrink-0">
-                                    {t('common.delete')}
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+                          </div>
+                        </td>
+                      </tr>
                         {isExpanded && (
                           <tr>
-                            <td colSpan={7} className="px-2 py-0 align-top rtl-flip">
-                              <div className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-amber-200 bg-gradient-to-r from-amber-50/80 to-transparent dark:from-amber-900/20 dark:border-amber-700 rounded-r mb-1">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <h4 className="font-semibold text-gray-800 dark:text-white text-xs flex items-center gap-1">
-                                      <span className="w-1.5 h-4 bg-amber-500 rounded" />
-                                      {t('paymentsBreakdown.payments')}
-                                    </h4>
-                                    <div className="flex gap-2 text-xs">
-                                      <span className="text-green-700 dark:text-green-400 font-medium">{t('dashboard.paid')}: ${formatNum(row.paid_amount)}</span>
-                                      <span className="text-red-600 dark:text-red-400 font-medium">{t('dashboard.remaining')}: ${formatNum(row.remaining_amount)}</span>
-                                    </div>
+                            <td colSpan={7} className="px-2 py-1 align-top rtl-flip">
+                              <div className="payment-detail-row py-1.5 pl-2 pr-1 border-l-4 border-amber-200 bg-amber-50/50 dark:bg-amber-900/10 dark:border-amber-700 rounded-r text-xs">
+                                <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-gray-800 dark:text-white">{t('paymentsBreakdown.payments')}</span>
+                                    <span className="text-green-700 dark:text-green-400">{t('dashboard.paid')}: ${formatNum(row.paid_amount)}</span>
+                                    <span className="text-red-600 dark:text-red-400">{t('dashboard.remaining')}: ${formatNum(row.remaining_amount)}</span>
                                   </div>
                                   {parseFloat(row.remaining_amount || 0) > 0 && (
-                                    <button type="button" onClick={() => openPayment(row)} className="inline-flex items-center gap-1 px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded shadow shrink-0">
+                                    <button type="button" onClick={() => openPayment(row)} className="px-1.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded text-[10px]">
                                       + {t('paymentsBreakdown.addPayment')}
                                     </button>
                                   )}
                                 </div>
                                 {loadingPayments ? (
-                                  <p className="text-gray-500 text-xs py-2">{t('common.loading')}</p>
+                                  <p className="text-gray-500 py-1">{t('common.loading')}</p>
                                 ) : paymentsForRow.length === 0 ? (
-                                  <p className="text-gray-500 text-xs py-2 text-center bg-white dark:bg-gray-800 rounded border border-dashed border-gray-300 dark:border-gray-600">
-                                    {t('liabilities.noPayments')}
-                                  </p>
+                                  <p className="text-gray-500 py-1 text-center border border-dashed border-gray-300 dark:border-gray-600 rounded">{t('liabilities.noPayments')}</p>
                                 ) : (
-                                  <div className="space-y-1">
+                                  <div className="space-y-0.5">
                                     {paymentsForRow.map((p) => (
-                                      <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between gap-2 py-1.5 px-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
-                                        <span className="text-sm text-gray-900 dark:text-white">{p.payment_date} – ${formatNum(p.payment_amount)}</span>
+                                      <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
+                                        <span>{p.payment_date} – ${formatNum(p.payment_amount)}</span>
                                         {row.source === 'liability' && (
-                                          <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="px-2 py-0.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-xs font-medium">
-                                            {t('paymentsBreakdown.deletePayment')}
-                                          </button>
+                                          <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
                                         )}
                                       </div>
                                     ))}
@@ -699,42 +670,37 @@ function Liabilities() {
                     )
                   })}
                 </tbody>
-                <tfoot className="bg-gray-100 dark:bg-gray-700/70 font-semibold border-t-2 border-gray-200 dark:border-gray-600">
-                  <tr>
-                    <td colSpan={2} className="px-2 py-1.5 text-sm text-gray-800 dark:text-gray-200 rtl-flip">
-                      {t('liabilities.total')}
-                    </td>
-                    <td className="px-2 py-1.5 text-sm text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">${formatNum(totalAmountSum)}</td>
-                    <td className="px-2 py-1.5 text-sm text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(paidSum)}</td>
-                    <td className="px-2 py-1.5 text-sm text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(remainingSum)}</td>
+                <tfoot className="bg-gray-100 dark:bg-gray-700/70 font-semibold border-t-2 border-gray-200 dark:border-gray-600 text-xs">
+                <tr>
+                  <td colSpan={2} className="px-2 py-1 text-gray-800 dark:text-gray-200 rtl-flip">{t('liabilities.total')}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">${formatNum(totalAmountSum)}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(paidSum)}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(remainingSum)}</td>
+                  <td colSpan={2} />
+                </tr>
+                {totalsByCategory.length > 1 && totalsByCategory.map((c) => (
+                  <tr key={c.category} className="text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-600">
+                    <td colSpan={2} className="px-2 py-0.5 rtl-flip">{c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}</td>
+                    <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.total)}</td>
+                    <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.paid)}</td>
+                    <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.remaining)}</td>
                     <td colSpan={2} />
                   </tr>
-                  {totalsByCategory.length > 1 && totalsByCategory.map((c) => (
-                    <tr key={c.category} className="text-gray-600 dark:text-gray-400 text-xs border-t border-gray-200 dark:border-gray-600">
-                      <td colSpan={2} className="px-2 py-1 rtl-flip">
-                        {c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}
-                      </td>
-                      <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">${formatNum(c.total)}</td>
-                      <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">${formatNum(c.paid)}</td>
-                      <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">${formatNum(c.remaining)}</td>
-                      <td colSpan={2} />
-                    </tr>
-                  ))}
-                </tfoot>
-              </table>
-            </div>
-            {sortedList.length > 0 && (
-              <Pagination
-                currentPage={effectivePage}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                pageSize={pageSize}
-                onPageSizeChange={(size) => setPageSizeAndReset(Number(size))}
-                totalItems={sortedList.length}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-              />
-            )}
+                ))}
+              </tfoot>
+            </table>
           </div>
+          {sortedList.length > 0 && (
+            <Pagination
+              currentPage={effectivePage}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              pageSize={pageSize}
+              onPageSizeChange={(size) => setPageSizeAndReset(Number(size))}
+              totalItems={sortedList.length}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+            />
+          )}
 
           {chartData.length > 0 && (
             <div className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg shadow p-3 print:hidden mt-2">
