@@ -10,7 +10,8 @@ import EmptyState from './ui/EmptyState'
 import Modal from './ui/Modal'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Pagination from './ui/Pagination'
-import { Plus, Download, Printer, ChevronDown, ChevronUp } from './ui/Icons'
+import Dropdown from './ui/Dropdown'
+import { Plus, Download, Printer, ChevronDown, ChevronUp, Wallet, Edit as EditIcon, Trash2 } from './ui/Icons'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 const CATEGORY_KEYS = [
@@ -37,12 +38,17 @@ function Liabilities() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [formData, setFormData] = useState({ category: '', description: '', total_amount: '', due_date: '', recurring: false })
+  const [formData, setFormData] = useState({ category: '', description: '', total_amount: '', due_date: '', recurring: false, notes: '' })
   const [paymentFormData, setPaymentFormData] = useState({ payment_amount: '', payment_date: new Date().toISOString().split('T')[0] })
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [outstandingOnly, setOutstandingOnly] = useState(false)
+  const [recurringOnly, setRecurringOnly] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [dueFilter, setDueFilter] = useState('all')
+  const [dueDateFrom, setDueDateFrom] = useState('')
+  const [dueDateTo, setDueDateTo] = useState('')
+  const [amountMin, setAmountMin] = useState('')
+  const [amountMax, setAmountMax] = useState('')
   const [sortBy, setSortBy] = useState('remaining_amount')
   const [sortAsc, setSortAsc] = useState(false)
   const [expandedRowId, setExpandedRowId] = useState(null)
@@ -50,6 +56,8 @@ function Liabilities() {
   const [loadingPayments, setLoadingPayments] = useState(false)
   const [deletePaymentTarget, setDeletePaymentTarget] = useState(null)
   const [deletingPayment, setDeletingPayment] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
+  const [showPaidColumn, setShowPaidColumn] = useState(true)
 
   const [searchParams, setSearchParams] = useSearchParams()
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
@@ -154,6 +162,7 @@ function Liabilities() {
       else list = list.filter((r) => r.source === 'liability' && r.category === categoryFilter)
     }
     if (outstandingOnly) list = list.filter((r) => parseFloat(r.remaining_amount || 0) > 0)
+    if (recurringOnly) list = list.filter((r) => r.source === 'liability' && !!r.recurring)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
       list = list.filter((r) => (r.description || '').toLowerCase().includes(q) || (r.source === 'supplier' && (r.description || '').toLowerCase().includes(q)))
@@ -165,9 +174,24 @@ function Liabilities() {
       const lastDay = new Date(Number(y), Number(m), 0).getDate()
       const end = `${y}-${m}-${String(lastDay).padStart(2, '0')}`
       list = list.filter((r) => r.due_date && r.due_date >= start && r.due_date <= end)
+    } else if (dueFilter === 'due_next_7_days') {
+      const endDate = new Date(today)
+      endDate.setDate(endDate.getDate() + 7)
+      const endStr = endDate.toISOString().split('T')[0]
+      list = list.filter((r) => r.due_date && r.due_date >= today && r.due_date <= endStr && parseFloat(r.remaining_amount || 0) > 0)
     } else if (dueFilter === 'no_date') list = list.filter((r) => !r.due_date)
+    if (dueDateFrom) list = list.filter((r) => r.due_date && r.due_date >= dueDateFrom)
+    if (dueDateTo) list = list.filter((r) => r.due_date && r.due_date <= dueDateTo)
+    if (amountMin !== '') {
+      const min = parseFloat(amountMin)
+      if (!isNaN(min)) list = list.filter((r) => parseFloat(r.remaining_amount || 0) >= min)
+    }
+    if (amountMax !== '') {
+      const max = parseFloat(amountMax)
+      if (!isNaN(max)) list = list.filter((r) => parseFloat(r.remaining_amount || 0) <= max)
+    }
     return list
-  }, [combinedList, categoryFilter, outstandingOnly, searchQuery, dueFilter, today])
+  }, [combinedList, categoryFilter, outstandingOnly, recurringOnly, searchQuery, dueFilter, today, dueDateFrom, dueDateTo, amountMin, amountMax])
 
   const sortedList = useMemo(() => {
     const list = [...filteredList]
@@ -195,6 +219,8 @@ function Liabilities() {
   const totalAmountSum = useMemo(() => filteredList.reduce((s, l) => s + parseFloat(l.total_amount || 0), 0), [filteredList])
   const paidSum = useMemo(() => filteredList.reduce((s, l) => s + parseFloat(l.paid_amount || 0), 0), [filteredList])
   const remainingSum = useMemo(() => filteredList.reduce((s, l) => s + parseFloat(l.remaining_amount || 0), 0), [filteredList])
+
+  const overdueCount = useMemo(() => combinedList.filter((r) => r.due_date && r.due_date < today && parseFloat(r.remaining_amount || 0) > 0).length, [combinedList, today])
 
   const totalsByCategory = useMemo(() => {
     const map = new Map()
@@ -225,7 +251,8 @@ function Liabilities() {
 
   const openAdd = () => {
     setEditingLiability(null)
-    setFormData({ category: '', description: '', total_amount: '', due_date: '', recurring: false })
+    setFormData({ category: '', description: '', total_amount: '', due_date: '', recurring: false, notes: '' })
+    setFormErrors({})
     setShowModal(true)
   }
 
@@ -237,23 +264,27 @@ function Liabilities() {
       description: row.description || '',
       total_amount: String(row.total_amount ?? ''),
       due_date: row.due_date || '',
-      recurring: !!row.recurring
+      recurring: !!row.recurring,
+      notes: row.notes || ''
     })
+    setFormErrors({})
     setShowModal(true)
   }
 
   const openPayment = (row) => {
     setPaymentLiability(row)
     setPaymentFormData({ payment_amount: '', payment_date: new Date().toISOString().split('T')[0] })
+    setFormErrors({})
     setShowPaymentModal(true)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setFormErrors((prev) => ({ ...prev, total_amount: undefined }))
     const description = (formData.description || '').trim() || null
     const total = parseFloat(formData.total_amount)
     if (isNaN(total) || total < 0) {
-      showError(t('liabilities.invalidAmount'))
+      setFormErrors((prev) => ({ ...prev, total_amount: t('liabilities.invalidAmount') }))
       return
     }
     const categoryInput = (formData.category || '').trim()
@@ -266,12 +297,14 @@ function Liabilities() {
     }
     try {
       setSubmitting(true)
+      const notes = (formData.notes || '').trim() || null
       const payload = {
         category,
         description,
         total_amount: total,
         due_date: formData.due_date || null,
-        recurring: !!formData.recurring
+        recurring: !!formData.recurring,
+        notes
       }
       if (editingLiability) {
         const paid = parseFloat(editingLiability.paid_amount || 0)
@@ -301,15 +334,16 @@ function Liabilities() {
 
   const handlePaymentSubmit = async (e) => {
     e.preventDefault()
+    setFormErrors((prev) => ({ ...prev, payment_amount: undefined }))
     if (!paymentLiability) return
     const amount = parseFloat(paymentFormData.payment_amount)
     if (isNaN(amount) || amount <= 0) {
-      showError(t('liabilities.invalidPaymentAmount'))
+      setFormErrors((prev) => ({ ...prev, payment_amount: t('liabilities.invalidPaymentAmount') }))
       return
     }
     const remaining = parseFloat(paymentLiability.remaining_amount || 0)
     if (amount > remaining) {
-      showError(t('liabilities.paymentExceedsRemaining'))
+      setFormErrors((prev) => ({ ...prev, payment_amount: t('liabilities.paymentExceedsRemaining') }))
       return
     }
     try {
@@ -538,17 +572,40 @@ function Liabilities() {
                 <input type="checkbox" checked={outstandingOnly} onChange={(e) => { setOutstandingOnly(e.target.checked); setPage(1) }} className="rounded" />
                 {t('liabilities.outstandingOnly')}
               </label>
+              <label className="flex items-center gap-1.5 text-sm">
+                <input type="checkbox" checked={recurringOnly} onChange={(e) => { setRecurringOnly(e.target.checked); setPage(1) }} className="rounded" />
+                {t('liabilities.recurringOnly')}
+              </label>
               <select className="input py-1.5 text-sm w-36" value={dueFilter} onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}>
                 <option value="all">{t('liabilities.dueAll')}</option>
-                <option value="overdue">{t('liabilities.dueOverdue')}</option>
+                <option value="overdue">{t('liabilities.dueOverdue')}{overdueCount > 0 ? ` (${overdueCount})` : ''}</option>
+                <option value="due_next_7_days">{t('liabilities.dueNext7Days')}</option>
                 <option value="due_this_month">{t('liabilities.dueThisMonth')}</option>
                 <option value="no_date">{t('liabilities.dueNoDate')}</option>
               </select>
               <input type="search" className="input py-1.5 text-sm w-40" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} />
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t('liabilities.dueDateRange')}:</span>
+              <input type="date" className="input py-1.5 text-sm w-32" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setPage(1) }} title={t('liabilities.dueFrom')} />
+              <span className="text-gray-400">–</span>
+              <input type="date" className="input py-1.5 text-sm w-32" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setPage(1) }} title={t('liabilities.dueTo')} />
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t('liabilities.remainingRange')}:</span>
+              <input type="number" step="0.01" min="0" className="input py-1.5 text-sm w-24" placeholder={t('liabilities.min')} value={amountMin} aria-label={t('liabilities.min')} onChange={(e) => { setAmountMin(e.target.value); setPage(1) }} />
+              <span className="text-gray-400">–</span>
+              <input type="number" step="0.01" min="0" className="input py-1.5 text-sm w-24" placeholder={t('liabilities.maxAmount')} value={amountMax} aria-label={t('liabilities.maxAmount')} onChange={(e) => { setAmountMax(e.target.value); setPage(1) }} />
+              <label className="flex items-center gap-1.5 text-sm">
+                <input type="checkbox" checked={showPaidColumn} onChange={(e) => setShowPaidColumn(e.target.checked)} className="rounded" />
+                {t('liabilities.showPaidColumn')}
+              </label>
             </div>
           </div>
         )}
       </div>
+
+      {overdueCount > 0 && (
+        <div className="print:hidden rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-800 dark:text-red-200 font-medium">
+          {overdueCount} {t('liabilities.overdue')}
+        </div>
+      )}
 
       {sortedList.length === 0 ? (
         <EmptyState
@@ -558,9 +615,9 @@ function Liabilities() {
         />
       ) : (
         <>
-          <div className="bg-white dark:bg-gray-800 shadow rounded overflow-x-auto mt-2">
+          <div className="bg-white dark:bg-gray-800 shadow rounded overflow-x-auto overflow-y-visible mt-2">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
-              <thead className="bg-gray-100 dark:bg-gray-700/50">
+              <thead className="bg-gray-100 dark:bg-gray-700/50 sticky top-0 z-10 shadow-sm">
                 <tr>
                   <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('category')} className="flex items-center gap-0.5 hover:underline">
@@ -575,9 +632,11 @@ function Liabilities() {
                   <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('total_amount')} className="hover:underline ml-auto">{t('liabilities.value')} {sortBy === 'total_amount' && (sortAsc ? '↑' : '↓')}</button>
                   </th>
-                  <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
-                    <button type="button" onClick={() => toggleSort('paid_amount')} className="hover:underline ml-auto">{t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? '↑' : '↓')}</button>
-                  </th>
+                  {showPaidColumn && (
+                    <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
+                      <button type="button" onClick={() => toggleSort('paid_amount')} className="hover:underline ml-auto">{t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? '↑' : '↓')}</button>
+                    </th>
+                  )}
                   <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('remaining_amount')} className="hover:underline ml-auto">{t('liabilities.remaining')} {sortBy === 'remaining_amount' && (sortAsc ? '↑' : '↓')}</button>
                   </th>
@@ -602,11 +661,12 @@ function Liabilities() {
                           </span>
                           {row.source === 'liability' && row.recurring && <span className="ml-0.5 text-blue-600 dark:text-blue-400" title={t('liabilities.recurring')}>↻</span>}
                         </td>
-                        <td className="px-2 py-1 text-gray-700 dark:text-gray-300 rtl-flip max-w-[140px] truncate" title={row.source === 'supplier' ? row.description : (row.description || '–')}>
+                        <td className="px-2 py-1 text-gray-700 dark:text-gray-300 rtl-flip max-w-[140px] truncate" title={row.source === 'supplier' ? row.description : (row.description || '–') + (row.notes ? '\n\nNotes: ' + row.notes : '')}>
                           {row.source === 'supplier' ? row.description : (row.description || '–')}
+                          {row.source === 'liability' && row.notes && <span className="ml-0.5 text-gray-400 dark:text-gray-500" title={row.notes}>📝</span>}
                         </td>
                         <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 dark:text-white whitespace-nowrap">${formatNum(row.total_amount)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(row.paid_amount)}</td>
+                        {showPaidColumn && <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(row.paid_amount)}</td>}
                         <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(row.remaining_amount)}</td>
                         <td className="px-2 py-1 text-right rtl-flip whitespace-nowrap">
                           {row.due_date ? (
@@ -617,22 +677,22 @@ function Liabilities() {
                           ) : '–'}
                         </td>
                         <td className="px-2 py-1 rtl-flip print:hidden whitespace-nowrap">
-                          <div className="flex items-center gap-0.5">
-                            <button type="button" onClick={() => fetchPaymentsForRow(row)} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${isExpanded ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200'}`}>
-                              {t('paymentsBreakdown.payments')}
-                            </button>
-                            {row.source === 'liability' && (
-                              <>
-                                <button type="button" onClick={() => openEdit(row)} className="px-1 py-0.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded text-[10px]">{t('common.edit')}</button>
-                                <button type="button" onClick={() => setDeleteTarget(row)} className="px-1 py-0.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-[10px]">{t('common.delete')}</button>
-                              </>
-                            )}
-                          </div>
+                          <Dropdown
+                            align="right"
+                            items={[
+                              { label: t('paymentsBreakdown.payments'), icon: Wallet, onClick: () => fetchPaymentsForRow(row) },
+                              ...(row.source === 'liability' ? [
+                                { divider: true },
+                                { label: t('common.edit'), icon: EditIcon, onClick: () => openEdit(row) },
+                                { label: t('common.delete'), icon: Trash2, danger: true, onClick: () => setDeleteTarget(row) }
+                              ] : [])
+                            ]}
+                          />
                         </td>
                       </tr>
                         {isExpanded && (
                           <tr>
-                            <td colSpan={7} className="px-2 py-1 align-top rtl-flip">
+                            <td colSpan={showPaidColumn ? 7 : 6} className="px-2 py-1 align-top rtl-flip">
                               <div className="payment-detail-row py-1.5 pl-2 pr-1 border-l-4 border-amber-200 bg-amber-50/50 dark:bg-amber-900/10 dark:border-amber-700 rounded-r text-xs">
                                 <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                                   <div className="flex items-center gap-2">
@@ -655,9 +715,7 @@ function Liabilities() {
                                     {paymentsForRow.map((p) => (
                                       <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
                                         <span>{p.payment_date} – ${formatNum(p.payment_amount)}</span>
-                                        {row.source === 'liability' && (
-                                          <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
-                                        )}
+                                        <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
                                       </div>
                                     ))}
                                   </div>
@@ -674,7 +732,7 @@ function Liabilities() {
                 <tr>
                   <td colSpan={2} className="px-2 py-1 text-gray-800 dark:text-gray-200 rtl-flip">{t('liabilities.total')}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">${formatNum(totalAmountSum)}</td>
-                  <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(paidSum)}</td>
+                  {showPaidColumn && <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(paidSum)}</td>}
                   <td className="px-2 py-1 text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(remainingSum)}</td>
                   <td colSpan={2} />
                 </tr>
@@ -682,7 +740,7 @@ function Liabilities() {
                   <tr key={c.category} className="text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-600">
                     <td colSpan={2} className="px-2 py-0.5 rtl-flip">{c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}</td>
                     <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.total)}</td>
-                    <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.paid)}</td>
+                    {showPaidColumn && <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.paid)}</td>}
                     <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.remaining)}</td>
                     <td colSpan={2} />
                   </tr>
@@ -769,16 +827,21 @@ function Liabilities() {
             />
           </div>
           <div>
-            <label className="label text-xs">{t('liabilities.value')} <span className="text-red-500">*</span></label>
+            <label className="label text-xs" htmlFor="liability-total_amount">{t('liabilities.value')} <span className="text-red-500" aria-hidden="true">*</span></label>
             <input
+              id="liability-total_amount"
               type="number"
               step="0.01"
               min="0"
-              className="input w-full py-2 text-sm"
+              className={`input w-full py-2 text-sm ${formErrors.total_amount ? 'border-red-500 dark:border-red-400' : ''}`}
               value={formData.total_amount}
-              onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
+              onChange={(e) => { setFormData({ ...formData, total_amount: e.target.value }); setFormErrors((p) => ({ ...p, total_amount: undefined })) }}
               required
+              aria-required="true"
+              aria-invalid={!!formErrors.total_amount}
+              aria-describedby={formErrors.total_amount ? 'liability-total_amount-error' : undefined}
             />
+            {formErrors.total_amount && <p id="liability-total_amount-error" className="text-xs text-red-600 dark:text-red-400 mt-0.5" role="alert">{formErrors.total_amount}</p>}
           </div>
           <div>
             <label className="label text-xs">{t('liabilities.dueDate')}</label>
@@ -787,6 +850,16 @@ function Liabilities() {
               className="input w-full py-2 text-sm"
               value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label text-xs">{t('liabilities.notes')}</label>
+            <textarea
+              className="input w-full py-2 text-sm min-h-[60px] resize-y"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder={t('liabilities.notesPlaceholder')}
+              rows={2}
             />
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -826,30 +899,46 @@ function Liabilities() {
         )}
         <form id="payment-form" onSubmit={handlePaymentSubmit} className="space-y-3">
           <div>
-            <label className="label text-xs">{t('liabilities.paymentAmount')}</label>
-            <div className="flex items-center gap-2">
+            <label className="label text-xs" htmlFor="payment-amount">{t('liabilities.paymentAmount')} <span className="text-red-500" aria-hidden="true">*</span></label>
+            <div className="flex flex-wrap items-center gap-2">
               <input
+                id="payment-amount"
                 type="number"
                 step="0.01"
                 min="0.01"
-                className="input w-full py-2 text-sm"
+                className={`input flex-1 min-w-0 py-2 text-sm ${formErrors.payment_amount ? 'border-red-500 dark:border-red-400' : ''}`}
                 value={paymentFormData.payment_amount}
-                onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
+                onChange={(e) => { setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value }); setFormErrors((p) => ({ ...p, payment_amount: undefined })) }}
                 required
+                aria-required="true"
+                aria-invalid={!!formErrors.payment_amount}
+                aria-describedby={formErrors.payment_amount ? 'payment-amount-error' : undefined}
               />
               {paymentLiability && parseFloat(paymentLiability.remaining_amount || 0) > 0 && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t('common.max') || 'Max'}: {formatNum(paymentLiability.remaining_amount)}</span>
+                <>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t('common.max')}: {formatNum(paymentLiability.remaining_amount)}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentFormData((prev) => ({ ...prev, payment_amount: String(paymentLiability.remaining_amount ?? '') }))}
+                    className="px-2 py-1.5 text-xs font-medium rounded bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60"
+                  >
+                    {t('liabilities.payFullRemaining')}
+                  </button>
+                </>
               )}
             </div>
+            {formErrors.payment_amount && <p id="payment-amount-error" className="text-xs text-red-600 dark:text-red-400 mt-0.5" role="alert">{formErrors.payment_amount}</p>}
           </div>
           <div>
-            <label className="label text-xs">{t('liabilities.paymentDate')}</label>
+            <label className="label text-xs" htmlFor="payment-date">{t('liabilities.paymentDate')}</label>
             <input
+              id="payment-date"
               type="date"
               className="input w-full py-2 text-sm"
               value={paymentFormData.payment_date}
               onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_date: e.target.value })}
               required
+              aria-required="true"
             />
           </div>
         </form>

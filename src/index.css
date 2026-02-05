@@ -405,6 +405,24 @@ body {
     box-shadow: none;
     border: 1px solid #e5e7eb;
   }
+
+  /* Liabilities: keep table rows and summary cards readable */
+  table tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  table thead {
+    display: table-header-group;
+  }
+  table tfoot {
+    display: table-footer-group;
+  }
+  /* Summary cards (value/paid/remaining) - ensure border and contrast when printing */
+  .bg-amber-600, .bg-green-600, .bg-red-600 {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
 }
 
 /* Safe area utilities (for BottomNav and main content on mobile) */
