@@ -47,6 +47,7 @@ function Liabilities() {
   const [dueFilter, setDueFilter] = useState('all')
   const [dueDateFrom, setDueDateFrom] = useState('')
   const [dueDateTo, setDueDateTo] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState('') // YYYY-MM, empty = all
   const [amountMin, setAmountMin] = useState('')
   const [amountMax, setAmountMax] = useState('')
   const [sortBy, setSortBy] = useState('remaining_amount')
@@ -75,6 +76,17 @@ function Liabilities() {
       })
     }
   }, [])
+
+  // Sync selectedMonth -> due date range (due in that month)
+  useEffect(() => {
+    if (!selectedMonth) return
+    const [y, m] = selectedMonth.split('-').map(Number)
+    const first = `${y}-${String(m).padStart(2, '0')}-01`
+    const lastDay = new Date(y, m, 0).getDate()
+    const last = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    setDueDateFrom(first)
+    setDueDateTo(last)
+  }, [selectedMonth])
 
   const currentPage = Math.max(1, parseInt(searchParams.get('page'), 10) || 1)
   const pageSizeParam = searchParams.get('pageSize')
@@ -465,6 +477,13 @@ function Liabilities() {
 
   const formatNum = (n) => (Number(n) ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
+  const periodLabel = useMemo(() => {
+    if (!selectedMonth) return null
+    const [y, m] = selectedMonth.split('-').map(Number)
+    const d = new Date(y, m - 1, 1)
+    return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  }, [selectedMonth])
+
   if (loading) return <LoadingSpinner />
 
   return (
@@ -567,6 +586,18 @@ function Liabilities() {
               </h3>
             </div>
             <div className="p-4 space-y-4">
+              {/* Period / Month row (like Client/Supplier pages) */}
+              <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.period')}:</span>
+                <div className="flex items-center gap-1.5">
+                  <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m - 2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium" title={t('liabilities.prevMonth')}>‹</button>
+                  <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value || '')} className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" aria-label={t('liabilities.period')} />
+                  <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium" title={t('liabilities.nextMonth')}>›</button>
+                </div>
+                <button type="button" onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`) }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60">{t('liabilities.currentMonth')}</button>
+                <button type="button" onClick={() => { setSelectedMonth(''); setDueDateFrom(''); setDueDateTo('') }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">{t('liabilities.allMonths')}</button>
+                {periodLabel && <span className="text-sm font-medium text-gray-700 dark:text-gray-200 ml-1">({t('liabilities.dueIn')} {periodLabel})</span>}
+              </div>
               <div className="flex flex-wrap items-end gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.category')}</label>
@@ -612,9 +643,9 @@ function Liabilities() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.dueDateRange')}</label>
                   <div className="flex items-center gap-2">
-                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setPage(1) }} title={t('liabilities.dueFrom')} aria-label={t('liabilities.dueFrom')} />
+                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueFrom')} aria-label={t('liabilities.dueFrom')} />
                     <span className="text-gray-400 dark:text-gray-500 text-sm">–</span>
-                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setPage(1) }} title={t('liabilities.dueTo')} aria-label={t('liabilities.dueTo')} />
+                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueTo')} aria-label={t('liabilities.dueTo')} />
                   </div>
                 </div>
                 <div className="h-8 w-px bg-gray-200 dark:bg-gray-600 hidden sm:block" aria-hidden />
@@ -759,20 +790,25 @@ function Liabilities() {
                     )
                   })}
                 </tbody>
-                <tfoot className="bg-gray-100 dark:bg-gray-700/70 font-semibold border-t-2 border-gray-200 dark:border-gray-600 text-xs">
-                <tr>
-                  <td colSpan={2} className="px-2 py-1 text-gray-800 dark:text-gray-200 rtl-flip">{t('liabilities.total')}</td>
-                  <td className="px-2 py-1 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">${formatNum(totalAmountSum)}</td>
-                  {showPaidColumn && <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(paidSum)}</td>}
-                  <td className="px-2 py-1 text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(remainingSum)}</td>
+                <tfoot className="border-t-2 border-amber-200 dark:border-amber-800">
+                <tr className="bg-amber-50 dark:bg-amber-900/20">
+                  <td colSpan={showPaidColumn ? 7 : 6} className="px-3 py-2 rtl-flip">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">{t('liabilities.summary')}</span>
+                  </td>
+                </tr>
+                <tr className="bg-amber-50/80 dark:bg-amber-900/25 font-semibold text-sm">
+                  <td colSpan={2} className="px-3 py-2.5 text-gray-800 dark:text-gray-200 rtl-flip">{t('liabilities.total')}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">${formatNum(totalAmountSum)}</td>
+                  {showPaidColumn && <td className="px-3 py-2.5 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(paidSum)}</td>}
+                  <td className="px-3 py-2.5 text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(remainingSum)}</td>
                   <td colSpan={2} />
                 </tr>
-                {totalsByCategory.length > 1 && totalsByCategory.map((c) => (
-                  <tr key={c.category} className="text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-600">
-                    <td colSpan={2} className="px-2 py-0.5 rtl-flip">{c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}</td>
-                    <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.total)}</td>
-                    {showPaidColumn && <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.paid)}</td>}
-                    <td className="px-2 py-0.5 text-right tabular-nums whitespace-nowrap">${formatNum(c.remaining)}</td>
+                {totalsByCategory.length > 1 && totalsByCategory.map((c, idx) => (
+                  <tr key={c.category} className={`text-sm border-t border-gray-200 dark:border-gray-600 ${idx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800/30'}`}>
+                    <td colSpan={2} className="px-3 py-1.5 rtl-flip text-gray-600 dark:text-gray-400">{c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">${formatNum(c.total)}</td>
+                    {showPaidColumn && <td className="px-3 py-1.5 text-right tabular-nums text-green-600 dark:text-green-400 whitespace-nowrap">${formatNum(c.paid)}</td>}
+                    <td className="px-3 py-1.5 text-right tabular-nums text-red-600 dark:text-red-400 whitespace-nowrap">${formatNum(c.remaining)}</td>
                     <td colSpan={2} />
                   </tr>
                 ))}
