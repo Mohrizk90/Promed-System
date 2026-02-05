@@ -853,6 +853,7 @@ function SupplierTransactions() {
   }
 
   return (
+    <>
     <div className="flex flex-col space-y-2 pb-4">
       <div className="space-y-2">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
@@ -1133,6 +1134,7 @@ function SupplierTransactions() {
         </div>
       )}
     </div>
+    </>
   )
 }
 
