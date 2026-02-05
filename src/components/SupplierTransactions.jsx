@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
 import TableSkeleton from './TableSkeleton'
 import Pagination from './ui/Pagination'
+import { Printer } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 
@@ -854,12 +855,16 @@ function SupplierTransactions() {
   return (
     <div className="h-full flex flex-col overflow-hidden min-h-0">
       <div className="flex-shrink-0 space-y-2">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
           <div>
             <h2 className="text-xl font-bold text-gray-900">{t('supplierTransactions.title')}</h2>
             <p className="text-gray-600 text-sm">{t('supplierTransactions.subtitle')}</p>
           </div>
           <div className="flex gap-1.5">
+            <button type="button" onClick={() => window.print()} disabled={transactions.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm">
+              <Printer size={18} />
+              {t('common.print')}
+            </button>
             <button type="button" onClick={handleExportCsv} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded text-sm">{t('common.exportCsv')}</button>
             <button onClick={() => { resetForm(); setShowModal(true) }} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded text-sm">{t('supplierTransactions.addTransaction')}</button>
           </div>

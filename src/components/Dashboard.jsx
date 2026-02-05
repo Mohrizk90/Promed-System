@@ -21,6 +21,7 @@ import {
   Download,
   ArrowUpRight,
   ArrowDownRight,
+  Printer,
 } from './ui/Icons'
 import {
   LineChart,
@@ -546,7 +547,11 @@ function Dashboard() {
           <p className="text-gray-600 dark:text-gray-400">{t('dashboard.subtitle')}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 print:hidden">
+          <button type="button" onClick={() => window.print()} className="btn btn-secondary flex items-center gap-2">
+            <Printer size={18} />
+            {t('common.print')}
+          </button>
           {/* Quick Filters */}
           <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             {['all', 'month', 'quarter', 'year'].map(range => (

@@ -41,12 +41,20 @@ function Navigation() {
   const isActive = (path) => location.pathname === path
 
   const navItems = [
-    { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, shortcut: 'd' },
-    { path: '/', label: t('nav.clientTransactions'), icon: FileText, shortcut: 'c' },
-    { path: '/suppliers', label: t('nav.supplierTransactions'), icon: Truck, shortcut: 's' },
-    { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e' },
-    { path: '/liabilities', label: t('nav.liabilities'), icon: Wallet, shortcut: 'l' }
+    { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, shortcut: 'd', color: 'indigo' },
+    { path: '/', label: t('nav.clientTransactions'), icon: FileText, shortcut: 'c', color: 'cyan' },
+    { path: '/suppliers', label: t('nav.supplierTransactions'), icon: Truck, shortcut: 's', color: 'violet' },
+    { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e', color: 'emerald' },
+    { path: '/liabilities', label: t('nav.liabilities'), icon: Wallet, shortcut: 'l', color: 'amber' }
   ]
+
+  const navColorClasses = {
+    indigo: { active: 'bg-indigo-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-indigo-500/40 hover:text-white' },
+    cyan: { active: 'bg-cyan-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-cyan-500/40 hover:text-white' },
+    violet: { active: 'bg-violet-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-violet-500/40 hover:text-white' },
+    emerald: { active: 'bg-emerald-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-emerald-500/40 hover:text-white' },
+    amber: { active: 'bg-amber-500 text-amber-950 shadow-inner', inactive: 'text-blue-100 hover:bg-amber-500/50 hover:text-amber-950' }
+  }
 
   // Register keyboard shortcuts for navigation
   useEffect(() => {
@@ -78,15 +86,13 @@ function Navigation() {
             <div className="rtl-flip hidden md:ml-8 md:flex md:space-x-1 md:items-center">
               {navItems.map((item) => {
                 const Icon = item.icon
+                const active = isActive(item.path)
+                const colors = navColorClasses[item.color] || navColorClasses.indigo
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      isActive(item.path)
-                        ? 'bg-blue-800 text-white shadow-inner'
-                        : 'text-blue-100 hover:bg-blue-600 hover:text-white'
-                    }`}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${active ? colors.active : colors.inactive}`}
                   >
                     <Icon size={18} />
                     <span>{item.label}</span>
@@ -176,16 +182,14 @@ function Navigation() {
           <div className="px-2 pt-2 pb-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon
+              const active = isActive(item.path)
+              const colors = navColorClasses[item.color] || navColorClasses.indigo
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium ${
-                    isActive(item.path)
-                      ? 'bg-blue-800 text-white'
-                      : 'text-blue-100 hover:bg-blue-600 hover:text-white'
-                  }`}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium ${active ? colors.active : colors.inactive}`}
                 >
                   <Icon size={20} />
                   {item.label}

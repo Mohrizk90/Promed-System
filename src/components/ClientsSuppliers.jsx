@@ -8,7 +8,7 @@ import Pagination from './ui/Pagination'
 import EmptyState from './ui/EmptyState'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Modal from './ui/Modal'
-import { User, Truck, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft } from './ui/Icons'
+import { User, Truck, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft, Printer } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 
@@ -506,7 +506,11 @@ function ClientsSuppliers() {
                   <span className="text-xs text-gray-500">{filteredClients.length} {filteredClients.length === 1 ? 'client' : 'clients'}</span>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 print:hidden">
+                <button type="button" onClick={() => window.print()} disabled={filteredClients.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                  <Printer size={16} />
+                  {t('common.print')}
+                </button>
                 <button type="button" onClick={handleExportClientsCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                   <Download size={16} />
                   {t('common.exportCsv')}
@@ -720,7 +724,11 @@ function ClientsSuppliers() {
                 <span className="text-xs text-gray-500">{filteredSuppliers.length} {filteredSuppliers.length === 1 ? 'supplier' : 'suppliers'}</span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 print:hidden">
+              <button type="button" onClick={() => window.print()} disabled={filteredSuppliers.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                <Printer size={16} />
+                {t('common.print')}
+              </button>
               <button type="button" onClick={handleExportSuppliersCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                 <Download size={16} />
                 {t('common.exportCsv')}

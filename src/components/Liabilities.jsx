@@ -10,7 +10,7 @@ import EmptyState from './ui/EmptyState'
 import Modal from './ui/Modal'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Pagination from './ui/Pagination'
-import { Plus, Edit, Trash2, DollarSign, Download, Printer, ChevronDown, ChevronUp, Eye } from './ui/Icons'
+import { Plus, Edit, Trash2, DollarSign, Download, Printer, ChevronDown, ChevronUp } from './ui/Icons'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 const CATEGORY_KEYS = [
@@ -37,7 +37,7 @@ function Liabilities() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [formData, setFormData] = useState({ category: 'other', description: '', total_amount: '', due_date: '', notes: '', recurring: false })
+  const [formData, setFormData] = useState({ category: '', description: '', total_amount: '', due_date: '', recurring: false })
   const [paymentFormData, setPaymentFormData] = useState({ payment_amount: '', payment_date: new Date().toISOString().split('T')[0] })
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [outstandingOnly, setOutstandingOnly] = useState(false)
@@ -225,7 +225,7 @@ function Liabilities() {
 
   const openAdd = () => {
     setEditingLiability(null)
-    setFormData({ category: 'other', description: '', total_amount: '', due_date: '', notes: '', recurring: false })
+    setFormData({ category: '', description: '', total_amount: '', due_date: '', recurring: false })
     setShowModal(true)
   }
 
@@ -233,11 +233,10 @@ function Liabilities() {
     if (row.source === 'supplier') return
     setEditingLiability(row)
     setFormData({
-      category: row.category || 'other',
+      category: row.category || '',
       description: row.description || '',
       total_amount: String(row.total_amount ?? ''),
       due_date: row.due_date || '',
-      notes: row.notes || '',
       recurring: !!row.recurring
     })
     setShowModal(true)
@@ -251,25 +250,27 @@ function Liabilities() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const description = formData.description.trim()
-    if (!description) {
-      showError(t('liabilities.descriptionRequired'))
-      return
-    }
+    const description = (formData.description || '').trim() || null
     const total = parseFloat(formData.total_amount)
     if (isNaN(total) || total < 0) {
       showError(t('liabilities.invalidAmount'))
       return
     }
-    const category = formData.category
+    const categoryInput = (formData.category || '').trim()
+    let category = categoryInput || 'other'
+    for (const key of CATEGORY_KEYS) {
+      if (key !== 'custom' && t('liabilities.categoryOption_' + key) === categoryInput) {
+        category = key
+        break
+      }
+    }
     try {
       setSubmitting(true)
       const payload = {
         category,
-        description: description || null,
+        description,
         total_amount: total,
         due_date: formData.due_date || null,
-        notes: formData.notes?.trim() || null,
         recurring: !!formData.recurring
       }
       if (editingLiability) {
@@ -620,9 +621,9 @@ function Liabilities() {
                             <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium mr-1.5 ${row.source === 'supplier' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'}`}>
                               {row.source === 'supplier' ? t('liabilities.supplier') : (t('liabilities.liability') || 'Liability')}
                             </span>
-                            {row.source === 'liability' && (row.category === 'custom'
-                              ? (row.description || t('liabilities.categoryOption_custom'))
-                              : t('liabilities.categoryOption_' + (row.category || 'other')))}
+                            {row.source === 'liability' && (CATEGORY_KEYS.includes(row.category)
+                              ? t('liabilities.categoryOption_' + (row.category || 'other'))
+                              : (row.category || t('liabilities.categoryOption_other')))}
                             {row.source === 'liability' && row.recurring && (
                               <span className="ml-1 text-xs text-blue-600 dark:text-blue-400" title={t('liabilities.recurring')}>↻</span>
                             )}
@@ -648,14 +649,13 @@ function Liabilities() {
                             ) : '–'}
                           </td>
                           <td className="px-4 py-3 text-right rtl-flip print:hidden">
-                            <div className="flex items-center justify-end gap-1">
-                              {parseFloat(row.remaining_amount || 0) > 0 && (
-                                <button type="button" onClick={() => openPayment(row)} className="p-2 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20" title={t('liabilities.recordPayment')} aria-label={t('liabilities.recordPayment')}>
-                                  <DollarSign size={18} />
-                                </button>
-                              )}
-                              <button type="button" onClick={() => fetchPaymentsForRow(row)} className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600" title={t('liabilities.viewPayments')} aria-label={t('liabilities.viewPayments')}>
-                                <Eye size={18} />
+                            <div className="flex items-center justify-end gap-1 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => fetchPaymentsForRow(row)}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${expandedRowId === row.rowId ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:hover:bg-blue-900/60'}`}
+                              >
+                                {t('paymentsBreakdown.payments')}
                               </button>
                               {row.source === 'liability' && (
                                 <>
@@ -729,7 +729,7 @@ function Liabilities() {
                   {totalsByCategory.length > 1 && totalsByCategory.map((c) => (
                     <tr key={c.category} className="text-gray-600 dark:text-gray-400 text-xs">
                       <td colSpan={2} className="px-4 py-1 rtl-flip">
-                        {c.category === 'supplier' ? t('liabilities.supplier') : t('liabilities.categoryOption_' + (c.category || 'other'))}
+                        {c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}
                       </td>
                       <td className="px-4 py-1 text-right tabular-nums">{formatNum(c.total)}</td>
                       <td className="px-4 py-1 text-right tabular-nums">{formatNum(c.paid)}</td>
@@ -794,33 +794,34 @@ function Liabilities() {
       >
         <form id="liability-form" onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="label text-xs">{t('liabilities.category')}</label>
-            <select
+            <label className="label text-xs">{t('liabilities.category')} <span className="text-red-500">*</span></label>
+            <input
+              type="text"
               className="input w-full py-2 text-sm"
+              list="liability-category-suggestions"
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              placeholder={t('liabilities.categoryPlaceholder')}
               required
-            >
-              {CATEGORY_KEYS.map((key) => (
-                <option key={key} value={key}>
-                  {t('liabilities.categoryOption_' + key)}
-                </option>
+            />
+            <datalist id="liability-category-suggestions">
+              {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => (
+                <option key={key} value={t('liabilities.categoryOption_' + key)} />
               ))}
-            </select>
+            </datalist>
           </div>
           <div>
-            <label className="label text-xs">{t('liabilities.description')} <span className="text-red-500">*</span></label>
+            <label className="label text-xs">{t('liabilities.description')}</label>
             <input
               type="text"
               className="input w-full py-2 text-sm"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder={formData.category === 'custom' ? t('liabilities.customCategoryPlaceholder') : t('liabilities.descriptionPlaceholder')}
-              required
+              placeholder={t('liabilities.descriptionPlaceholder')}
             />
           </div>
           <div>
-            <label className="label text-xs">{t('liabilities.value')}</label>
+            <label className="label text-xs">{t('liabilities.value')} <span className="text-red-500">*</span></label>
             <input
               type="number"
               step="0.01"
@@ -838,16 +839,6 @@ function Liabilities() {
               className="input w-full py-2 text-sm"
               value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="label text-xs">{t('liabilities.notes')}</label>
-            <textarea
-              className="input w-full py-2 text-sm min-h-[60px]"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder={t('liabilities.notesPlaceholder')}
-              rows={2}
             />
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -877,7 +868,7 @@ function Liabilities() {
         {paymentLiability && (
           <div className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 mb-4 border border-gray-200 dark:border-gray-600">
             <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {paymentLiability.source === 'supplier' ? t('liabilities.supplier') : (t('liabilities.categoryOption_' + (paymentLiability.category || 'other')))}
+              {paymentLiability.source === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(paymentLiability.category) ? t('liabilities.categoryOption_' + (paymentLiability.category || 'other')) : (paymentLiability.category || '–'))}
               {paymentLiability.description && ` – ${paymentLiability.description}`}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
