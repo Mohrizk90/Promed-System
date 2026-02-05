@@ -10,7 +10,7 @@ import EmptyState from './ui/EmptyState'
 import Modal from './ui/Modal'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Pagination from './ui/Pagination'
-import { Plus, Edit, Trash2, DollarSign, Download, Printer, ChevronDown, ChevronUp } from './ui/Icons'
+import { Plus, Download, Printer, ChevronDown, ChevronUp } from './ui/Icons'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 const CATEGORY_KEYS = [
@@ -434,45 +434,46 @@ function Liabilities() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('liabilities.title')}</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{t('liabilities.subtitle')}</p>
+    <div className="h-full flex flex-col overflow-hidden min-h-0">
+      <div className="flex-shrink-0 space-y-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('liabilities.title')}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('liabilities.subtitle')}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button type="button" onClick={handlePrint} disabled={sortedList.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm">
+              <Printer size={18} />
+              {t('common.print')}
+            </button>
+            <button type="button" onClick={handleExportCsv} disabled={sortedList.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm">
+              <Download size={18} />
+              {t('common.exportCsv')}
+            </button>
+            <button type="button" onClick={openAdd} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded text-sm flex items-center gap-2">
+              <Plus size={18} />
+              {t('liabilities.addLiability')}
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={handleExportCsv} disabled={sortedList.length === 0} className="btn btn-secondary flex items-center gap-2">
-            <Download size={18} />
-            {t('common.exportCsv')}
-          </button>
-          <button type="button" onClick={handlePrint} disabled={sortedList.length === 0} className="btn btn-secondary flex items-center gap-2">
-            <Printer size={18} />
-            {t('common.print')}
-          </button>
-          <button type="button" onClick={openAdd} className="btn btn-primary flex items-center gap-2">
-            <Plus size={18} />
-            {t('liabilities.addLiability')}
-          </button>
-        </div>
-      </div>
 
-      {/* Summary metrics card */}
-      {filteredList.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 print:hidden">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.value')}</p>
-            <p className="text-xl font-bold text-gray-900 dark:text-white">{formatNum(totalAmountSum)}</p>
+        {/* Summary cards - same style as Client/Supplier */}
+        {filteredList.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 print:hidden">
+            <div className="bg-amber-600 text-white p-2.5 rounded shadow">
+              <p className="text-xs font-medium">{t('liabilities.value')}</p>
+              <p className="text-lg font-bold">${formatNum(totalAmountSum)}</p>
+            </div>
+            <div className="bg-green-600 text-white p-2.5 rounded shadow">
+              <p className="text-xs font-medium">{t('liabilities.paid')}</p>
+              <p className="text-lg font-bold">${formatNum(paidSum)}</p>
+            </div>
+            <div className="bg-red-600 text-white p-2.5 rounded shadow">
+              <p className="text-xs font-medium">{t('liabilities.remaining')}</p>
+              <p className="text-lg font-bold">${formatNum(remainingSum)}</p>
+            </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.paid')}</p>
-            <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatNum(paidSum)}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.remaining')}</p>
-            <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatNum(remainingSum)}</p>
-          </div>
-        </div>
-      )}
+        )}
 
       {/* Category quick-filter buttons (Salaries, Taxes, etc.) */}
       {combinedList.length > 0 && (
@@ -523,45 +524,31 @@ function Liabilities() {
       )}
 
       {/* Filters */}
-      {combinedList.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 print:hidden">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{t('common.filters') || 'Filters'}</p>
-          <div className="flex flex-wrap items-center gap-2">
-          <select
-            className="input py-2 text-sm w-40"
-            value={categoryFilter}
-            onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}
-          >
-            <option value="all">{t('liabilities.filterAllCategories')}</option>
-            <option value="supplier">{t('liabilities.supplier')}</option>
-            {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => (
-              <option key={key} value={key}>{t('liabilities.categoryOption_' + key)}</option>
-            ))}
-          </select>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={outstandingOnly} onChange={(e) => { setOutstandingOnly(e.target.checked); setPage(1) }} className="rounded" />
-            {t('liabilities.outstandingOnly')}
-          </label>
-          <select
-            className="input py-2 text-sm w-40"
-            value={dueFilter}
-            onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}
-          >
-            <option value="all">{t('liabilities.dueAll')}</option>
-            <option value="overdue">{t('liabilities.dueOverdue')}</option>
-            <option value="due_this_month">{t('liabilities.dueThisMonth')}</option>
-            <option value="no_date">{t('liabilities.dueNoDate')}</option>
-          </select>
-          <input
-            type="search"
-            className="input py-2 text-sm w-48"
-            placeholder={t('common.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
-          />
+        {combinedList.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-2 print:hidden">
+            <div className="flex flex-wrap items-center gap-2">
+              <select className="input py-1.5 text-sm w-36" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}>
+                <option value="all">{t('liabilities.filterAllCategories')}</option>
+                <option value="supplier">{t('liabilities.supplier')}</option>
+                {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => (
+                  <option key={key} value={key}>{t('liabilities.categoryOption_' + key)}</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-1.5 text-sm">
+                <input type="checkbox" checked={outstandingOnly} onChange={(e) => { setOutstandingOnly(e.target.checked); setPage(1) }} className="rounded" />
+                {t('liabilities.outstandingOnly')}
+              </label>
+              <select className="input py-1.5 text-sm w-36" value={dueFilter} onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}>
+                <option value="all">{t('liabilities.dueAll')}</option>
+                <option value="overdue">{t('liabilities.dueOverdue')}</option>
+                <option value="due_this_month">{t('liabilities.dueThisMonth')}</option>
+                <option value="no_date">{t('liabilities.dueNoDate')}</option>
+              </select>
+              <input type="search" className="input py-1.5 text-sm w-40" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {sortedList.length === 0 ? (
         <EmptyState
@@ -571,142 +558,138 @@ function Liabilities() {
         />
       ) : (
         <>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-yellow-100 dark:bg-yellow-900/30">
+          <div className="flex-1 min-h-0 bg-white dark:bg-gray-800 shadow rounded overflow-hidden flex flex-col mt-2">
+            <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed text-sm">
+                <thead className="bg-gray-100 dark:bg-gray-700/50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider rtl-flip">
-                      <button type="button" onClick={() => toggleSort('category')} className="flex items-center gap-1 hover:underline">
-                        {t('liabilities.category')} {sortBy === 'category' && (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                    <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-[16%] min-w-0 rtl-flip">
+                      <button type="button" onClick={() => toggleSort('category')} className="flex items-center gap-0.5 hover:underline">
+                        {t('liabilities.category')} {sortBy === 'category' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                       </button>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider rtl-flip">
-                      <button type="button" onClick={() => toggleSort('description')} className="flex items-center gap-1 hover:underline">
-                        {t('liabilities.description')} {sortBy === 'description' && (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                    <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-[18%] min-w-0 rtl-flip">
+                      <button type="button" onClick={() => toggleSort('description')} className="flex items-center gap-0.5 hover:underline">
+                        {t('liabilities.description')} {sortBy === 'description' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                       </button>
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider rtl-flip">
-                      <button type="button" onClick={() => toggleSort('total_amount')} className="flex items-center gap-1 hover:underline ml-auto">
-                        {t('liabilities.value')} {sortBy === 'total_amount' && (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                      </button>
+                    <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 rtl-flip">
+                      <button type="button" onClick={() => toggleSort('total_amount')} className="hover:underline ml-auto">{t('liabilities.value')} {sortBy === 'total_amount' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}</button>
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider rtl-flip">
-                      <button type="button" onClick={() => toggleSort('paid_amount')} className="flex items-center gap-1 hover:underline ml-auto">
-                        {t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                      </button>
+                    <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 rtl-flip">
+                      <button type="button" onClick={() => toggleSort('paid_amount')} className="hover:underline ml-auto">{t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}</button>
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider rtl-flip">
-                      <button type="button" onClick={() => toggleSort('remaining_amount')} className="flex items-center gap-1 hover:underline ml-auto">
-                        {t('liabilities.remaining')} {sortBy === 'remaining_amount' && (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                      </button>
+                    <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 rtl-flip">
+                      <button type="button" onClick={() => toggleSort('remaining_amount')} className="hover:underline ml-auto">{t('liabilities.remaining')} {sortBy === 'remaining_amount' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}</button>
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider rtl-flip">
-                      <button type="button" onClick={() => toggleSort('due_date')} className="flex items-center gap-1 hover:underline ml-auto">
-                        {t('liabilities.dueDate')} {sortBy === 'due_date' && (sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                      </button>
+                    <th className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-24 rtl-flip">
+                      <button type="button" onClick={() => toggleSort('due_date')} className="hover:underline ml-auto">{t('liabilities.dueDate')} {sortBy === 'due_date' && (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}</button>
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider w-36 rtl-flip print:hidden">
+                    <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase w-32 rtl-flip print:hidden">
                       {t('common.actions')}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {paginatedList.map((row) => {
                     const isOverdue = row.due_date && row.due_date < today && parseFloat(row.remaining_amount || 0) > 0
+                    const isExpanded = expandedRowId === row.rowId
                     return (
                       <React.Fragment key={row.rowId}>
                         <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-white rtl-flip">
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium mr-1.5 ${row.source === 'supplier' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'}`}>
+                          <td className="px-2 py-1.5 text-sm text-gray-900 dark:text-white rtl-flip">
+                            <span className={`inline-block px-1 py-0.5 rounded text-[10px] font-medium mr-1 ${row.source === 'supplier' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'}`}>
                               {row.source === 'supplier' ? t('liabilities.supplier') : (t('liabilities.liability') || 'Liability')}
                             </span>
                             {row.source === 'liability' && (CATEGORY_KEYS.includes(row.category)
                               ? t('liabilities.categoryOption_' + (row.category || 'other'))
                               : (row.category || t('liabilities.categoryOption_other')))}
                             {row.source === 'liability' && row.recurring && (
-                              <span className="ml-1 text-xs text-blue-600 dark:text-blue-400" title={t('liabilities.recurring')}>↻</span>
+                              <span className="ml-0.5 text-[10px] text-blue-600 dark:text-blue-400" title={t('liabilities.recurring')}>↻</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 rtl-flip">
-                            {row.source === 'supplier' ? row.description : (row.category === 'custom' ? '–' : (row.description || '–'))}
+                          <td className="px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 rtl-flip max-w-0 truncate" title={row.source === 'supplier' ? row.description : (row.description || '–')}>
+                            {row.source === 'supplier' ? row.description : (row.description || '–')}
                           </td>
-                          <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-900 dark:text-white">
-                            {formatNum(row.total_amount)}
+                          <td className="px-2 py-1.5 text-sm text-right tabular-nums font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                            ${formatNum(row.total_amount)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-700 dark:text-gray-300">
-                            {formatNum(row.paid_amount)}
+                          <td className="px-2 py-1.5 text-sm text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">
+                            ${formatNum(row.paid_amount)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-right tabular-nums font-medium text-gray-900 dark:text-white">
-                            {formatNum(row.remaining_amount)}
+                          <td className="px-2 py-1.5 text-sm text-right tabular-nums font-medium text-red-700 dark:text-red-400 whitespace-nowrap">
+                            ${formatNum(row.remaining_amount)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-right rtl-flip">
+                          <td className="px-2 py-1.5 text-sm text-right rtl-flip whitespace-nowrap">
                             {row.due_date ? (
                               <span className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
                                 {row.due_date}
-                                {isOverdue && <span className="ml-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">{t('liabilities.overdue')}</span>}
+                                {isOverdue && <span className="ml-0.5 text-[10px] bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1 py-0.5 rounded">{t('liabilities.overdue')}</span>}
                               </span>
                             ) : '–'}
                           </td>
-                          <td className="px-4 py-3 text-right rtl-flip print:hidden">
-                            <div className="flex items-center justify-end gap-1 flex-wrap">
+                          <td className="px-2 py-1 text-xs min-w-0 rtl-flip print:hidden">
+                            <div className="flex items-center gap-1 flex-wrap">
                               <button
                                 type="button"
                                 onClick={() => fetchPaymentsForRow(row)}
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${expandedRowId === row.rowId ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:hover:bg-blue-900/60'}`}
+                                className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-medium shrink-0 ${isExpanded ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60'}`}
                               >
                                 {t('paymentsBreakdown.payments')}
                               </button>
                               {row.source === 'liability' && (
                                 <>
-                                  <button type="button" onClick={() => openEdit(row)} className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600" title={t('common.edit')} aria-label={t('common.edit')}>
-                                    <Edit size={18} />
+                                  <button type="button" onClick={() => openEdit(row)} className="px-1.5 py-0.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded text-xs shrink-0">
+                                    {t('common.edit')}
                                   </button>
-                                  <button type="button" onClick={() => setDeleteTarget(row)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title={t('common.delete')} aria-label={t('common.delete')}>
-                                    <Trash2 size={18} />
+                                  <button type="button" onClick={() => setDeleteTarget(row)} className="px-1.5 py-0.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-xs shrink-0">
+                                    {t('common.delete')}
                                   </button>
                                 </>
                               )}
                             </div>
                           </td>
                         </tr>
-                        {expandedRowId === row.rowId && (
-                          <tr className="bg-gray-50 dark:bg-gray-700/30">
-                            <td colSpan={8} className="px-4 py-3 text-sm rtl-flip">
-                              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm p-4">
-                                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                                  {t('liabilities.paymentHistory')} – {row.source === 'supplier' ? row.description : (row.description || row.category)}
-                                </h3>
-                                {loadingPayments ? (
-                                  <p className="text-gray-500 text-sm">{t('common.loading')}</p>
-                                ) : paymentsForRow.length === 0 ? (
-                                  <div className="flex flex-col items-center gap-2 py-4 text-gray-500">
-                                    <DollarSign size={24} className="opacity-50" />
-                                    <p className="text-sm">{t('liabilities.noPayments')}</p>
-                                    {parseFloat(row.remaining_amount || 0) > 0 && (
-                                      <button type="button" onClick={() => openPayment(row)} className="btn btn-primary btn-sm mt-1">
-                                        {t('liabilities.recordPayment')}
-                                      </button>
-                                    )}
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={7} className="px-2 py-0 align-top rtl-flip">
+                              <div className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-amber-200 bg-gradient-to-r from-amber-50/80 to-transparent dark:from-amber-900/20 dark:border-amber-700 rounded-r mb-1">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h4 className="font-semibold text-gray-800 dark:text-white text-xs flex items-center gap-1">
+                                      <span className="w-1.5 h-4 bg-amber-500 rounded" />
+                                      {t('paymentsBreakdown.payments')}
+                                    </h4>
+                                    <div className="flex gap-2 text-xs">
+                                      <span className="text-green-700 dark:text-green-400 font-medium">{t('dashboard.paid')}: ${formatNum(row.paid_amount)}</span>
+                                      <span className="text-red-600 dark:text-red-400 font-medium">{t('dashboard.remaining')}: ${formatNum(row.remaining_amount)}</span>
+                                    </div>
                                   </div>
+                                  {parseFloat(row.remaining_amount || 0) > 0 && (
+                                    <button type="button" onClick={() => openPayment(row)} className="inline-flex items-center gap-1 px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded shadow shrink-0">
+                                      + {t('paymentsBreakdown.addPayment')}
+                                    </button>
+                                  )}
+                                </div>
+                                {loadingPayments ? (
+                                  <p className="text-gray-500 text-xs py-2">{t('common.loading')}</p>
+                                ) : paymentsForRow.length === 0 ? (
+                                  <p className="text-gray-500 text-xs py-2 text-center bg-white dark:bg-gray-800 rounded border border-dashed border-gray-300 dark:border-gray-600">
+                                    {t('liabilities.noPayments')}
+                                  </p>
                                 ) : (
-                                  <>
-                                    <ul className="space-y-1 mb-3">
-                                      {paymentsForRow.map((p) => (
-                                        <li key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-600 last:border-0">
-                                          <span className="text-gray-900 dark:text-white">{p.payment_date} – {formatNum(p.payment_amount)}</span>
-                                          {row.source === 'liability' && (
-                                            <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-xs">{t('common.delete')}</button>
-                                          )}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    {parseFloat(row.remaining_amount || 0) > 0 && (
-                                      <button type="button" onClick={() => openPayment(row)} className="btn btn-secondary btn-sm">
-                                        {t('liabilities.recordPayment')}
-                                      </button>
-                                    )}
-                                  </>
+                                  <div className="space-y-1">
+                                    {paymentsForRow.map((p) => (
+                                      <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between gap-2 py-1.5 px-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
+                                        <span className="text-sm text-gray-900 dark:text-white">{p.payment_date} – ${formatNum(p.payment_amount)}</span>
+                                        {row.source === 'liability' && (
+                                          <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="px-2 py-0.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-xs font-medium">
+                                            {t('paymentsBreakdown.deletePayment')}
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             </td>
@@ -716,61 +699,60 @@ function Liabilities() {
                     )
                   })}
                 </tbody>
-                <tfoot className="bg-gray-50 dark:bg-gray-700/50 font-semibold">
+                <tfoot className="bg-gray-100 dark:bg-gray-700/70 font-semibold border-t-2 border-gray-200 dark:border-gray-600">
                   <tr>
-                    <td colSpan={2} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 rtl-flip">
+                    <td colSpan={2} className="px-2 py-1.5 text-sm text-gray-800 dark:text-gray-200 rtl-flip">
                       {t('liabilities.total')}
                     </td>
-                    <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-900 dark:text-white">{formatNum(totalAmountSum)}</td>
-                    <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-700 dark:text-gray-300">{formatNum(paidSum)}</td>
-                    <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-900 dark:text-white">{formatNum(remainingSum)}</td>
+                    <td className="px-2 py-1.5 text-sm text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">${formatNum(totalAmountSum)}</td>
+                    <td className="px-2 py-1.5 text-sm text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">${formatNum(paidSum)}</td>
+                    <td className="px-2 py-1.5 text-sm text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">${formatNum(remainingSum)}</td>
                     <td colSpan={2} />
                   </tr>
                   {totalsByCategory.length > 1 && totalsByCategory.map((c) => (
-                    <tr key={c.category} className="text-gray-600 dark:text-gray-400 text-xs">
-                      <td colSpan={2} className="px-4 py-1 rtl-flip">
+                    <tr key={c.category} className="text-gray-600 dark:text-gray-400 text-xs border-t border-gray-200 dark:border-gray-600">
+                      <td colSpan={2} className="px-2 py-1 rtl-flip">
                         {c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}
                       </td>
-                      <td className="px-4 py-1 text-right tabular-nums">{formatNum(c.total)}</td>
-                      <td className="px-4 py-1 text-right tabular-nums">{formatNum(c.paid)}</td>
-                      <td className="px-4 py-1 text-right tabular-nums">{formatNum(c.remaining)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">${formatNum(c.total)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">${formatNum(c.paid)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">${formatNum(c.remaining)}</td>
                       <td colSpan={2} />
                     </tr>
                   ))}
                 </tfoot>
               </table>
             </div>
+            {sortedList.length > 0 && (
+              <Pagination
+                currentPage={effectivePage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                pageSize={pageSize}
+                onPageSizeChange={(size) => setPageSizeAndReset(Number(size))}
+                totalItems={sortedList.length}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+              />
+            )}
           </div>
 
           {chartData.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 print:hidden">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{t('liabilities.remainingByCategory')}</h2>
-              <div className="h-64" dir="ltr">
+            <div className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg shadow p-3 print:hidden mt-2">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('liabilities.remainingByCategory')}</h2>
+              <div className="h-48" dir="ltr">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                       {chartData.map((_, i) => (
-                        <Cell key={i} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6366f1'][i % 6]} />
+                        <Cell key={i} fill={['#d97706', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6366f1'][i % 6]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => formatNum(v)} />
+                    <Tooltip formatter={(v) => '$' + formatNum(v)} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             </div>
-          )}
-
-          {sortedList.length > 0 && (
-            <Pagination
-              currentPage={effectivePage}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              pageSize={pageSize}
-              onPageSizeChange={(size) => setPageSizeAndReset(Number(size))}
-              totalItems={sortedList.length}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-            />
           )}
         </>
       )}
