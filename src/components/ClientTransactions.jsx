@@ -76,7 +76,7 @@ function ClientTransactions() {
 
   const currentPage = Math.max(1, parseInt(searchParams.get('page'), 10) || 1)
   const pageSizeParam = searchParams.get('pageSize')
-  const pageSize = PAGE_SIZE_OPTIONS.includes(Number(pageSizeParam)) ? Number(pageSizeParam) : 5
+  const pageSize = PAGE_SIZE_OPTIONS.includes(Number(pageSizeParam)) ? Number(pageSizeParam) : 10
 
   const setPage = (page) => {
     setSearchParams((prev) => {

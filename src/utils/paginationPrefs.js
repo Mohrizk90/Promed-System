@@ -11,7 +11,7 @@ export function getPaginationPrefs(routeKey) {
     if (!raw) return null
     const data = JSON.parse(raw)
     const page = Math.max(1, parseInt(data.page, 10) || 1)
-    const pageSize = Math.max(1, parseInt(data.pageSize, 10) || 5)
+    const pageSize = Math.max(1, parseInt(data.pageSize, 10) || 10)
     return { page, pageSize }
   } catch {
     return null

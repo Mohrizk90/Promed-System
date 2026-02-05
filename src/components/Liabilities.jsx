@@ -473,6 +473,54 @@ function Liabilities() {
         </div>
       )}
 
+      {/* Category quick-filter buttons (Salaries, Taxes, etc.) */}
+      {combinedList.length > 0 && (
+        <div className="print:hidden mb-3">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{t('liabilities.category')} – {t('common.quickFilter')}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => { setCategoryFilter('all'); setPage(1) }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'all' ? 'bg-gray-700 text-white dark:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+            >
+              {t('liabilities.filterAllCategories')}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCategoryFilter('supplier'); setPage(1) }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'supplier' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900/60'}`}
+            >
+              {t('liabilities.supplier')}
+            </button>
+            {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => {
+              const isActive = categoryFilter === key
+              const styles = {
+                salaries: { active: 'bg-amber-600 text-white', inactive: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/60' },
+                taxes: { active: 'bg-red-600 text-white', inactive: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-900/60' },
+                tax_accountant: { active: 'bg-red-500 text-white', inactive: 'bg-red-100/80 text-red-700 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50' },
+                invoices_accountant: { active: 'bg-blue-600 text-white', inactive: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-900/60' },
+                municipal: { active: 'bg-teal-600 text-white', inactive: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-900/60' },
+                lawyer: { active: 'bg-slate-600 text-white', inactive: 'bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600/50' },
+                insurance: { active: 'bg-green-600 text-white', inactive: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-900/60' },
+                liabilities: { active: 'bg-orange-600 text-white', inactive: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-900/60' },
+                other: { active: 'bg-gray-600 text-white dark:bg-gray-500', inactive: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600' },
+              }
+              const s = styles[key] || styles.other
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { setCategoryFilter(key); setPage(1) }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive ? s.active : s.inactive}`}
+                >
+                  {t('liabilities.categoryOption_' + key)}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       {combinedList.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 print:hidden">
