@@ -1,14 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import ClientTransactions from './components/ClientTransactions'
-import SupplierTransactions from './components/SupplierTransactions'
-import Dashboard from './components/Dashboard'
-import ClientsSuppliers from './components/ClientsSuppliers'
-import Liabilities from './components/Liabilities'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import ToastContainer from './components/ToastContainer'
+import LoadingSpinner from './components/LoadingSpinner'
+
+const ClientTransactions = lazy(() => import('./components/ClientTransactions'))
+const SupplierTransactions = lazy(() => import('./components/SupplierTransactions'))
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const ClientsSuppliers = lazy(() => import('./components/ClientsSuppliers'))
+const Liabilities = lazy(() => import('./components/Liabilities'))
+const Login = lazy(() => import('./components/Auth/Login'))
 import LanguageSwitcher from './components/LanguageSwitcher'
 import BottomNav from './components/BottomNav'
-import Login from './components/Auth/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 import { Breadcrumbs } from './components/ui'
 import { 
@@ -230,19 +232,21 @@ function AppContent() {
         <main className={showAppShell ? 'flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6' : ''}>
           {showAppShell && <Breadcrumbs />}
           <div className={showAppShell ? 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col main-scroll-mobile' : ''}>
-          <Routes>
-            {/* Public: Sign in only (credentials configured in Supabase) */}
-            <Route path="/login" element={<Login />} />
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-[200px]"><LoadingSpinner size="lg" /></div>}>
+            <Routes>
+              {/* Public: Sign in only (credentials configured in Supabase) */}
+              <Route path="/login" element={<Login />} />
 
-            {/* Protected: must be signed in to access */}
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/" element={<ProtectedRoute><ClientTransactions /></ProtectedRoute>} />
-            <Route path="/suppliers" element={<ProtectedRoute><SupplierTransactions /></ProtectedRoute>} />
-            <Route path="/entities" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
-            <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
-            <Route path="/entities/suppliers" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
-            <Route path="/liabilities" element={<ProtectedRoute><Liabilities /></ProtectedRoute>} />
-          </Routes>
+              {/* Protected: must be signed in to access */}
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute><ClientTransactions /></ProtectedRoute>} />
+              <Route path="/suppliers" element={<ProtectedRoute><SupplierTransactions /></ProtectedRoute>} />
+              <Route path="/entities" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
+              <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
+              <Route path="/entities/suppliers" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
+              <Route path="/liabilities" element={<ProtectedRoute><Liabilities /></ProtectedRoute>} />
+            </Routes>
+          </Suspense>
           </div>
         </main>
 
