@@ -17,7 +17,7 @@ export default function BottomNav({ onAddClick }) {
   const isActive = (path) => location.pathname === path
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 pb-safe z-40 sm:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 pb-safe pl-safe pr-safe z-40 sm:hidden">
       <div className="rtl-flip flex items-center justify-around">
         {navItems.map((item, index) => {
           const Icon = item.icon

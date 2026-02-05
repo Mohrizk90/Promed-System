@@ -62,7 +62,7 @@ function Navigation() {
   }
 
   return (
-    <nav className="bg-blue-700 text-white shadow-lg flex-shrink-0 z-30">
+    <nav className="bg-blue-700 text-white shadow-lg flex-shrink-0 z-30 pt-safe">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rtl-flip flex justify-between h-16">
           {/* Logo and Desktop Nav */}
@@ -225,7 +225,7 @@ function AppContent() {
         {showAppShell && <Navigation />}
         <main className={showAppShell ? 'flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6' : ''}>
           {showAppShell && <Breadcrumbs />}
-          <div className={showAppShell ? 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col' : ''}>
+          <div className={showAppShell ? 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col main-scroll-mobile' : ''}>
           <Routes>
             {/* Public: Sign in only (credentials configured in Supabase) */}
             <Route path="/login" element={<Login />} />
