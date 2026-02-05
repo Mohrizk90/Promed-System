@@ -8,7 +8,7 @@ import LoadingSpinner from './LoadingSpinner'
 import TableSkeleton from './TableSkeleton'
 import Pagination from './ui/Pagination'
 import Dropdown from './ui/Dropdown'
-import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical } from './ui/Icons'
+import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical, Filter } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 
@@ -875,31 +875,64 @@ function SupplierTransactions() {
           </div>
         </div>
 
-        <div className="bg-white p-2 rounded-lg shadow border border-gray-200">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
-              <button onClick={() => { if (selectedMonth) { const [y,m] = selectedMonth.split('-'); const d = new Date(parseInt(y), parseInt(m)-2,1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`) } }} className="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm" title="Previous month">‹</button>
-              <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs w-[110px]" />
-              <button onClick={() => { if (selectedMonth) { const [y,m] = selectedMonth.split('-'); const d = new Date(parseInt(y), parseInt(m),1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`) } }} className="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm" title="Next month">›</button>
-              <button onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`) }} className="px-1.5 py-0.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded text-xs">{t('supplierTransactions.currentMonth')}</button>
-              <button onClick={() => setSelectedMonth('')} className="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs">{t('supplierTransactions.allMonths')}</button>
+        {/* Filters – card layout like Liabilities */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 print:hidden overflow-hidden">
+          <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+              <Filter size={16} className="text-gray-500 dark:text-gray-400" />
+              {t('common.filters')}
+            </h3>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('supplierTransactions.period') || 'Period'}:</span>
+              <div className="flex items-center gap-1.5">
+                <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m - 2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium" title="Previous month">‹</button>
+                <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" aria-label="Period" />
+                <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium" title="Next month">›</button>
+              </div>
+              <button type="button" onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`) }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-200 dark:hover:bg-purple-900/60">{t('supplierTransactions.currentMonth')}</button>
+              <button type="button" onClick={() => setSelectedMonth('')} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">{t('supplierTransactions.allMonths')}</button>
+              {selectedMonth && (
+                <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors ml-auto sm:ml-0">
+                  <input type="checkbox" checked={includePastRemaining} onChange={(e) => setIncludePastRemaining(e.target.checked)} className="rounded border-gray-400 text-purple-600 focus:ring-purple-500" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Include past</span>
+                </label>
+              )}
             </div>
-            <input type="text" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs w-[100px]" />
-            <select value={filterSupplierId} onChange={(e) => setFilterSupplierId(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs">
-              <option value="">{t('common.filterBySupplier')}</option>
-              {suppliers.map((s) => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
-            </select>
-            <select value={filterProductId} onChange={(e) => setFilterProductId(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs">
-              <option value="">{t('common.filterByProduct')}</option>
-              {products.map((p) => <option key={p.product_id} value={p.product_id}>{p.product_name}{p.model ? ` (${p.model})` : ''}</option>)}
-            </select>
-            <select value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)} className="px-1.5 py-0.5 border border-gray-300 rounded text-xs">
-              <option value="all">{t('common.paymentStatus')}</option>
-              <option value="outstanding">{t('common.outstanding')}</option>
-              <option value="paid">{t('common.paidInFull')}</option>
-            </select>
-            {hasActiveFilters && <button type="button" onClick={clearFilters} className="px-1.5 py-0.5 text-xs text-gray-500 hover:bg-gray-100 rounded">{t('common.clearFilters')}</button>}
-            {selectedMonth && <label className="flex items-center gap-1 ml-auto text-xs text-gray-600 cursor-pointer"><input type="checkbox" checked={includePastRemaining} onChange={(e) => setIncludePastRemaining(e.target.checked)} className="w-3 h-3 text-purple-600 border-gray-300 rounded" /><span>Include past</span></label>}
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.searchPlaceholder')}</label>
+                <input type="search" className="input py-2 text-sm w-44 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.filterBySupplier')}</label>
+                <select className="input py-2 text-sm w-44 rounded-lg border-gray-300 dark:border-gray-600" value={filterSupplierId} onChange={(e) => setFilterSupplierId(e.target.value)}>
+                  <option value="">{t('common.filterBySupplier')}</option>
+                  {suppliers.map((s) => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.filterByProduct')}</label>
+                <select className="input py-2 text-sm w-44 rounded-lg border-gray-300 dark:border-gray-600" value={filterProductId} onChange={(e) => setFilterProductId(e.target.value)}>
+                  <option value="">{t('common.filterByProduct')}</option>
+                  {products.map((p) => <option key={p.product_id} value={p.product_id}>{p.product_name}{p.model ? ` (${p.model})` : ''}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.paymentStatus')}</label>
+                <select className="input py-2 text-sm w-40 rounded-lg border-gray-300 dark:border-gray-600" value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)}>
+                  <option value="all">{t('common.paymentStatus')}</option>
+                  <option value="outstanding">{t('common.outstanding')}</option>
+                  <option value="paid">{t('common.paidInFull')}</option>
+                </select>
+              </div>
+              {hasActiveFilters && (
+                <button type="button" onClick={clearFilters} className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  {t('common.clearFilters')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1029,22 +1062,6 @@ function SupplierTransactions() {
                 )
               }))}
             </tbody>
-            {filteredTransactions.length > 0 && (
-              <tfoot className="border-t-2 border-purple-200 dark:border-purple-800">
-                <tr className="bg-purple-50 dark:bg-purple-900/20">
-                  <td colSpan="9" className="px-3 py-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-purple-800 dark:text-purple-200">{t('liabilities.summary')}</span>
-                  </td>
-                </tr>
-                <tr className="bg-purple-50/80 dark:bg-purple-900/25 font-semibold text-sm">
-                  <td colSpan={5} className="px-3 py-2.5 text-gray-800 dark:text-gray-200">{t('supplierTransactions.total')}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-900 dark:text-white">{formatCurrency(filteredTransactions.reduce((s, t) => s + parseFloat(t.total_amount || 0), 0))}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(filteredTransactions.reduce((s, t) => s + parseFloat(t.paid_amount || 0), 0))}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-red-700 dark:text-red-400">{formatCurrency(filteredTransactions.reduce((s, t) => s + parseFloat(t.remaining_amount || 0), 0))}</td>
-                  <td className="print:hidden" />
-                </tr>
-              </tfoot>
-            )}
           </table>
           {transactions.length === 0 && (
             <div className="text-center py-4">
