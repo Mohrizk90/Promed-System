@@ -534,16 +534,9 @@ function SupplierTransactions() {
         throw new Error(`Transaction not found in supplier transactions. Please ensure this is a supplier transaction.`)
       }
 
-      // Check if transaction exists in client_transactions (should not)
-      const { data: clientCheck } = await supabase
-        .from('client_transactions')
-        .select('transaction_id')
-        .eq('transaction_id', transactionId)
-        .single()
-
-      if (clientCheck) {
-        throw new Error('This transaction ID exists in client transactions. Cannot add payment to supplier transaction.')
-      }
+      // Note: client_transactions and supplier_transactions each have their own
+      // transaction_id sequence, so the same numeric ID can exist in both tables.
+      // Payments are disambiguated by transaction_type; no need to check client_transactions.
 
       const remainingAmount = parseFloat(transaction.remaining_amount ?? 0)
       const paymentAmount = parseFloat(paymentFormData.payment_amount)
