@@ -9,7 +9,9 @@ const Dashboard = lazy(() => import('./components/Dashboard'))
 const ClientsSuppliers = lazy(() => import('./components/ClientsSuppliers'))
 const Liabilities = lazy(() => import('./components/Liabilities'))
 const Login = lazy(() => import('./components/Auth/Login'))
+const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import LanguageSwitcher from './components/LanguageSwitcher'
+import ThemeToggle from './components/ThemeToggle'
 import BottomNav from './components/BottomNav'
 import ProtectedRoute from './components/ProtectedRoute'
 import { Breadcrumbs } from './components/ui'
@@ -30,6 +32,7 @@ import { ToastProvider, useToast } from './context/ToastContext'
 import { LanguageProvider, useLanguage } from './context/LanguageContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from './context/KeyboardShortcutsContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 function Navigation() {
   const location = useLocation()
@@ -118,7 +121,10 @@ function Navigation() {
             
             {/* Language Switcher */}
             <LanguageSwitcher />
-            
+
+            {/* Theme Toggle */}
+            <ThemeToggle className="text-blue-200 hover:text-white hover:bg-blue-600" />
+
             {/* User Menu */}
             <div className="relative hidden sm:block">
               <button
@@ -217,25 +223,42 @@ function Navigation() {
   )
 }
 
+function NotFound() {
+  const navigate = useNavigate()
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
+      <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">404</h1>
+      <p className="text-gray-600 dark:text-gray-400 mb-6">Page not found</p>
+      <button
+        onClick={() => navigate('/')}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+      >
+        Go to Home
+      </button>
+    </div>
+  )
+}
+
 function AppContent() {
   const { toasts, removeToast } = useToast()
   const { user } = useAuth()
   const location = useLocation()
-  const [showAddModal, setShowAddModal] = useState(false)
   const isLoginPage = location.pathname === '/login'
-  const showAppShell = user && !isLoginPage
+  const isSignUpPage = location.pathname === '/signup'
+  const showAppShell = user && !isLoginPage && !isSignUpPage
 
   return (
     <>
-      <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell ? 'pb-0' : ''}`}>
+      <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden' : 'min-h-screen bg-gray-100 dark:bg-gray-900'} ${showAppShell ? 'pb-0' : ''}`}>
         {showAppShell && <Navigation />}
         <main className={showAppShell ? 'flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6' : ''}>
           {showAppShell && <Breadcrumbs />}
           <div className={showAppShell ? 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col main-scroll-mobile' : ''}>
           <Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-[200px]"><LoadingSpinner size="lg" /></div>}>
             <Routes>
-              {/* Public: Sign in only (credentials configured in Supabase) */}
+              {/* Public */}
               <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
 
               {/* Protected: must be signed in to access */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -245,14 +268,15 @@ function AppContent() {
               <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
               <Route path="/entities/suppliers" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
               <Route path="/liabilities" element={<ProtectedRoute><Liabilities /></ProtectedRoute>} />
+
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
           </div>
         </main>
 
-        {showAppShell && (
-          <BottomNav onAddClick={() => setShowAddModal(true)} />
-        )}
+        {showAppShell && <BottomNav />}
 
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </div>
@@ -264,13 +288,15 @@ function App() {
   return (
     <Router>
       <LanguageProvider>
-        <AuthProvider>
-          <ToastProvider>
-            <KeyboardShortcutsProvider>
-              <AppContent />
-            </KeyboardShortcutsProvider>
-          </ToastProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <KeyboardShortcutsProvider>
+                <AppContent />
+              </KeyboardShortcutsProvider>
+            </ToastProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </LanguageProvider>
     </Router>
   )

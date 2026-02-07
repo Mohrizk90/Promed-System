@@ -11,10 +11,10 @@ export function parseCsv(csvContent, options = {}) {
     skipEmptyLines = true,
   } = options
 
-  const lines = csvContent.split(/\r?\n/)
+  let lines = csvContent.split(/\r?\n/)
   
   if (skipEmptyLines) {
-    lines.filter(line => line.trim())
+    lines = lines.filter(line => line.trim())
   }
 
   if (lines.length === 0) return []
@@ -121,6 +121,7 @@ export function readCsvFile(file, options = {}) {
 export function mapCsvToTransactions(csvData, columnMapping) {
   const {
     clientName = 'client_name',
+    supplierName = 'supplier_name',
     productName = 'product_name',
     quantity = 'quantity',
     unitPrice = 'unit_price',
@@ -134,10 +135,11 @@ export function mapCsvToTransactions(csvData, columnMapping) {
     const price = parseFloat(row[unitPrice]) || 0
     const total = parseFloat(row[totalAmount]) || (qty * price)
     const paid = parseFloat(row[paidAmount]) || 0
+    const entityName = row[clientName] || row[supplierName] || ''
 
     return {
       _rowIndex: index + 1,
-      client_name: row[clientName] || '',
+      client_name: entityName,
       product_name: row[productName] || '',
       quantity: qty,
       unit_price: price,

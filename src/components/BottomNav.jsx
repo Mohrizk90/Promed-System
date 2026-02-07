@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, FileText, Truck, Users, Plus } from './ui/Icons'
 import { useLanguage } from '../context/LanguageContext'
 
-export default function BottomNav({ onAddClick }) {
+export default function BottomNav({ onAddClick } = {}) {
   const location = useLocation()
   const { t } = useLanguage()
 
@@ -39,7 +39,7 @@ export default function BottomNav({ onAddClick }) {
             return (
               <button
                 key="add"
-                onClick={onAddClick}
+                onClick={onAddClick ?? (() => {})}
                 className={`flex flex-col items-center justify-center -mt-4 w-14 h-14 text-white rounded-full shadow-lg transition-all active:scale-95 ${buttonColorClasses[item.color] || 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 <Icon size={24} />

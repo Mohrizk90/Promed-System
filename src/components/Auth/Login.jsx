@@ -11,9 +11,12 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
 
-  const { signIn } = useAuth()
+  const { signIn, resetPassword } = useAuth()
   const { success, error: showError } = useToast()
   const navigate = useNavigate()
+  const [showResetForm, setShowResetForm] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetSent, setResetSent] = useState(false)
 
   const validate = () => {
     const newErrors = {}
@@ -49,6 +52,25 @@ export default function Login() {
     }
   }
 
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    if (!resetEmail || !/\S+@\S+\.\S+/.test(resetEmail)) {
+      showError('Please enter a valid email address')
+      return
+    }
+    setLoading(true)
+    try {
+      const { error } = await resetPassword(resetEmail)
+      if (error) throw error
+      setResetSent(true)
+      success('Check your email for the password reset link')
+    } catch (err) {
+      showError(err.message || 'Failed to send reset email')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4 pt-safe pb-safe">
       <div className="w-full max-w-md">
@@ -68,6 +90,39 @@ export default function Login() {
             Use the credentials configured in your Supabase project.
           </p>
 
+          {showResetForm ? (
+            <>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center">
+                Enter your email and we&apos;ll send you a link to reset your password.
+              </p>
+              <form onSubmit={handleResetPassword} className="space-y-5">
+                <div>
+                  <label className="label">Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="input pl-10"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                </div>
+                <button type="submit" disabled={loading} className="btn btn-primary w-full py-3">
+                  {loading ? <Spinner size="sm" /> : 'Send reset link'}
+                </button>
+                {resetSent && (
+                  <p className="text-sm text-green-600 dark:text-green-400 text-center">Check your email and then <button type="button" onClick={() => { setShowResetForm(false); setResetSent(false) }} className="underline">back to sign in</button>.</p>
+                )}
+              </form>
+              {!resetSent && (
+                <button type="button" onClick={() => setShowResetForm(false)} className="mt-4 w-full text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-400">
+                  Back to sign in
+                </button>
+              )}
+            </>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
@@ -110,6 +165,9 @@ export default function Login() {
               {errors.password && (
                 <p className="mt-1 text-sm text-red-500">{errors.password}</p>
               )}
+              <button type="button" onClick={() => setShowResetForm(true)} className="mt-1 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                Forgot password?
+              </button>
             </div>
 
             {/* Submit */}
@@ -128,6 +186,7 @@ export default function Login() {
               )}
             </button>
           </form>
+          )}
         </div>
       </div>
     </div>
