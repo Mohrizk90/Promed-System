@@ -7,7 +7,9 @@ export const translations = {
       clientTransactions: 'Client Transactions',
       supplierTransactions: 'Supplier Transactions',
       liabilities: 'Liabilities & Expenses',
-      paymentsBreakdown: 'Payments Breakdown'
+      paymentsBreakdown: 'Payments Breakdown',
+      products: 'Products',
+      reports: 'Reports'
     },
     // Clients & Suppliers page
     entities: {
@@ -149,7 +151,8 @@ export const translations = {
       selectMonth: 'Select Month',
       allMonths: 'All Months',
       currentMonth: 'Current Month',
-      period: 'Period'
+      period: 'Period',
+      invoice: 'Generate Invoice'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -187,7 +190,8 @@ export const translations = {
       selectMonth: 'Select Month',
       allMonths: 'All Months',
       currentMonth: 'Current Month',
-      period: 'Period'
+      period: 'Period',
+      invoice: 'Generate Invoice'
     },
     // Payments Breakdown
     paymentsBreakdown: {
@@ -287,7 +291,112 @@ export const translations = {
       status_invoice: 'Invoice',
       status_paused: 'Paused',
       status_paid: 'Paid',
-      status_done: 'Done'
+      status_done: 'Done',
+      // Invoice & due date
+      invoiceNumber: 'Invoice #',
+      invoiceNumberPlaceholder: 'e.g. INV-001',
+      dueDate: 'Due Date',
+      overdue: 'Overdue',
+      paymentTerms: 'Payment Terms',
+      paymentTerms_none: 'None',
+      paymentTerms_cod: 'Cash on Delivery',
+      paymentTerms_net_15: 'Net 15',
+      paymentTerms_net_30: 'Net 30',
+      paymentTerms_net_60: 'Net 60',
+      paymentTerms_net_90: 'Net 90',
+      // Payment method
+      paymentMethod: 'Payment Method',
+      paymentMethod_cash: 'Cash',
+      paymentMethod_bank_transfer: 'Bank Transfer',
+      paymentMethod_check: 'Check',
+      paymentMethod_credit_card: 'Credit Card',
+      paymentMethod_other: 'Other',
+      referenceNumber: 'Reference #',
+      referenceNumberPlaceholder: 'e.g. check number, transfer ref',
+      saved: 'Saved'
+    },
+    // Settings
+    settings: {
+      title: 'Settings',
+      subtitle: 'Manage your preferences and account',
+      profile: 'Profile',
+      profileDesc: 'Your account information',
+      email: 'Email',
+      displayName: 'Display Name',
+      language: 'Language',
+      languageDesc: 'Choose your preferred language',
+      defaultPaymentTerms: 'Default Payment Terms',
+      defaultPaymentTermsDesc: 'Applied to new transactions automatically',
+      exportData: 'Export Data',
+      exportDataDesc: 'Download all your data as CSV files',
+      exportAll: 'Export All Data',
+      exporting: 'Exporting...',
+      exportSuccess: 'All data exported successfully!',
+      signOut: 'Sign Out',
+      saved: 'Preference saved'
+    },
+    // Aging Report
+    aging: {
+      title: 'Aging Report',
+      subtitle: 'Analyze overdue receivables and payables by aging buckets',
+      receivables: 'Receivables',
+      payables: 'Payables',
+      allEntities: 'All',
+      current: 'Current',
+      days: 'days',
+      grandTotal: 'Grand Total',
+      agingDistribution: 'Aging Distribution',
+      entity: 'Entity',
+      transactionDate: 'Date',
+      total: 'Total',
+      paid: 'Paid',
+      remaining: 'Remaining',
+      bucket: 'Bucket',
+      daysPastDue: 'Days Past Due',
+      noData: 'No outstanding transactions'
+    },
+    // Profit & Loss Report
+    pnl: {
+      title: 'Profit & Loss',
+      subtitle: 'Revenue, costs, expenses and net profit breakdown',
+      period: 'Period',
+      period_monthly: 'Monthly',
+      period_quarterly: 'Quarterly',
+      period_yearly: 'Yearly',
+      period_custom: 'Custom',
+      revenue: 'Revenue',
+      cogs: 'Cost of Goods',
+      grossProfit: 'Gross Profit',
+      margin: 'Margin',
+      expenses: 'Expenses',
+      netProfit: 'Net Profit',
+      chartTitle: 'Profit & Loss by Period',
+      total: 'Total',
+      noData: 'No data for this period'
+    },
+    // Product Inventory
+    inventory: {
+      title: 'Products & Inventory',
+      subtitle: 'Track stock levels, margins and product performance',
+      productName: 'Product',
+      model: 'Model',
+      avgBuyPrice: 'Avg Buy',
+      avgSellPrice: 'Avg Sell',
+      stockIn: 'Stock In',
+      stockOut: 'Stock Out',
+      currentStock: 'Stock',
+      margin: 'Margin',
+      revenue: 'Revenue',
+      cost: 'Cost',
+      profit: 'Profit',
+      totalProducts: 'Total Products',
+      stockValue: 'Stock Value',
+      lowStock: 'Low Stock',
+      outOfStock: 'Out of Stock',
+      products: 'products',
+      noProducts: 'No products found',
+      outOfStockBadge: 'OUT',
+      lowStockBadge: 'LOW'
     },
     // Auth
     auth: {
@@ -397,7 +506,9 @@ export const translations = {
       clientTransactions: 'معاملات العملاء',
       supplierTransactions: 'معاملات الموردين',
       liabilities: 'الالتزامات والمصروفات',
-      paymentsBreakdown: 'تفاصيل المدفوعات'
+      paymentsBreakdown: 'تفاصيل المدفوعات',
+      products: 'المنتجات',
+      reports: 'التقارير'
     },
     // Clients & Suppliers page
     entities: {
@@ -615,7 +726,8 @@ export const translations = {
       selectMonth: 'اختر الشهر',
       allMonths: 'جميع الأشهر',
       currentMonth: 'الشهر الحالي',
-      period: 'الفترة'
+      period: 'الفترة',
+      invoice: 'إنشاء فاتورة'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -653,7 +765,8 @@ export const translations = {
       selectMonth: 'اختر الشهر',
       allMonths: 'جميع الأشهر',
       currentMonth: 'الشهر الحالي',
-      period: 'الفترة'
+      period: 'الفترة',
+      invoice: 'إنشاء فاتورة'
     },
     // Payments Breakdown
     paymentsBreakdown: {
@@ -753,7 +866,112 @@ export const translations = {
       status_invoice: 'فاتورة',
       status_paused: 'متوقف',
       status_paid: 'مدفوع',
-      status_done: 'منتهي'
+      status_done: 'منتهي',
+      // Invoice & due date
+      invoiceNumber: 'رقم الفاتورة',
+      invoiceNumberPlaceholder: 'مثال: INV-001',
+      dueDate: 'تاريخ الاستحقاق',
+      overdue: 'متأخر',
+      paymentTerms: 'شروط الدفع',
+      paymentTerms_none: 'بدون',
+      paymentTerms_cod: 'الدفع عند التسليم',
+      paymentTerms_net_15: 'صافي 15 يوم',
+      paymentTerms_net_30: 'صافي 30 يوم',
+      paymentTerms_net_60: 'صافي 60 يوم',
+      paymentTerms_net_90: 'صافي 90 يوم',
+      // Payment method
+      paymentMethod: 'طريقة الدفع',
+      paymentMethod_cash: 'نقداً',
+      paymentMethod_bank_transfer: 'تحويل بنكي',
+      paymentMethod_check: 'شيك',
+      paymentMethod_credit_card: 'بطاقة ائتمان',
+      paymentMethod_other: 'أخرى',
+      referenceNumber: 'رقم المرجع',
+      referenceNumberPlaceholder: 'مثال: رقم الشيك، مرجع التحويل',
+      saved: 'تم الحفظ'
+    },
+    // Settings
+    settings: {
+      title: 'الإعدادات',
+      subtitle: 'إدارة تفضيلاتك وحسابك',
+      profile: 'الملف الشخصي',
+      profileDesc: 'معلومات حسابك',
+      email: 'البريد الإلكتروني',
+      displayName: 'اسم العرض',
+      language: 'اللغة',
+      languageDesc: 'اختر لغتك المفضلة',
+      defaultPaymentTerms: 'شروط الدفع الافتراضية',
+      defaultPaymentTermsDesc: 'تطبق تلقائياً على المعاملات الجديدة',
+      exportData: 'تصدير البيانات',
+      exportDataDesc: 'تحميل جميع بياناتك كملفات CSV',
+      exportAll: 'تصدير جميع البيانات',
+      exporting: 'جاري التصدير...',
+      exportSuccess: 'تم تصدير جميع البيانات بنجاح!',
+      signOut: 'تسجيل الخروج',
+      saved: 'تم حفظ التفضيل'
+    },
+    // Aging Report
+    aging: {
+      title: 'تقرير الأعمار',
+      subtitle: 'تحليل المستحقات والمدفوعات حسب فترات التأخير',
+      receivables: 'المستحقات',
+      payables: 'المدفوعات',
+      allEntities: 'الكل',
+      current: 'حالي',
+      days: 'يوم',
+      grandTotal: 'الإجمالي الكلي',
+      agingDistribution: 'توزيع الأعمار',
+      entity: 'الجهة',
+      transactionDate: 'التاريخ',
+      total: 'الإجمالي',
+      paid: 'المدفوع',
+      remaining: 'المتبقي',
+      bucket: 'الفئة',
+      daysPastDue: 'أيام التأخير',
+      noData: 'لا توجد معاملات مستحقة'
+    },
+    // Profit & Loss Report
+    pnl: {
+      title: 'الأرباح والخسائر',
+      subtitle: 'تفصيل الإيرادات والتكاليف والمصروفات وصافي الربح',
+      period: 'الفترة',
+      period_monthly: 'شهري',
+      period_quarterly: 'ربع سنوي',
+      period_yearly: 'سنوي',
+      period_custom: 'مخصص',
+      revenue: 'الإيرادات',
+      cogs: 'تكلفة البضائع',
+      grossProfit: 'إجمالي الربح',
+      margin: 'الهامش',
+      expenses: 'المصروفات',
+      netProfit: 'صافي الربح',
+      chartTitle: 'الأرباح والخسائر حسب الفترة',
+      total: 'الإجمالي',
+      noData: 'لا توجد بيانات لهذه الفترة'
+    },
+    // Product Inventory
+    inventory: {
+      title: 'المنتجات والمخزون',
+      subtitle: 'تتبع مستويات المخزون والهوامش وأداء المنتجات',
+      productName: 'المنتج',
+      model: 'الموديل',
+      avgBuyPrice: 'متوسط الشراء',
+      avgSellPrice: 'متوسط البيع',
+      stockIn: 'الوارد',
+      stockOut: 'الصادر',
+      currentStock: 'المخزون',
+      margin: 'الهامش',
+      revenue: 'الإيرادات',
+      cost: 'التكلفة',
+      profit: 'الربح',
+      totalProducts: 'إجمالي المنتجات',
+      stockValue: 'قيمة المخزون',
+      lowStock: 'مخزون منخفض',
+      outOfStock: 'نفذ المخزون',
+      products: 'منتج',
+      noProducts: 'لا توجد منتجات',
+      outOfStockBadge: 'نفذ',
+      lowStockBadge: 'منخفض'
     },
     // Auth
     auth: {

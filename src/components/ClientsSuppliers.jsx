@@ -664,31 +664,31 @@ function ClientsSuppliers() {
                   <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
                 </div>
               )}
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('entities.transactionHistory')}</h3>
-              {detailLoading ? <div className="flex justify-center py-6"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400 py-4">{t('entities.noTransactionsForEntity')}</p> : (
-                <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
-                  <table className="min-w-full text-xs divide-y divide-gray-200 dark:divide-gray-600">
-                    <thead className="bg-gray-100 dark:bg-gray-700/50">
+              <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
+              {detailLoading ? <div className="flex justify-center py-6"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 py-4">{t('entities.noTransactionsForEntity')}</p> : (
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="min-w-full text-xs divide-y divide-gray-200">
+                    <thead className="bg-gray-100">
                       <tr>
-                        <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
-                        <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase min-w-0">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-14">{t('clientTransactions.quantity')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.unitPrice') : t('supplierTransactions.unitPrice')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.total')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.paid')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.remaining')}</th>
+                        <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
+                        <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase min-w-0">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
+                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-14">{t('clientTransactions.quantity')}</th>
+                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.unitPrice') : t('supplierTransactions.unitPrice')}</th>
+                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.total')}</th>
+                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.paid')}</th>
+                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.remaining')}</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {detailTransactions.map((tx) => (
-                        <tr key={tx.transaction_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                          <td className="px-2 py-1 text-gray-700 dark:text-gray-300 whitespace-nowrap">{tx.transaction_date}</td>
-                          <td className="px-2 py-1 text-gray-800 dark:text-white max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
-                          <td className="px-2 py-1 text-right text-gray-700 dark:text-gray-300">{tx.quantity}</td>
-                          <td className="px-2 py-1 text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(tx.unit_price)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(tx.total_amount)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(tx.paid_amount)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 dark:text-red-400">{formatCurrency(tx.remaining_amount)}</td>
+                        <tr key={tx.transaction_id} className="hover:bg-gray-50">
+                          <td className="px-2 py-1 text-gray-700 whitespace-nowrap">{tx.transaction_date}</td>
+                          <td className="px-2 py-1 text-gray-800 max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
+                          <td className="px-2 py-1 text-right text-gray-700">{tx.quantity}</td>
+                          <td className="px-2 py-1 text-right tabular-nums text-gray-700">{formatCurrency(tx.unit_price)}</td>
+                          <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
+                          <td className="px-2 py-1 text-right tabular-nums text-green-700">{formatCurrency(tx.paid_amount)}</td>
+                          <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700">{formatCurrency(tx.remaining_amount)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -819,31 +819,31 @@ function ClientsSuppliers() {
                 <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
               </div>
             )}
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('entities.transactionHistory')}</h3>
-            {detailLoading ? <div className="flex justify-center py-6"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400 py-4">{t('entities.noTransactionsForEntity')}</p> : (
-              <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
-                <table className="min-w-full text-xs divide-y divide-gray-200 dark:divide-gray-600">
-                  <thead className="bg-gray-100 dark:bg-gray-700/50">
+            <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
+            {detailLoading ? <div className="flex justify-center py-6"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 py-4">{t('entities.noTransactionsForEntity')}</p> : (
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="min-w-full text-xs divide-y divide-gray-200">
+                  <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
-                      <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase min-w-0">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-14">{t('clientTransactions.quantity')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.unitPrice') : t('supplierTransactions.unitPrice')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.total')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.paid')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.remaining')}</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase min-w-0">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
+                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-14">{t('clientTransactions.quantity')}</th>
+                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.unitPrice') : t('supplierTransactions.unitPrice')}</th>
+                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.total')}</th>
+                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.paid')}</th>
+                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.remaining')}</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {detailTransactions.map((tx) => (
-                      <tr key={tx.transaction_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="px-2 py-1 text-gray-700 dark:text-gray-300 whitespace-nowrap">{tx.transaction_date}</td>
-                        <td className="px-2 py-1 text-gray-800 dark:text-white max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
-                        <td className="px-2 py-1 text-right text-gray-700 dark:text-gray-300">{tx.quantity}</td>
-                        <td className="px-2 py-1 text-right tabular-nums text-gray-700 dark:text-gray-300">{formatCurrency(tx.unit_price)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(tx.total_amount)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(tx.paid_amount)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 dark:text-red-400">{formatCurrency(tx.remaining_amount)}</td>
+                      <tr key={tx.transaction_id} className="hover:bg-gray-50">
+                        <td className="px-2 py-1 text-gray-700 whitespace-nowrap">{tx.transaction_date}</td>
+                        <td className="px-2 py-1 text-gray-800 max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
+                        <td className="px-2 py-1 text-right text-gray-700">{tx.quantity}</td>
+                        <td className="px-2 py-1 text-right tabular-nums text-gray-700">{formatCurrency(tx.unit_price)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums text-green-700">{formatCurrency(tx.paid_amount)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700">{formatCurrency(tx.remaining_amount)}</td>
                       </tr>
                     ))}
                   </tbody>

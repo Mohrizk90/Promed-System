@@ -13,35 +13,35 @@ function Toast({ message, type = 'success', onClose, duration = 4000 }) {
 
   const config = {
     success: {
-      bg: 'bg-green-50 dark:bg-green-900/30',
-      border: 'border-green-200 dark:border-green-800',
+      bg: 'bg-green-50',
+      border: 'border-green-200',
       icon: CheckCircle,
       iconColor: 'text-green-500',
-      textColor: 'text-green-800 dark:text-green-200',
+      textColor: 'text-green-800',
       label: 'Success',
     },
     error: {
-      bg: 'bg-red-50 dark:bg-red-900/30',
-      border: 'border-red-200 dark:border-red-800',
+      bg: 'bg-red-50',
+      border: 'border-red-200',
       icon: XCircle,
       iconColor: 'text-red-500',
-      textColor: 'text-red-800 dark:text-red-200',
+      textColor: 'text-red-800',
       label: 'Error',
     },
     info: {
-      bg: 'bg-blue-50 dark:bg-blue-900/30',
-      border: 'border-blue-200 dark:border-blue-800',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
       icon: Info,
       iconColor: 'text-blue-500',
-      textColor: 'text-blue-800 dark:text-blue-200',
+      textColor: 'text-blue-800',
       label: 'Info',
     },
     warning: {
-      bg: 'bg-yellow-50 dark:bg-yellow-900/30',
-      border: 'border-yellow-200 dark:border-yellow-800',
+      bg: 'bg-yellow-50',
+      border: 'border-yellow-200',
       icon: AlertCircle,
       iconColor: 'text-yellow-500',
-      textColor: 'text-yellow-800 dark:text-yellow-200',
+      textColor: 'text-yellow-800',
       label: 'Warning',
     },
   }
@@ -57,7 +57,7 @@ function Toast({ message, type = 'success', onClose, duration = 4000 }) {
       <p className={`${textColor} text-sm font-medium flex-1`}>{message}</p>
       <button
         onClick={onClose}
-        className={`${textColor} opacity-70 hover:opacity-100 transition-opacity p-0.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10`}
+        className={`${textColor} opacity-70 hover:opacity-100 transition-opacity p-0.5 rounded-lg hover:bg-black/5`}
         aria-label="Close"
       >
         <X size={18} />

@@ -11,7 +11,7 @@ function LanguageSwitcher() {
   return (
     <button
       onClick={toggleLanguage}
-      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-blue-100 hover:bg-blue-600 dark:hover:bg-gray-700 transition-colors"
+      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-blue-100 hover:bg-blue-600 transition-colors"
       aria-label={`Switch to ${language === 'en' ? 'Arabic' : 'English'}`}
       title={`Switch to ${language === 'en' ? 'Arabic' : 'English'}`}
     >

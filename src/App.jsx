@@ -8,10 +8,13 @@ const SupplierTransactions = lazy(() => import('./components/SupplierTransaction
 const Dashboard = lazy(() => import('./components/Dashboard'))
 const ClientsSuppliers = lazy(() => import('./components/ClientsSuppliers'))
 const Liabilities = lazy(() => import('./components/Liabilities'))
+const SettingsPage = lazy(() => import('./components/Settings'))
+const AgingReport = lazy(() => import('./components/AgingReport'))
+const ProfitLossReport = lazy(() => import('./components/ProfitLossReport'))
+const ProductInventory = lazy(() => import('./components/ProductInventory'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import LanguageSwitcher from './components/LanguageSwitcher'
-import ThemeToggle from './components/ThemeToggle'
 import BottomNav from './components/BottomNav'
 import ProtectedRoute from './components/ProtectedRoute'
 import { Breadcrumbs } from './components/ui'
@@ -21,6 +24,8 @@ import {
   Truck, 
   Users, 
   Wallet,
+  Package,
+  ClipboardList,
   Menu, 
   X,
   HelpCircle,
@@ -32,7 +37,6 @@ import { ToastProvider, useToast } from './context/ToastContext'
 import { LanguageProvider, useLanguage } from './context/LanguageContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from './context/KeyboardShortcutsContext'
-import { ThemeProvider } from './context/ThemeContext'
 
 function Navigation() {
   const location = useLocation()
@@ -43,22 +47,26 @@ function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
-  const isActive = (path) => location.pathname === path
+  const isActive = (path) => location.pathname === path || (path === '/reports/aging' && location.pathname.startsWith('/reports'))
 
   const navItems = [
     { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, shortcut: 'd', color: 'indigo' },
     { path: '/', label: t('nav.clientTransactions'), icon: FileText, shortcut: 'c', color: 'cyan' },
     { path: '/suppliers', label: t('nav.supplierTransactions'), icon: Truck, shortcut: 's', color: 'violet' },
+    { path: '/products', label: t('nav.products'), icon: Package, shortcut: 'p', color: 'teal' },
     { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e', color: 'emerald' },
-    { path: '/liabilities', label: t('nav.liabilities'), icon: Wallet, shortcut: 'l', color: 'amber' }
+    { path: '/liabilities', label: t('nav.liabilities'), icon: Wallet, shortcut: 'l', color: 'amber' },
+    { path: '/reports/aging', label: t('nav.reports'), icon: ClipboardList, shortcut: 'r', color: 'rose' },
   ]
 
   const navColorClasses = {
     indigo: { active: 'bg-indigo-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-indigo-500/40 hover:text-white' },
     cyan: { active: 'bg-cyan-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-cyan-500/40 hover:text-white' },
     violet: { active: 'bg-violet-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-violet-500/40 hover:text-white' },
+    teal: { active: 'bg-teal-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-teal-500/40 hover:text-white' },
     emerald: { active: 'bg-emerald-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-emerald-500/40 hover:text-white' },
-    amber: { active: 'bg-amber-500 text-amber-950 shadow-inner', inactive: 'text-blue-100 hover:bg-amber-500/50 hover:text-amber-950' }
+    amber: { active: 'bg-amber-500 text-amber-950 shadow-inner', inactive: 'text-blue-100 hover:bg-amber-500/50 hover:text-amber-950' },
+    rose: { active: 'bg-rose-500 text-white shadow-inner', inactive: 'text-blue-100 hover:bg-rose-500/40 hover:text-white' },
   }
 
   // Register keyboard shortcuts for navigation
@@ -121,9 +129,6 @@ function Navigation() {
             
             {/* Language Switcher */}
             <LanguageSwitcher />
-
-            {/* Theme Toggle */}
-            <ThemeToggle className="text-blue-200 hover:text-white hover:bg-blue-600" />
 
             {/* User Menu */}
             <div className="relative hidden sm:block">
@@ -226,9 +231,9 @@ function Navigation() {
 function NotFound() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
-      <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">404</h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-6">Page not found</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">
+      <h1 className="text-4xl font-bold text-gray-800 mb-2">404</h1>
+      <p className="text-gray-600 mb-6">Page not found</p>
       <button
         onClick={() => navigate('/')}
         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -249,7 +254,7 @@ function AppContent() {
 
   return (
     <>
-      <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden' : 'min-h-screen bg-gray-100 dark:bg-gray-900'} ${showAppShell ? 'pb-0' : ''}`}>
+      <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell ? 'pb-0' : ''}`}>
         {showAppShell && <Navigation />}
         <main className={showAppShell ? 'flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6' : ''}>
           {showAppShell && <Breadcrumbs />}
@@ -268,6 +273,10 @@ function AppContent() {
               <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
               <Route path="/entities/suppliers" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
               <Route path="/liabilities" element={<ProtectedRoute><Liabilities /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/products" element={<ProtectedRoute><ProductInventory /></ProtectedRoute>} />
+              <Route path="/reports/aging" element={<ProtectedRoute><AgingReport /></ProtectedRoute>} />
+              <Route path="/reports/pnl" element={<ProtectedRoute><ProfitLossReport /></ProtectedRoute>} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
@@ -288,15 +297,13 @@ function App() {
   return (
     <Router>
       <LanguageProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <ToastProvider>
-              <KeyboardShortcutsProvider>
-                <AppContent />
-              </KeyboardShortcutsProvider>
-            </ToastProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <KeyboardShortcutsProvider>
+              <AppContent />
+            </KeyboardShortcutsProvider>
+          </ToastProvider>
+        </AuthProvider>
       </LanguageProvider>
     </Router>
   )

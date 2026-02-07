@@ -529,8 +529,8 @@ function Dashboard() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{t('dashboard.title')}</h1>
-          <p className="text-gray-600 dark:text-gray-400">{t('dashboard.subtitle')}</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('dashboard.title')}</h1>
+          <p className="text-gray-600">{t('dashboard.subtitle')}</p>
         </div>
         <EmptyState
           icon="dashboard"
@@ -546,8 +546,8 @@ function Dashboard() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">{t('dashboard.title')}</h1>
-          <p className="text-gray-600 dark:text-gray-400">{t('dashboard.subtitle')}</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">{t('dashboard.title')}</h1>
+          <p className="text-gray-600">{t('dashboard.subtitle')}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 print:hidden">
@@ -556,7 +556,7 @@ function Dashboard() {
             {t('common.print')}
           </button>
           {/* Quick Filters */}
-          <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
             {['all', 'month', 'quarter', 'year'].map(range => (
               <button
                 key={range}
@@ -566,8 +566,8 @@ function Dashboard() {
                 }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                   quickFilter === range && !dateRange.start
-                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 {range === 'all' ? t('dashboard.allTime') : range === 'month' ? t('dashboard.thisMonth') : range === 'quarter' ? t('dashboard.thisQuarter') : t('dashboard.thisYear')}
@@ -702,7 +702,7 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue vs Expenses Trend */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.revenueVsExpensesTrend')}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.revenueVsExpensesTrend')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
           <ResponsiveContainer width="100%" height={350}>
             <AreaChart data={revenueExpensesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -733,7 +733,7 @@ function Dashboard() {
 
         {/* Payment Status Distribution */}
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.paymentStatusDistribution')}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.paymentStatusDistribution')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
           <ResponsiveContainer width="100%" height={350}>
             <PieChart>
@@ -763,7 +763,7 @@ function Dashboard() {
         {/* Top Clients */}
         <Link to="/" className="block transition-opacity hover:opacity-95">
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topClientsByRevenue')}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.topClientsByRevenue')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={topClientsData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
@@ -783,7 +783,7 @@ function Dashboard() {
         {/* Top Suppliers */}
         <Link to="/suppliers" className="block transition-opacity hover:opacity-95">
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.topSuppliersByPurchases')}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.topSuppliersByPurchases')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={topSuppliersData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
@@ -803,39 +803,39 @@ function Dashboard() {
 
       {/* Top Products Table */}
       <div className="card p-4">
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('dashboard.topProductsPerformance')}</h2>
+        <h2 className="text-base font-semibold text-gray-900 mb-3">{t('dashboard.topProductsPerformance')}</h2>
         <div className="overflow-x-auto overflow-y-visible">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
-            <thead className="bg-gray-50 dark:bg-gray-800">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[25%] min-w-0">{t('dashboard.product')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">{t('dashboard.qtySold')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.qtyPurchased')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.revenue')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.cost')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">{t('dashboard.profit')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">{t('dashboard.profitMargin')}</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[25%] min-w-0">{t('dashboard.product')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">{t('dashboard.qtySold')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.qtyPurchased')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.revenue')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.cost')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.profit')}</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">{t('dashboard.profitMargin')}</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white divide-y divide-gray-200">
               {paginatedProductsData.map((product, index) => (
-                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <td className="table-cell-wrap px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100" title={product.name}>{product.name}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">{product.sold}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">{product.purchased}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-blue-600 dark:text-blue-400">{formatCurrencyDetailed(product.revenue)}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-purple-600 dark:text-purple-400">{formatCurrencyDetailed(product.cost)}</td>
-                  <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-semibold ${product.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <tr key={index} className="hover:bg-gray-50 transition-colors">
+                  <td className="table-cell-wrap px-4 py-2 text-sm font-medium text-gray-900" title={product.name}>{product.name}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">{product.sold}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">{product.purchased}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-blue-600">{formatCurrencyDetailed(product.revenue)}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-purple-600">{formatCurrencyDetailed(product.cost)}</td>
+                  <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-semibold ${product.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrencyDetailed(product.profit)}
                   </td>
-                  <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-medium ${product.revenue > 0 && (product.profit / product.revenue) >= 0.2 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                  <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-medium ${product.revenue > 0 && (product.profit / product.revenue) >= 0.2 ? 'text-green-600' : 'text-gray-600'}`}>
                     {product.revenue > 0 ? `${((product.profit / product.revenue) * 100).toFixed(1)}%` : 'N/A'}
                   </td>
                 </tr>
               ))}
               {topProductsData.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
                     {t('dashboard.noProductData')}
                   </td>
                 </tr>
@@ -878,16 +878,16 @@ function MetricCard({ title, value, subtitle, icon: Icon, color = 'blue', small 
   }
 
   const isPositiveChange = invertChange ? change < 0 : change > 0
-  const changeColor = isPositiveChange ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+  const changeColor = isPositiveChange ? 'text-green-600' : 'text-red-600'
   const ChangeIcon = isPositiveChange ? ArrowUpRight : ArrowDownRight
 
   return (
     <div className={`metric-card ${colorClasses[color]}`}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{title}</p>
-          <p className={`${small ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 dark:text-gray-100 mb-0.5`}>{value}</p>
-          {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>}
+          <p className="text-xs font-medium text-gray-600 mb-1">{title}</p>
+          <p className={`${small ? 'text-xl' : 'text-2xl'} font-bold text-gray-900 mb-0.5`}>{value}</p>
+          {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
           
           {change !== null && change !== undefined && (
             <div className={`flex items-center gap-1 mt-2 text-sm font-medium ${changeColor}`}>
@@ -899,7 +899,7 @@ function MetricCard({ title, value, subtitle, icon: Icon, color = 'blue', small 
         
         <div className="flex flex-col items-end gap-2">
           {Icon && (
-            <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+            <div className="p-2 rounded-lg bg-gray-100">
               <Icon size={20} style={{ color: colorValues[color] }} />
             </div>
           )}

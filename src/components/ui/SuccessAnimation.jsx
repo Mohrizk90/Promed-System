@@ -21,8 +21,8 @@ export default function SuccessAnimation({ show, onComplete }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
       <div className="relative">
         {/* Success checkmark */}
-        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center animate-success">
-          <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" strokeWidth={2} />
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center animate-success">
+          <CheckCircle className="w-12 h-12 text-green-600" strokeWidth={2} />
         </div>
         
         {/* Confetti pieces */}
@@ -50,7 +50,7 @@ export function MiniSuccess({ show }) {
   if (!show) return null
   
   return (
-    <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 animate-fade-in">
+    <span className="inline-flex items-center gap-1 text-green-600 animate-fade-in">
       <CheckCircle size={16} />
       <span className="text-sm font-medium">Saved!</span>
     </span>

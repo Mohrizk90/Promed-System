@@ -75,17 +75,17 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4 pt-safe pb-safe">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 pt-safe pb-safe">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">Promed</h1>
-          <p className="text-gray-600 dark:text-gray-400">Transaction Management System</p>
+          <h1 className="text-4xl font-bold text-blue-600 mb-2">Promed</h1>
+          <p className="text-gray-600">Transaction Management System</p>
         </div>
 
         {/* Form Card */}
         <div className="card p-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             Create Account
           </h2>
 
@@ -191,11 +191,11 @@ export default function SignUp() {
           </form>
 
           {/* Sign In Link */}
-          <p className="mt-6 text-center text-gray-600 dark:text-gray-400">
+          <p className="mt-6 text-center text-gray-600">
             Already have an account?{' '}
             <Link
               to="/login"
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+              className="text-blue-600 hover:text-blue-700 font-medium"
             >
               Sign in
             </Link>

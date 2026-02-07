@@ -155,7 +155,7 @@ export default function DateRangePicker({
       >
         <span className="flex items-center gap-2">
           <Calendar size={18} className="text-gray-400" />
-          <span className={startDate ? 'text-gray-900 dark:text-white' : 'text-gray-400'}>
+          <span className={startDate ? 'text-gray-900' : 'text-gray-400'}>
             {displayText}
           </span>
         </span>
@@ -166,7 +166,7 @@ export default function DateRangePicker({
               e.stopPropagation()
               clearSelection()
             }}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+            className="p-1 hover:bg-gray-200 rounded"
           >
             <X size={14} />
           </button>
@@ -174,17 +174,17 @@ export default function DateRangePicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="absolute z-50 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
           <div className="flex">
             {/* Presets */}
             {showPresets && (
-              <div className="w-40 border-r border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-900">
+              <div className="w-40 border-r border-gray-200 p-2 bg-gray-50">
                 {presets.map((preset) => (
                   <button
                     key={preset.label}
                     type="button"
                     onClick={() => handlePresetClick(preset)}
-                    className="w-full px-3 py-2 text-left text-sm rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    className="w-full px-3 py-2 text-left text-sm rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     {preset.label}
                   </button>
@@ -199,7 +199,7 @@ export default function DateRangePicker({
                 <button
                   type="button"
                   onClick={prevMonth}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  className="p-1 hover:bg-gray-100 rounded"
                 >
                   <ChevronLeft size={20} />
                 </button>
@@ -209,7 +209,7 @@ export default function DateRangePicker({
                 <button
                   type="button"
                   onClick={nextMonth}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  className="p-1 hover:bg-gray-100 rounded"
                 >
                   <ChevronRight size={20} />
                 </button>
@@ -241,8 +241,8 @@ export default function DateRangePicker({
                         : isSelected(date)
                         ? 'bg-blue-600 text-white'
                         : isInRange(date)
-                        ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'hover:bg-gray-100'
                     }`}
                   >
                     {date?.getDate()}
@@ -251,7 +251,7 @@ export default function DateRangePicker({
               </div>
 
               {/* Selection hint */}
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 text-center">
+              <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 text-center">
                 {selecting === 'start' ? 'Select start date' : 'Select end date'}
               </div>
             </div>

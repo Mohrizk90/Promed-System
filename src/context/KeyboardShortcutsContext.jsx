@@ -100,7 +100,7 @@ function ShortcutsHelpModal({ onClose, shortcuts }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="text-xl font-bold text-gray-900">
             Keyboard Shortcuts
           </h2>
         </div>
@@ -111,9 +111,9 @@ function ShortcutsHelpModal({ onClose, shortcuts }) {
               .map(([key, shortcut]) => (
                 <div 
                   key={key}
-                  className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                  className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
                 >
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <span className="text-gray-700">
                     {shortcut.description}
                   </span>
                   <kbd className="kbd">

@@ -43,7 +43,7 @@ export default function Dropdown({
     <div ref={dropdownRef} className={`relative ${className}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
@@ -57,7 +57,7 @@ export default function Dropdown({
         >
           {items.map((item, index) => {
             if (item.divider) {
-              return <div key={index} className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+              return <div key={index} className="h-px bg-gray-200 my-1" />
             }
 
             const Icon = item.icon
@@ -67,7 +67,7 @@ export default function Dropdown({
                 key={index}
                 onClick={() => handleItemClick(item)}
                 disabled={item.disabled}
-                className={`dropdown-item ${item.danger ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : ''} ${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`dropdown-item ${item.danger ? 'text-red-600 hover:bg-red-50' : ''} ${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 role="menuitem"
               >
                 {Icon && <Icon size={16} />}
@@ -117,14 +117,14 @@ export function Select({
         disabled={disabled}
         className={`input flex items-center justify-between gap-2 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
-        <span className={selectedOption ? 'text-gray-900 dark:text-white' : 'text-gray-400'}>
+        <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
           {options.map((option) => (
             <button
               key={option.value}
@@ -133,10 +133,10 @@ export function Select({
                 onChange(option.value)
                 setIsOpen(false)
               }}
-              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 transition-colors ${
                 option.value === value 
-                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
-                  : 'text-gray-700 dark:text-gray-300'
+                  ? 'bg-blue-50 text-blue-600' 
+                  : 'text-gray-700'
               }`}
             >
               {option.label}

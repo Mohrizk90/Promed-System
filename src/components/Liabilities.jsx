@@ -39,7 +39,7 @@ function Liabilities() {
   const [deleting, setDeleting] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({ category: '', description: '', total_amount: '', due_date: '', recurring: false, notes: '' })
-  const [paymentFormData, setPaymentFormData] = useState({ payment_amount: '', payment_date: new Date().toISOString().split('T')[0] })
+  const [paymentFormData, setPaymentFormData] = useState({ payment_amount: '', payment_date: new Date().toISOString().split('T')[0], payment_method: 'cash', reference_number: '' })
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [outstandingOnly, setOutstandingOnly] = useState(false)
   const [recurringOnly, setRecurringOnly] = useState(false)
@@ -285,7 +285,7 @@ function Liabilities() {
 
   const openPayment = (row) => {
     setPaymentLiability(row)
-    setPaymentFormData({ payment_amount: '', payment_date: new Date().toISOString().split('T')[0] })
+    setPaymentFormData({ payment_amount: '', payment_date: new Date().toISOString().split('T')[0], payment_method: 'cash', reference_number: '' })
     setFormErrors({})
     setShowPaymentModal(true)
   }
@@ -367,7 +367,9 @@ function Liabilities() {
             transaction_id: paymentLiability.transaction_id,
             transaction_type: 'supplier',
             payment_amount: amount,
-            payment_date: paymentFormData.payment_date
+            payment_date: paymentFormData.payment_date,
+            payment_method: paymentFormData.payment_method || 'cash',
+            reference_number: paymentFormData.reference_number || null
           }])
         if (error) throw error
       } else {
@@ -376,7 +378,9 @@ function Liabilities() {
           .insert([{
             liability_id: paymentLiability.id,
             payment_amount: amount,
-            payment_date: paymentFormData.payment_date
+            payment_date: paymentFormData.payment_date,
+            payment_method: paymentFormData.payment_method || 'cash',
+            reference_number: paymentFormData.reference_number || null
           }])
         if (error) throw error
       }
@@ -493,8 +497,8 @@ function Liabilities() {
       <div className="space-y-2">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('liabilities.title')}</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{t('liabilities.subtitle')}</p>
+            <h2 className="text-xl font-bold text-gray-900">{t('liabilities.title')}</h2>
+            <p className="text-sm text-gray-600">{t('liabilities.subtitle')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <button type="button" onClick={handlePrint} disabled={sortedList.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm">
@@ -533,34 +537,34 @@ function Liabilities() {
       {/* Category quick-filter buttons (Salaries, Taxes, etc.) */}
       {combinedList.length > 0 && (
         <div className="print:hidden mb-3">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{t('liabilities.category')} – {t('common.quickFilter')}</p>
+          <p className="text-xs font-medium text-gray-500 mb-2">{t('liabilities.category')} – {t('common.quickFilter')}</p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => { setCategoryFilter('all'); setPage(1) }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'all' ? 'bg-gray-700 text-white dark:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
             >
               {t('liabilities.filterAllCategories')}
             </button>
             <button
               type="button"
               onClick={() => { setCategoryFilter('supplier'); setPage(1) }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'supplier' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-900/60'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'supplier' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}`}
             >
               {t('liabilities.supplier')}
             </button>
             {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => {
               const isActive = categoryFilter === key
               const styles = {
-                salaries: { active: 'bg-amber-600 text-white', inactive: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/60' },
-                taxes: { active: 'bg-red-600 text-white', inactive: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-900/60' },
-                tax_accountant: { active: 'bg-red-500 text-white', inactive: 'bg-red-100/80 text-red-700 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50' },
-                invoices_accountant: { active: 'bg-blue-600 text-white', inactive: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-900/60' },
-                municipal: { active: 'bg-teal-600 text-white', inactive: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-900/60' },
-                lawyer: { active: 'bg-slate-600 text-white', inactive: 'bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600/50' },
-                insurance: { active: 'bg-green-600 text-white', inactive: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-900/60' },
-                liabilities: { active: 'bg-orange-600 text-white', inactive: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-900/60' },
-                other: { active: 'bg-gray-600 text-white dark:bg-gray-500', inactive: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600' },
+                salaries: { active: 'bg-amber-600 text-white', inactive: 'bg-amber-100 text-amber-800 hover:bg-amber-200' },
+                taxes: { active: 'bg-red-600 text-white', inactive: 'bg-red-100 text-red-800 hover:bg-red-200' },
+                tax_accountant: { active: 'bg-red-500 text-white', inactive: 'bg-red-100/80 text-red-700 hover:bg-red-200' },
+                invoices_accountant: { active: 'bg-blue-600 text-white', inactive: 'bg-blue-100 text-blue-800 hover:bg-blue-200' },
+                municipal: { active: 'bg-teal-600 text-white', inactive: 'bg-teal-100 text-teal-800 hover:bg-teal-200' },
+                lawyer: { active: 'bg-slate-600 text-white', inactive: 'bg-slate-100 text-slate-700 hover:bg-slate-200' },
+                insurance: { active: 'bg-green-600 text-white', inactive: 'bg-green-100 text-green-800 hover:bg-green-200' },
+                liabilities: { active: 'bg-orange-600 text-white', inactive: 'bg-orange-100 text-orange-800 hover:bg-orange-200' },
+                other: { active: 'bg-gray-600 text-white', inactive: 'bg-gray-200 text-gray-700 hover:bg-gray-300' },
               }
               const s = styles[key] || styles.other
               return (
@@ -580,30 +584,30 @@ function Liabilities() {
 
       {/* Filters */}
         {combinedList.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 print:hidden overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                <Filter size={16} className="text-gray-500 dark:text-gray-400" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 print:hidden overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Filter size={16} className="text-gray-500" />
                 {t('common.filters')}
               </h3>
             </div>
             <div className="p-4 space-y-4">
               {/* Period / Month row (like Client/Supplier pages) */}
-              <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.period')}:</span>
+              <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-gray-200">
+                <span className="text-xs font-medium text-gray-500">{t('liabilities.period')}:</span>
                 <div className="flex items-center gap-1.5">
-                  <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m - 2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium" title={t('liabilities.prevMonth')}>‹</button>
-                  <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value || '')} className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" aria-label={t('liabilities.period')} />
-                  <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium" title={t('liabilities.nextMonth')}>›</button>
+                  <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m - 2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium" title={t('liabilities.prevMonth')}>‹</button>
+                  <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value || '')} className="input py-2 text-sm w-36 rounded-lg border-gray-300" aria-label={t('liabilities.period')} />
+                  <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium" title={t('liabilities.nextMonth')}>›</button>
                 </div>
-                <button type="button" onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`) }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60">{t('liabilities.currentMonth')}</button>
-                <button type="button" onClick={() => { setSelectedMonth(''); setDueDateFrom(''); setDueDateTo('') }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">{t('liabilities.allMonths')}</button>
-                {periodLabel && <span className="text-sm font-medium text-gray-700 dark:text-gray-200 ml-1">({t('liabilities.dueIn')} {periodLabel})</span>}
+                <button type="button" onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`) }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200">{t('liabilities.currentMonth')}</button>
+                <button type="button" onClick={() => { setSelectedMonth(''); setDueDateFrom(''); setDueDateTo('') }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('liabilities.allMonths')}</button>
+                {periodLabel && <span className="text-sm font-medium text-gray-700 ml-1">({t('liabilities.dueIn')} {periodLabel})</span>}
               </div>
               <div className="flex flex-wrap items-end gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.category')}</label>
-                  <select className="input py-2 text-sm w-40 rounded-lg border-gray-300 dark:border-gray-600" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}>
+                  <label className="text-xs font-medium text-gray-500">{t('liabilities.category')}</label>
+                  <select className="input py-2 text-sm w-40 rounded-lg border-gray-300" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}>
                     <option value="all">{t('liabilities.filterAllCategories')}</option>
                     <option value="supplier">{t('liabilities.supplier')}</option>
                     {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => (
@@ -612,29 +616,29 @@ function Liabilities() {
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.searchPlaceholder')}</label>
-                  <input type="search" className="input py-2 text-sm w-44 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} />
+                  <label className="text-xs font-medium text-gray-500">{t('common.searchPlaceholder')}</label>
+                  <input type="search" className="input py-2 text-sm w-44 rounded-lg border-gray-300" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} />
                 </div>
-                <div className="h-8 w-px bg-gray-200 dark:bg-gray-600 hidden sm:block" aria-hidden />
+                <div className="h-8 w-px bg-gray-200 hidden sm:block" aria-hidden />
                 <div className="flex flex-wrap items-center gap-4">
-                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors">
                     <input type="checkbox" checked={outstandingOnly} onChange={(e) => { setOutstandingOnly(e.target.checked); setPage(1) }} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{t('liabilities.outstandingOnly')}</span>
+                    <span className="text-sm text-gray-700">{t('liabilities.outstandingOnly')}</span>
                   </label>
-                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors">
                     <input type="checkbox" checked={recurringOnly} onChange={(e) => { setRecurringOnly(e.target.checked); setPage(1) }} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{t('liabilities.recurringOnly')}</span>
+                    <span className="text-sm text-gray-700">{t('liabilities.recurringOnly')}</span>
                   </label>
-                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors">
                     <input type="checkbox" checked={showPaidColumn} onChange={(e) => setShowPaidColumn(e.target.checked)} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{t('liabilities.showPaidColumn')}</span>
+                    <span className="text-sm text-gray-700">{t('liabilities.showPaidColumn')}</span>
                   </label>
                 </div>
               </div>
-              <div className="flex flex-wrap items-end gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-wrap items-end gap-4 pt-2 border-t border-gray-200">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.dueDate')}</label>
-                  <select className="input py-2 text-sm w-40 rounded-lg border-gray-300 dark:border-gray-600" value={dueFilter} onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}>
+                  <label className="text-xs font-medium text-gray-500">{t('liabilities.dueDate')}</label>
+                  <select className="input py-2 text-sm w-40 rounded-lg border-gray-300" value={dueFilter} onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}>
                     <option value="all">{t('liabilities.dueAll')}</option>
                     <option value="overdue">{t('liabilities.dueOverdue')}{overdueCount > 0 ? ` (${overdueCount})` : ''}</option>
                     <option value="due_next_7_days">{t('liabilities.dueNext7Days')}</option>
@@ -643,20 +647,20 @@ function Liabilities() {
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.dueDateRange')}</label>
+                  <label className="text-xs font-medium text-gray-500">{t('liabilities.dueDateRange')}</label>
                   <div className="flex items-center gap-2">
-                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueFrom')} aria-label={t('liabilities.dueFrom')} />
-                    <span className="text-gray-400 dark:text-gray-500 text-sm">–</span>
-                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueTo')} aria-label={t('liabilities.dueTo')} />
+                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueFrom')} aria-label={t('liabilities.dueFrom')} />
+                    <span className="text-gray-400 text-sm">–</span>
+                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueTo')} aria-label={t('liabilities.dueTo')} />
                   </div>
                 </div>
-                <div className="h-8 w-px bg-gray-200 dark:bg-gray-600 hidden sm:block" aria-hidden />
+                <div className="h-8 w-px bg-gray-200 hidden sm:block" aria-hidden />
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('liabilities.remainingRange')} ({currency})</label>
+                  <label className="text-xs font-medium text-gray-500">{t('liabilities.remainingRange')} ({currency})</label>
                   <div className="flex items-center gap-2">
-                    <input type="number" step="0.01" min="0" className="input py-2 text-sm w-28 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('liabilities.min')} value={amountMin} aria-label={t('liabilities.min')} onChange={(e) => { setAmountMin(e.target.value); setPage(1) }} />
-                    <span className="text-gray-400 dark:text-gray-500 text-sm">–</span>
-                    <input type="number" step="0.01" min="0" className="input py-2 text-sm w-28 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('liabilities.maxAmount')} value={amountMax} aria-label={t('liabilities.maxAmount')} onChange={(e) => { setAmountMax(e.target.value); setPage(1) }} />
+                    <input type="number" step="0.01" min="0" className="input py-2 text-sm w-28 rounded-lg border-gray-300" placeholder={t('liabilities.min')} value={amountMin} aria-label={t('liabilities.min')} onChange={(e) => { setAmountMin(e.target.value); setPage(1) }} />
+                    <span className="text-gray-400 text-sm">–</span>
+                    <input type="number" step="0.01" min="0" className="input py-2 text-sm w-28 rounded-lg border-gray-300" placeholder={t('liabilities.maxAmount')} value={amountMax} aria-label={t('liabilities.maxAmount')} onChange={(e) => { setAmountMax(e.target.value); setPage(1) }} />
                   </div>
                 </div>
               </div>
@@ -666,7 +670,7 @@ function Liabilities() {
       </div>
 
       {overdueCount > 0 && (
-        <div className="print:hidden rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-800 dark:text-red-200 font-medium">
+        <div className="print:hidden rounded-lg bg-red-100 border border-red-200 px-3 py-2 text-sm text-red-800 font-medium">
           {overdueCount} {t('liabilities.overdue')}
         </div>
       )}
@@ -679,64 +683,64 @@ function Liabilities() {
         />
       ) : (
         <>
-          <div className="bg-white dark:bg-gray-800 shadow rounded overflow-x-auto overflow-y-visible mt-2">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
-              <thead className="bg-gray-100 dark:bg-gray-700/50 sticky top-0 z-10 shadow-sm">
+          <div className="bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">
+            <table className="min-w-full divide-y divide-gray-200 text-xs">
+              <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 whitespace-nowrap rtl-flip">
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-28 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('category')} className="flex items-center gap-0.5 hover:underline">
                       {t('liabilities.category')} {sortBy === 'category' && (sortAsc ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
                     </button>
                   </th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase min-w-[100px] rtl-flip">
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase min-w-[100px] rtl-flip">
                     <button type="button" onClick={() => toggleSort('description')} className="flex items-center gap-0.5 hover:underline">
                       {t('liabilities.description')} {sortBy === 'description' && (sortAsc ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
                     </button>
                   </th>
-                  <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('total_amount')} className="hover:underline ml-auto">{t('liabilities.value')} {sortBy === 'total_amount' && (sortAsc ? '↑' : '↓')}</button>
                   </th>
                   {showPaidColumn && (
-                    <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
+                    <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20 whitespace-nowrap rtl-flip">
                       <button type="button" onClick={() => toggleSort('paid_amount')} className="hover:underline ml-auto">{t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? '↑' : '↓')}</button>
                     </th>
                   )}
-                  <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20 whitespace-nowrap rtl-flip">
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('remaining_amount')} className="hover:underline ml-auto">{t('liabilities.remaining')} {sortBy === 'remaining_amount' && (sortAsc ? '↑' : '↓')}</button>
                   </th>
-                  <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-24 whitespace-nowrap rtl-flip">
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-24 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('due_date')} className="hover:underline ml-auto">{t('liabilities.dueDate')} {sortBy === 'due_date' && (sortAsc ? '↑' : '↓')}</button>
                   </th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 whitespace-nowrap rtl-flip print:hidden">
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-28 whitespace-nowrap rtl-flip print:hidden">
                     {t('common.actions')}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedList.map((row) => {
                   const isOverdue = row.due_date && row.due_date < today && parseFloat(row.remaining_amount || 0) > 0
                   const isExpanded = expandedRowId === row.rowId
                   return (
                     <React.Fragment key={row.rowId}>
-                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                        <td className="px-2 py-1 text-gray-900 dark:text-white rtl-flip whitespace-nowrap">
-                          <span className={`inline px-1 py-0.5 rounded text-[10px] font-medium ${row.source === 'supplier' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'}`}>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="px-2 py-1 text-gray-900 rtl-flip whitespace-nowrap">
+                          <span className={`inline px-1 py-0.5 rounded text-[10px] font-medium ${row.source === 'supplier' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-800'}`}>
                             {row.source === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(row.category) ? t('liabilities.categoryOption_' + (row.category || 'other')) : (row.category || t('liabilities.categoryOption_other')))}
                           </span>
-                          {row.source === 'liability' && row.recurring && <span className="ml-0.5 text-blue-600 dark:text-blue-400" title={t('liabilities.recurring')}>↻</span>}
+                          {row.source === 'liability' && row.recurring && <span className="ml-0.5 text-blue-600" title={t('liabilities.recurring')}>↻</span>}
                         </td>
-                        <td className="px-2 py-1 text-gray-700 dark:text-gray-300 rtl-flip max-w-[140px] truncate" title={row.source === 'supplier' ? row.description : (row.description || '–') + (row.notes ? '\n\nNotes: ' + row.notes : '')}>
+                        <td className="px-2 py-1 text-gray-700 rtl-flip max-w-[140px] truncate" title={row.source === 'supplier' ? row.description : (row.description || '–') + (row.notes ? '\n\nNotes: ' + row.notes : '')}>
                           {row.source === 'supplier' ? row.description : (row.description || '–')}
-                          {row.source === 'liability' && row.notes && <span className="ml-0.5 text-gray-400 dark:text-gray-500" title={row.notes}>📝</span>}
+                          {row.source === 'liability' && row.notes && <span className="ml-0.5 text-gray-400" title={row.notes}>📝</span>}
                         </td>
-                        <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 dark:text-white whitespace-nowrap">{formatCurrency(row.total_amount)}</td>
-                        {showPaidColumn && <td className="px-2 py-1 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">{formatCurrency(row.paid_amount)}</td>}
-                        <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 dark:text-red-400 whitespace-nowrap">{formatCurrency(row.remaining_amount)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 whitespace-nowrap">{formatCurrency(row.total_amount)}</td>
+                        {showPaidColumn && <td className="px-2 py-1 text-right tabular-nums text-green-700 whitespace-nowrap">{formatCurrency(row.paid_amount)}</td>}
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 whitespace-nowrap">{formatCurrency(row.remaining_amount)}</td>
                         <td className="px-2 py-1 text-right rtl-flip whitespace-nowrap">
                           {row.due_date ? (
-                            <span className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
+                            <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
                               {row.due_date}
-                              {isOverdue && <span className="ml-0.5 text-[10px] bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1 py-0.5 rounded">{t('liabilities.overdue')}</span>}
+                              {isOverdue && <span className="ml-0.5 text-[10px] bg-red-100 text-red-700 px-1 py-0.5 rounded">{t('liabilities.overdue')}</span>}
                             </span>
                           ) : '–'}
                         </td>
@@ -759,12 +763,12 @@ function Liabilities() {
                         {isExpanded && (
                           <tr>
                             <td colSpan={showPaidColumn ? 7 : 6} className="px-2 py-1 align-top rtl-flip">
-                              <div className="payment-detail-row py-1.5 pl-2 pr-1 border-l-4 border-amber-200 bg-amber-50/50 dark:bg-amber-900/10 dark:border-amber-700 rounded-r text-xs">
+                              <div className="payment-detail-row py-1.5 pl-2 pr-1 border-l-4 border-amber-200 bg-amber-50/50 rounded-r text-xs">
                                 <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                                   <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-gray-800 dark:text-white">{t('paymentsBreakdown.payments')}</span>
-                                    <span className="text-green-700 dark:text-green-400">{t('dashboard.paid')}: {formatCurrency(row.paid_amount)}</span>
-                                    <span className="text-red-600 dark:text-red-400">{t('dashboard.remaining')}: {formatCurrency(row.remaining_amount)}</span>
+                                    <span className="font-semibold text-gray-800">{t('paymentsBreakdown.payments')}</span>
+                                    <span className="text-green-700">{t('dashboard.paid')}: {formatCurrency(row.paid_amount)}</span>
+                                    <span className="text-red-600">{t('dashboard.remaining')}: {formatCurrency(row.remaining_amount)}</span>
                                   </div>
                                   {parseFloat(row.remaining_amount || 0) > 0 && (
                                     <button type="button" onClick={() => openPayment(row)} className="px-1.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded text-[10px]">
@@ -775,11 +779,11 @@ function Liabilities() {
                                 {loadingPayments ? (
                                   <p className="text-gray-500 py-1">{t('common.loading')}</p>
                                 ) : paymentsForRow.length === 0 ? (
-                                  <p className="text-gray-500 py-1 text-center border border-dashed border-gray-300 dark:border-gray-600 rounded">{t('liabilities.noPayments')}</p>
+                                  <p className="text-gray-500 py-1 text-center border border-dashed border-gray-300 rounded">{t('liabilities.noPayments')}</p>
                                 ) : (
                                   <div className="space-y-0.5">
                                     {paymentsForRow.map((p) => (
-                                      <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
+                                      <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white rounded border border-gray-200">
                                         <span>{p.payment_date} – {formatCurrency(p.payment_amount)}</span>
                                         <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
                                       </div>
@@ -794,25 +798,25 @@ function Liabilities() {
                     )
                   })}
                 </tbody>
-                <tfoot className="border-t-2 border-amber-200 dark:border-amber-800">
-                <tr className="bg-amber-50 dark:bg-amber-900/20">
+                <tfoot className="border-t-2 border-amber-200">
+                <tr className="bg-amber-50">
                   <td colSpan={showPaidColumn ? 7 : 6} className="px-3 py-2 rtl-flip">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">{t('liabilities.summary')}</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-amber-800">{t('liabilities.summary')}</span>
                   </td>
                 </tr>
-                <tr className="bg-amber-50/80 dark:bg-amber-900/25 font-semibold text-sm">
-                  <td colSpan={2} className="px-3 py-2.5 text-gray-800 dark:text-gray-200 rtl-flip">{t('liabilities.total')}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">{formatCurrency(totalAmountSum)}</td>
-                  {showPaidColumn && <td className="px-3 py-2.5 text-right tabular-nums text-green-700 dark:text-green-400 whitespace-nowrap">{formatCurrency(paidSum)}</td>}
-                  <td className="px-3 py-2.5 text-right tabular-nums text-red-700 dark:text-red-400 whitespace-nowrap">{formatCurrency(remainingSum)}</td>
+                <tr className="bg-amber-50/80 font-semibold text-sm">
+                  <td colSpan={2} className="px-3 py-2.5 text-gray-800 rtl-flip">{t('liabilities.total')}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-900 whitespace-nowrap">{formatCurrency(totalAmountSum)}</td>
+                  {showPaidColumn && <td className="px-3 py-2.5 text-right tabular-nums text-green-700 whitespace-nowrap">{formatCurrency(paidSum)}</td>}
+                  <td className="px-3 py-2.5 text-right tabular-nums text-red-700 whitespace-nowrap">{formatCurrency(remainingSum)}</td>
                   <td colSpan={2} />
                 </tr>
                 {totalsByCategory.length > 1 && totalsByCategory.map((c, idx) => (
-                  <tr key={c.category} className={`text-sm border-t border-gray-200 dark:border-gray-600 ${idx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800/30'}`}>
-                    <td colSpan={2} className="px-3 py-1.5 rtl-flip text-gray-600 dark:text-gray-400">{c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatCurrency(c.total)}</td>
-                    {showPaidColumn && <td className="px-3 py-1.5 text-right tabular-nums text-green-600 dark:text-green-400 whitespace-nowrap">{formatCurrency(c.paid)}</td>}
-                    <td className="px-3 py-1.5 text-right tabular-nums text-red-600 dark:text-red-400 whitespace-nowrap">{formatCurrency(c.remaining)}</td>
+                  <tr key={c.category} className={`text-sm border-t border-gray-200 ${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                    <td colSpan={2} className="px-3 py-1.5 rtl-flip text-gray-600">{c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-gray-700 whitespace-nowrap">{formatCurrency(c.total)}</td>
+                    {showPaidColumn && <td className="px-3 py-1.5 text-right tabular-nums text-green-600 whitespace-nowrap">{formatCurrency(c.paid)}</td>}
+                    <td className="px-3 py-1.5 text-right tabular-nums text-red-600 whitespace-nowrap">{formatCurrency(c.remaining)}</td>
                     <td colSpan={2} />
                   </tr>
                 ))}
@@ -832,8 +836,8 @@ function Liabilities() {
           )}
 
           {chartData.length > 0 && (
-            <div className="flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg shadow p-3 print:hidden mt-2">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('liabilities.remainingByCategory')}</h2>
+            <div className="flex-shrink-0 bg-white rounded-lg shadow p-3 print:hidden mt-2">
+              <h2 className="text-sm font-semibold text-gray-900 mb-2">{t('liabilities.remainingByCategory')}</h2>
               <div className="h-48" dir="ltr">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -904,7 +908,7 @@ function Liabilities() {
               type="number"
               step="0.01"
               min="0"
-              className={`input w-full py-2 text-sm ${formErrors.total_amount ? 'border-red-500 dark:border-red-400' : ''}`}
+              className={`input w-full py-2 text-sm ${formErrors.total_amount ? 'border-red-500' : ''}`}
               value={formData.total_amount}
               onChange={(e) => { setFormData({ ...formData, total_amount: e.target.value }); setFormErrors((p) => ({ ...p, total_amount: undefined })) }}
               required
@@ -912,7 +916,7 @@ function Liabilities() {
               aria-invalid={!!formErrors.total_amount}
               aria-describedby={formErrors.total_amount ? 'liability-total_amount-error' : undefined}
             />
-            {formErrors.total_amount && <p id="liability-total_amount-error" className="text-xs text-red-600 dark:text-red-400 mt-0.5" role="alert">{formErrors.total_amount}</p>}
+            {formErrors.total_amount && <p id="liability-total_amount-error" className="text-xs text-red-600 mt-0.5" role="alert">{formErrors.total_amount}</p>}
           </div>
           <div>
             <label className="label text-xs">{t('liabilities.dueDate')}</label>
@@ -958,13 +962,13 @@ function Liabilities() {
         }
       >
         {paymentLiability && (
-          <div className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 mb-4 border border-gray-200 dark:border-gray-600">
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
+          <div className="bg-gray-100 rounded-lg p-3 mb-4 border border-gray-200">
+            <p className="text-sm font-medium text-gray-900">
               {paymentLiability.source === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(paymentLiability.category) ? t('liabilities.categoryOption_' + (paymentLiability.category || 'other')) : (paymentLiability.category || '–'))}
               {paymentLiability.description && ` – ${paymentLiability.description}`}
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {t('liabilities.remaining')}: <strong className="text-red-600 dark:text-red-400">{formatCurrency(paymentLiability.remaining_amount)}</strong>
+            <p className="text-sm text-gray-600 mt-1">
+              {t('liabilities.remaining')}: <strong className="text-red-600">{formatCurrency(paymentLiability.remaining_amount)}</strong>
             </p>
           </div>
         )}
@@ -977,7 +981,7 @@ function Liabilities() {
                 type="number"
                 step="0.01"
                 min="0.01"
-                className={`input flex-1 min-w-0 py-2 text-sm ${formErrors.payment_amount ? 'border-red-500 dark:border-red-400' : ''}`}
+                className={`input flex-1 min-w-0 py-2 text-sm ${formErrors.payment_amount ? 'border-red-500' : ''}`}
                 value={paymentFormData.payment_amount}
                 onChange={(e) => { setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value }); setFormErrors((p) => ({ ...p, payment_amount: undefined })) }}
                 required
@@ -987,18 +991,18 @@ function Liabilities() {
               />
               {paymentLiability && parseFloat(paymentLiability.remaining_amount || 0) > 0 && (
                 <>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t('common.max')}: {formatCurrency(paymentLiability.remaining_amount)}</span>
+                  <span className="text-xs text-gray-500 whitespace-nowrap">{t('common.max')}: {formatCurrency(paymentLiability.remaining_amount)}</span>
                   <button
                     type="button"
                     onClick={() => setPaymentFormData((prev) => ({ ...prev, payment_amount: String(paymentLiability.remaining_amount ?? '') }))}
-                    className="px-2 py-1.5 text-xs font-medium rounded bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60"
+                    className="px-2 py-1.5 text-xs font-medium rounded bg-amber-100 text-amber-800 hover:bg-amber-200"
                   >
                     {t('liabilities.payFullRemaining')}
                   </button>
                 </>
               )}
             </div>
-            {formErrors.payment_amount && <p id="payment-amount-error" className="text-xs text-red-600 dark:text-red-400 mt-0.5" role="alert">{formErrors.payment_amount}</p>}
+            {formErrors.payment_amount && <p id="payment-amount-error" className="text-xs text-red-600 mt-0.5" role="alert">{formErrors.payment_amount}</p>}
           </div>
           <div>
             <label className="label text-xs" htmlFor="payment-date">{t('liabilities.paymentDate')}</label>
@@ -1010,6 +1014,32 @@ function Liabilities() {
               onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_date: e.target.value })}
               required
               aria-required="true"
+            />
+          </div>
+          <div>
+            <label className="label text-xs" htmlFor="payment-method">{t('common.paymentMethod')}</label>
+            <select
+              id="payment-method"
+              className="input w-full py-2 text-sm"
+              value={paymentFormData.payment_method}
+              onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
+            >
+              <option value="cash">{t('common.paymentMethod_cash')}</option>
+              <option value="bank_transfer">{t('common.paymentMethod_bank_transfer')}</option>
+              <option value="check">{t('common.paymentMethod_check')}</option>
+              <option value="credit_card">{t('common.paymentMethod_credit_card')}</option>
+              <option value="other">{t('common.paymentMethod_other')}</option>
+            </select>
+          </div>
+          <div>
+            <label className="label text-xs" htmlFor="payment-ref">{t('common.referenceNumber')}</label>
+            <input
+              id="payment-ref"
+              type="text"
+              className="input w-full py-2 text-sm"
+              value={paymentFormData.reference_number}
+              onChange={(e) => setPaymentFormData({ ...paymentFormData, reference_number: e.target.value })}
+              placeholder={t('common.referenceNumberPlaceholder')}
             />
           </div>
         </form>

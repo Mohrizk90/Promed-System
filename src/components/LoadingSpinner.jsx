@@ -11,7 +11,7 @@ export default function LoadingSpinner({ size = 'md', className = '' }) {
 
   return (
     <div className={`flex items-center justify-center ${className}`}>
-      <Loader2 className={`animate-spin text-blue-600 dark:text-blue-400 ${sizes[size]}`} />
+      <Loader2 className={`animate-spin text-blue-600 ${sizes[size]}`} />
     </div>
   )
 }
@@ -20,9 +20,9 @@ export default function LoadingSpinner({ size = 'md', className = '' }) {
 export function LoadingOverlay({ message = 'Loading...' }) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-8 flex flex-col items-center gap-4 shadow-xl">
+      <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-xl">
         <LoadingSpinner size="lg" />
-        <p className="text-gray-600 dark:text-gray-300 font-medium">{message}</p>
+        <p className="text-gray-600 font-medium">{message}</p>
       </div>
     </div>
   )

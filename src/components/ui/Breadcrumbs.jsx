@@ -10,6 +10,10 @@ const routeNames = {
     entities: 'Clients & Suppliers',
     liabilities: 'Liabilities & Expenses',
     settings: 'Settings',
+    reports: 'Reports',
+    aging: 'Aging Report',
+    pnl: 'Profit & Loss',
+    products: 'Products & Inventory',
     login: 'Login',
     signup: 'Sign Up',
   },
@@ -20,6 +24,10 @@ const routeNames = {
     entities: 'العملاء والموردون',
     liabilities: 'الالتزامات والمصروفات',
     settings: 'الإعدادات',
+    reports: 'التقارير',
+    aging: 'تقرير الأعمار',
+    pnl: 'الأرباح والخسائر',
+    products: 'المنتجات والمخزون',
     login: 'تسجيل الدخول',
     signup: 'إنشاء حساب',
   },
@@ -42,7 +50,7 @@ export default function Breadcrumbs() {
         <li>
           <Link
             to="/"
-            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            className="flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors"
           >
             <Home size={16} />
             <span className="hidden sm:inline">Home</span>
@@ -58,13 +66,13 @@ export default function Breadcrumbs() {
             <li key={path} className="flex items-center gap-1">
               <ChevronRight size={16} className="text-gray-400 rtl-chevron-flip" />
               {isLast ? (
-                <span className="font-medium text-gray-900 dark:text-gray-100">
+                <span className="font-medium text-gray-900">
                   {name}
                 </span>
               ) : (
                 <Link
                   to={path}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
                 >
                   {name}
                 </Link>

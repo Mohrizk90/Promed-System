@@ -51,6 +51,7 @@ import {
   CreditCard,
   Wallet,
   Receipt,
+  Banknote,
   FileSpreadsheet,
   BarChart3,
   LineChart,
@@ -58,6 +59,7 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
+  ClipboardList,
   
   // UI
   Sun,
@@ -163,6 +165,7 @@ export {
   CreditCard,
   Wallet,
   Receipt,
+  Banknote,
   FileSpreadsheet,
   BarChart3,
   LineChart,
@@ -170,6 +173,7 @@ export {
   TrendingUp,
   TrendingDown,
   Activity,
+  ClipboardList,
   
   // UI
   Sun,
@@ -238,10 +242,10 @@ export function Spinner({ size = 'md', className = '' }) {
 // Icon with tooltip
 export function IconButton({ icon: Icon, label, onClick, className = '', size = 20, disabled = false, variant = 'ghost' }) {
   const variants = {
-    ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-700',
-    primary: 'text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/50',
-    danger: 'text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/50',
-    success: 'text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/50',
+    ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100',
+    primary: 'text-blue-600 hover:text-blue-700 hover:bg-blue-50',
+    danger: 'text-red-600 hover:text-red-700 hover:bg-red-50',
+    success: 'text-green-600 hover:text-green-700 hover:bg-green-50',
   }
   
   return (

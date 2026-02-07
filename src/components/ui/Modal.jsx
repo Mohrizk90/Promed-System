@@ -53,10 +53,10 @@ export default function Modal({
   }
 
   const headerColors = {
-    default: 'bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700',
-    primary: 'bg-blue-600 dark:bg-blue-700 text-white',
-    success: 'bg-green-600 dark:bg-green-700 text-white',
-    danger: 'bg-red-600 dark:bg-red-700 text-white',
+    default: 'bg-white border-b border-gray-200',
+    primary: 'bg-blue-600 text-white',
+    success: 'bg-green-600 text-white',
+    danger: 'bg-red-600 text-white',
   }
 
   return (
@@ -78,7 +78,7 @@ export default function Modal({
           <div className={`modal-header flex items-center justify-between ${headerColors[headerColor]}`}>
             <h2 
               id="modal-title"
-              className={`text-xl font-bold ${headerColor !== 'default' ? '' : 'text-gray-900 dark:text-gray-100'}`}
+              className={`text-xl font-bold ${headerColor !== 'default' ? '' : 'text-gray-900'}`}
             >
               {title}
             </h2>
@@ -88,7 +88,7 @@ export default function Modal({
                 className={`p-1 rounded-lg transition-colors ${
                   headerColor !== 'default' 
                     ? 'text-white/80 hover:text-white hover:bg-white/10' 
-                    : 'text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    : 'text-gray-400 hover:text-gray-500 hover:bg-gray-100'
                 }`}
                 aria-label="Close modal"
               >

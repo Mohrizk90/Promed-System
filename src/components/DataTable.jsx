@@ -120,12 +120,12 @@ export default function DataTable({
     return (
       <div className="table-container">
         <div className="animate-pulse">
-          <div className="h-12 bg-gray-100 dark:bg-gray-700" />
+          <div className="h-12 bg-gray-100" />
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-14 border-b border-gray-200 dark:border-gray-700">
+            <div key={i} className="h-14 border-b border-gray-200">
               <div className="flex items-center gap-4 px-4 py-3">
                 {columns.map((_, j) => (
-                  <div key={j} className="h-4 bg-gray-200 dark:bg-gray-600 rounded flex-1" />
+                  <div key={j} className="h-4 bg-gray-200 rounded flex-1" />
                 ))}
               </div>
             </div>
@@ -155,7 +155,7 @@ export default function DataTable({
                   className="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
                     ${isAllSelected || isSomeSelected 
                       ? 'bg-blue-600 border-blue-600 text-white' 
-                      : 'border-gray-300 dark:border-gray-600 hover:border-blue-500'}"
+                      : 'border-gray-300 hover:border-blue-500'}"
                 >
                   {isAllSelected ? <Check size={14} /> : isSomeSelected ? <Minus size={14} /> : null}
                 </button>
@@ -184,7 +184,7 @@ export default function DataTable({
             {actions && <th className="table-header-cell w-20">Actions</th>}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className="divide-y divide-gray-200">
           {paginatedData.map((row) => {
             const key = row[keyField]
             const isExpanded = expandedRows.has(key)
@@ -193,7 +193,7 @@ export default function DataTable({
               <Fragment key={key}>
                 <tr
                   className={`table-row ${onRowClick ? 'cursor-pointer' : ''} ${
-                    selectedRows.has(key) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                    selectedRows.has(key) ? 'bg-blue-50' : ''
                   }`}
                   onClick={() => onRowClick?.(row)}
                 >
@@ -204,7 +204,7 @@ export default function DataTable({
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                           selectedRows.has(key)
                             ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'border-gray-300 dark:border-gray-600 hover:border-blue-500'
+                            : 'border-gray-300 hover:border-blue-500'
                         }`}
                       >
                         {selectedRows.has(key) && <Check size={14} />}

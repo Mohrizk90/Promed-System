@@ -54,6 +54,7 @@ function TransactionPage({ config }) {
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all') // all, outstanding, paid
   const [filterStatus, setFilterStatus] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const defaultPaymentTerms = localStorage.getItem('defaultPaymentTerms') || 'none'
   const [formData, setFormData] = useState(() => ({
     [entityIdField]: '',
     [entityNameField]: '',
@@ -64,7 +65,10 @@ function TransactionPage({ config }) {
     total_amount: '',
     paid_amount: '0',
     transaction_date: new Date().toISOString().split('T')[0],
-    status: 'not_started'
+    status: 'not_started',
+    invoice_number: '',
+    payment_terms: defaultPaymentTerms,
+    due_date: ''
   }))
   const [entitySuggestions, setEntitySuggestions] = useState([])
   const [productSuggestions, setProductSuggestions] = useState([])
@@ -73,7 +77,9 @@ function TransactionPage({ config }) {
   const [paymentFormData, setPaymentFormData] = useState({
     transaction_id: '',
     payment_amount: '',
-    payment_date: new Date().toISOString().split('T')[0]
+    payment_date: new Date().toISOString().split('T')[0],
+    payment_method: 'cash',
+    reference_number: ''
   })
   const [showCsvImportModal, setShowCsvImportModal] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -81,11 +87,11 @@ function TransactionPage({ config }) {
   const getStatusBadgeClasses = (status) => {
     const s = status || 'not_started'
     const map = {
-      not_started: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
-      invoice: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
-      paused: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
-      paid: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
-      done: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200'
+      not_started: 'bg-gray-100 text-gray-700',
+      invoice: 'bg-blue-100 text-blue-800',
+      paused: 'bg-amber-100 text-amber-800',
+      paid: 'bg-green-100 text-green-800',
+      done: 'bg-purple-100 text-purple-800'
     }
     return map[s] || map.not_started
   }
@@ -394,7 +400,10 @@ function TransactionPage({ config }) {
         paid_amount: parseFloat(formData.paid_amount) || 0,
         remaining_amount: parseFloat(formData.total_amount) - (parseFloat(formData.paid_amount) || 0),
         transaction_date: formData.transaction_date,
-        status: formData.status || 'not_started'
+        status: formData.status || 'not_started',
+        invoice_number: formData.invoice_number || null,
+        payment_terms: formData.payment_terms || 'none',
+        due_date: formData.due_date || null
       }
 
       if (editingTransaction) {
@@ -473,7 +482,10 @@ function TransactionPage({ config }) {
         total_amount: '',
         paid_amount: '0',
         transaction_date: new Date().toISOString().split('T')[0],
-        status: 'not_started'
+        status: 'not_started',
+        invoice_number: '',
+        payment_terms: defaultPaymentTerms,
+        due_date: ''
       })
       await fetchData()
     } catch (err) {
@@ -499,7 +511,10 @@ function TransactionPage({ config }) {
       product_name: transaction.products?.product_name || '',
       product_price: (transaction.unit_price !== undefined && transaction.unit_price !== null)
         ? transaction.unit_price.toString()
-        : (transaction.products?.unit_price !== undefined && transaction.products?.unit_price !== null ? transaction.products.unit_price.toString() : (transaction.quantity ? (parseFloat(transaction.total_amount) / transaction.quantity).toFixed(2) : ''))
+        : (transaction.products?.unit_price !== undefined && transaction.products?.unit_price !== null ? transaction.products.unit_price.toString() : (transaction.quantity ? (parseFloat(transaction.total_amount) / transaction.quantity).toFixed(2) : '')),
+      invoice_number: transaction.invoice_number || '',
+      payment_terms: transaction.payment_terms || 'none',
+      due_date: transaction.due_date || ''
     })
     setShowModal(true)
   }
@@ -580,7 +595,9 @@ function TransactionPage({ config }) {
           transaction_id: transactionId,
           transaction_type: entityType,
           payment_amount: paymentAmount,
-          payment_date: paymentFormData.payment_date
+          payment_date: paymentFormData.payment_date,
+          payment_method: paymentFormData.payment_method || 'cash',
+          reference_number: paymentFormData.reference_number || null
         }])
         .select()
 
@@ -617,7 +634,9 @@ function TransactionPage({ config }) {
       setPaymentFormData({
         transaction_id: '',
         payment_amount: '',
-        payment_date: new Date().toISOString().split('T')[0]
+        payment_date: new Date().toISOString().split('T')[0],
+        payment_method: 'cash',
+        reference_number: ''
       })
       await fetchData()
     } catch (err) {
@@ -906,6 +925,33 @@ function TransactionPage({ config }) {
     }
   }
 
+  const calcDueDate = (txDate, terms) => {
+    if (!txDate || !terms || terms === 'none') return ''
+    const d = new Date(txDate)
+    const daysMap = { cod: 0, net_15: 15, net_30: 30, net_60: 60, net_90: 90 }
+    const days = daysMap[terms]
+    if (days === undefined) return ''
+    d.setDate(d.getDate() + days)
+    return d.toISOString().split('T')[0]
+  }
+
+  const PAYMENT_TERMS_OPTIONS = [
+    { value: 'none', label: t('common.paymentTerms_none') },
+    { value: 'cod', label: t('common.paymentTerms_cod') },
+    { value: 'net_15', label: t('common.paymentTerms_net_15') },
+    { value: 'net_30', label: t('common.paymentTerms_net_30') },
+    { value: 'net_60', label: t('common.paymentTerms_net_60') },
+    { value: 'net_90', label: t('common.paymentTerms_net_90') },
+  ]
+
+  const PAYMENT_METHOD_OPTIONS = [
+    { value: 'cash', label: t('common.paymentMethod_cash') },
+    { value: 'bank_transfer', label: t('common.paymentMethod_bank_transfer') },
+    { value: 'check', label: t('common.paymentMethod_check') },
+    { value: 'credit_card', label: t('common.paymentMethod_credit_card') },
+    { value: 'other', label: t('common.paymentMethod_other') },
+  ]
+
   const resetForm = () => {
     setEditingTransaction(null)
     setFormData({
@@ -918,7 +964,10 @@ function TransactionPage({ config }) {
       total_amount: '',
       paid_amount: '0',
       transaction_date: new Date().toISOString().split('T')[0],
-      status: 'not_started'
+      status: 'not_started',
+      invoice_number: '',
+      payment_terms: defaultPaymentTerms,
+      due_date: ''
     })
     setEntitySuggestions([])
     setProductSuggestions([])
@@ -974,60 +1023,60 @@ function TransactionPage({ config }) {
         </div>
 
         {/* Filters – card layout like Liabilities */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 print:hidden overflow-hidden">
-          <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-              <Filter size={16} className="text-gray-500 dark:text-gray-400" />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 print:hidden overflow-hidden">
+          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Filter size={16} className="text-gray-500" />
               {t('common.filters')}
             </h3>
           </div>
           <div className="p-4 space-y-4">
-            <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t(`${translationKey}.period`) || 'Period'}:</span>
+            <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-gray-200">
+              <span className="text-xs font-medium text-gray-500">{t(`${translationKey}.period`) || 'Period'}:</span>
               <div className="flex items-center gap-1.5">
-                <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m - 2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium" title="Previous month">‹</button>
-                <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" aria-label="Period" />
-                <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium" title="Next month">›</button>
+                <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m - 2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium" title="Previous month">‹</button>
+                <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="input py-2 text-sm w-36 rounded-lg border-gray-300" aria-label="Period" />
+                <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium" title="Next month">›</button>
               </div>
-              <button type="button" onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`) }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:hover:bg-blue-900/60">{t(`${translationKey}.currentMonth`)}</button>
-              <button type="button" onClick={() => setSelectedMonth('')} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">{t(`${translationKey}.allMonths`)}</button>
+              <button type="button" onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`) }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">{t(`${translationKey}.currentMonth`)}</button>
+              <button type="button" onClick={() => setSelectedMonth('')} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t(`${translationKey}.allMonths`)}</button>
               {selectedMonth && (
-                <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors ml-auto sm:ml-0">
+                <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors ml-auto sm:ml-0">
                   <input type="checkbox" checked={includePastRemaining} onChange={(e) => setIncludePastRemaining(e.target.checked)} className="rounded border-gray-400 text-blue-600 focus:ring-blue-500" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Include past</span>
+                  <span className="text-sm text-gray-700">Include past</span>
                 </label>
               )}
             </div>
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.searchPlaceholder')}</label>
-                <input type="search" className="input py-2 text-sm w-44 rounded-lg border-gray-300 dark:border-gray-600" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                <label className="text-xs font-medium text-gray-500">{t('common.searchPlaceholder')}</label>
+                <input type="search" className="input py-2 text-sm w-44 rounded-lg border-gray-300" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t(filterByLabelKey)}</label>
-                <select className="input py-2 text-sm w-44 rounded-lg border-gray-300 dark:border-gray-600" value={filterEntityId} onChange={(e) => setFilterEntityId(e.target.value)}>
+                <label className="text-xs font-medium text-gray-500">{t(filterByLabelKey)}</label>
+                <select className="input py-2 text-sm w-44 rounded-lg border-gray-300" value={filterEntityId} onChange={(e) => setFilterEntityId(e.target.value)}>
                   <option value="">{t(filterByLabelKey)}</option>
                   {entities.map((e) => <option key={e[entityIdField]} value={e[entityIdField]}>{e[entityNameField]}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.filterByProduct')}</label>
-                <select className="input py-2 text-sm w-44 rounded-lg border-gray-300 dark:border-gray-600" value={filterProductId} onChange={(e) => setFilterProductId(e.target.value)}>
+                <label className="text-xs font-medium text-gray-500">{t('common.filterByProduct')}</label>
+                <select className="input py-2 text-sm w-44 rounded-lg border-gray-300" value={filterProductId} onChange={(e) => setFilterProductId(e.target.value)}>
                   <option value="">{t('common.filterByProduct')}</option>
                   {products.map((p) => <option key={p.product_id} value={p.product_id}>{p.product_name}{p.model ? ` (${p.model})` : ''}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.paymentStatus')}</label>
-                <select className="input py-2 text-sm w-40 rounded-lg border-gray-300 dark:border-gray-600" value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)}>
+                <label className="text-xs font-medium text-gray-500">{t('common.paymentStatus')}</label>
+                <select className="input py-2 text-sm w-40 rounded-lg border-gray-300" value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)}>
                   <option value="all">{t('common.paymentStatus')}</option>
                   <option value="outstanding">{t('common.outstanding')}</option>
                   <option value="paid">{t('common.paidInFull')}</option>
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.status')}</label>
-                <select className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                <label className="text-xs font-medium text-gray-500">{t('common.status')}</label>
+                <select className="input py-2 text-sm w-36 rounded-lg border-gray-300" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                   <option value="all">{t('common.all')}</option>
                   {TRANSACTION_STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>{t('common.status_' + s.replace(/-/g, '_'))}</option>
@@ -1035,7 +1084,7 @@ function TransactionPage({ config }) {
                 </select>
               </div>
               {hasActiveFilters && (
-                <button type="button" onClick={clearFilters} className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                <button type="button" onClick={clearFilters} className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg">
                   {t('common.clearFilters')}
                 </button>
               )}
@@ -1052,26 +1101,28 @@ function TransactionPage({ config }) {
       </div>
 
       {/* Table - grows with content, page scrolls */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded overflow-x-auto overflow-y-visible mt-2">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
-            <thead className="bg-gray-100 dark:bg-gray-700/50 sticky top-0 z-10 shadow-sm">
+      <div className="bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">
+        <table className="min-w-full divide-y divide-gray-200 text-xs">
+            <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t(`${translationKey}.date`)}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-[14%] min-w-0">{t(`${translationKey}.${entityLabelKey}`)}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-[14%] min-w-0">{t(`${translationKey}.product`)}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-14">{t(`${translationKey}.quantity`)}</th>
-                <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t(`${translationKey}.unitPrice`)}</th>
-                <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t(`${translationKey}.total`)}</th>
-                <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t(`${translationKey}.paid`)}</th>
-                <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t(`${translationKey}.remaining`)}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-24">{t('common.status')}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 print:hidden">{t(`${translationKey}.actions`)}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20">{t(`${translationKey}.date`)}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20">{t('common.invoiceNumber')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-[14%] min-w-0">{t(`${translationKey}.${entityLabelKey}`)}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-[14%] min-w-0">{t(`${translationKey}.product`)}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-14">{t(`${translationKey}.quantity`)}</th>
+                <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t(`${translationKey}.unitPrice`)}</th>
+                <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t(`${translationKey}.total`)}</th>
+                <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t(`${translationKey}.paid`)}</th>
+                <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t(`${translationKey}.remaining`)}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20">{t('common.dueDate')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-24">{t('common.status')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-28 print:hidden">{t(`${translationKey}.actions`)}</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white divide-y divide-gray-200">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="px-2 py-4 text-center text-gray-500 text-sm">
+                  <td colSpan="12" className="px-2 py-4 text-center text-gray-500 text-sm">
                     {t(`${translationKey}.noTransactions`)}
                   </td>
                 </tr>
@@ -1082,15 +1133,26 @@ function TransactionPage({ config }) {
                 const unitPrice = transaction.unit_price ?? (transaction.quantity ? parseFloat(transaction.total_amount) / transaction.quantity : 0)
                 return (
                   <React.Fragment key={transaction.transaction_id}>
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                      <td className="px-2 py-1 whitespace-nowrap text-gray-900 dark:text-white">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
+                    <tr className="hover:bg-gray-50 transition-colors">
+                      <td className="px-2 py-1 whitespace-nowrap text-gray-900">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-gray-600 text-xs">{transaction.invoice_number || '—'}</td>
                       <td className="table-cell-wrap px-2 py-1 font-medium max-w-[100px] truncate" title={transaction[entityRelationName]?.[entityNameField] || 'N/A'}>{transaction[entityRelationName]?.[entityNameField] || 'N/A'}</td>
-                      <td className="table-cell-wrap px-2 py-1 max-w-[100px] truncate" title={`${transaction.products?.product_name || 'N/A'}${transaction.products?.model ? ` (${transaction.products.model})` : ''}`}>{transaction.products?.product_name || 'N/A'}{transaction.products?.model && <span className="text-gray-500 dark:text-gray-400 ml-0.5">({transaction.products.model})</span>}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-gray-900 dark:text-white">{transaction.quantity}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-gray-900 dark:text-white">{formatCurrency(unitPrice)}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(transaction.total_amount)}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(transaction.paid_amount)}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700 dark:text-red-400">{formatCurrency(transaction.remaining_amount)}</td>
+                      <td className="table-cell-wrap px-2 py-1 max-w-[100px] truncate" title={`${transaction.products?.product_name || 'N/A'}${transaction.products?.model ? ` (${transaction.products.model})` : ''}`}>{transaction.products?.product_name || 'N/A'}{transaction.products?.model && <span className="text-gray-500 ml-0.5">({transaction.products.model})</span>}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-gray-900">{transaction.quantity}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-gray-900">{formatCurrency(unitPrice)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-gray-900">{formatCurrency(transaction.total_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-green-700">{formatCurrency(transaction.paid_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700">{formatCurrency(transaction.remaining_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-gray-600">
+                        {transaction.due_date ? (
+                          <>
+                            <span>{new Date(transaction.due_date).toLocaleDateString()}</span>
+                            {parseFloat(transaction.remaining_amount || 0) > 0 && new Date(transaction.due_date) < new Date() && (
+                              <span className="ml-1 inline-flex items-center px-1 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-semibold">{t('common.overdue')}</span>
+                            )}
+                          </>
+                        ) : '—'}
+                      </td>
                       <td className="px-2 py-1 whitespace-nowrap">
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${getStatusBadgeClasses(transaction.status)}`}>
                           {t('common.status_' + (transaction.status || 'not_started').replace(/-/g, '_'))}
@@ -1113,7 +1175,7 @@ function TransactionPage({ config }) {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan="10" className="px-2 py-0 align-top">
+                        <td colSpan="12" className="px-2 py-0 align-top">
                           <div className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-blue-200 bg-gradient-to-r from-blue-50/80 to-transparent rounded-r mb-1">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -1122,8 +1184,8 @@ function TransactionPage({ config }) {
                                   {t('paymentsBreakdown.payments')}
                                 </h4>
                                 <div className="flex gap-2 text-xs">
-                                  <span className="text-green-700 dark:text-green-400 font-medium">{t('dashboard.paid')}: {formatCurrency(transaction.paid_amount)}</span>
-                                  <span className="text-red-600 dark:text-red-400 font-medium">{t('dashboard.remaining')}: {formatCurrency(transaction.remaining_amount)}</span>
+                                  <span className="text-green-700 font-medium">{t('dashboard.paid')}: {formatCurrency(transaction.paid_amount)}</span>
+                                  <span className="text-red-600 font-medium">{t('dashboard.remaining')}: {formatCurrency(transaction.remaining_amount)}</span>
                                 </div>
                               </div>
                               <button
@@ -1131,7 +1193,9 @@ function TransactionPage({ config }) {
                                   setPaymentFormData({
                                     transaction_id: transaction.transaction_id,
                                     payment_amount: '',
-                                    payment_date: new Date().toISOString().split('T')[0]
+                                    payment_date: new Date().toISOString().split('T')[0],
+                                    payment_method: 'cash',
+                                    reference_number: ''
                                   })
                                   setShowPaymentModal(true)
                                 }}
@@ -1152,8 +1216,16 @@ function TransactionPage({ config }) {
                                         {idx + 1}
                                       </span>
                                       <div>
-                                        <p className="font-semibold text-green-700 dark:text-green-400 text-sm">{formatCurrency(payment.payment_amount)}</p>
-                                        <p className="text-gray-500 text-xs">{new Date(payment.payment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                                        <p className="font-semibold text-green-700 text-sm">{formatCurrency(payment.payment_amount)}</p>
+                                        <p className="text-gray-500 text-xs">
+                                          {new Date(payment.payment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                          {payment.payment_method && payment.payment_method !== 'cash' && (
+                                            <span className="ml-1 inline-flex items-center px-1 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">{t('common.paymentMethod_' + payment.payment_method)}</span>
+                                          )}
+                                          {payment.reference_number && (
+                                            <span className="ml-1 text-gray-400">#{payment.reference_number}</span>
+                                          )}
+                                        </p>
                                       </div>
                                     </div>
                                     <button
@@ -1299,7 +1371,36 @@ function TransactionPage({ config }) {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t(`${translationKey}.transactionDate`)} *</label>
-                  <input type="date" required value={formData.transaction_date} onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
+                  <input type="date" required value={formData.transaction_date} onChange={(e) => {
+                    const newDate = e.target.value
+                    const autodue = formData.payment_terms !== 'none' && !formData.due_date ? calcDueDate(newDate, formData.payment_terms) : formData.due_date
+                    setFormData({ ...formData, transaction_date: newDate, due_date: autodue })
+                  }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.invoiceNumber')}</label>
+                  <input type="text" value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                    placeholder={t('common.invoiceNumberPlaceholder')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.paymentTerms')}</label>
+                  <select value={formData.payment_terms} onChange={(e) => {
+                    const terms = e.target.value
+                    const autodue = calcDueDate(formData.transaction_date, terms)
+                    setFormData({ ...formData, payment_terms: terms, due_date: autodue })
+                  }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {PAYMENT_TERMS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.dueDate')}</label>
+                  <input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -1348,6 +1449,21 @@ function TransactionPage({ config }) {
                     required
                     value={paymentFormData.payment_date}
                     onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.paymentMethod')}</label>
+                  <select value={paymentFormData.payment_method} onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  >
+                    {PAYMENT_METHOD_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.referenceNumber')}</label>
+                  <input type="text" value={paymentFormData.reference_number} onChange={(e) => setPaymentFormData({ ...paymentFormData, reference_number: e.target.value })}
+                    placeholder={t('common.referenceNumberPlaceholder')}
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   />
                 </div>

@@ -72,27 +72,27 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4 pt-safe pb-safe">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 pt-safe pb-safe">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">Promed</h1>
-          <p className="text-gray-600 dark:text-gray-400">Transaction Management System</p>
+          <h1 className="text-4xl font-bold text-blue-600 mb-2">Promed</h1>
+          <p className="text-gray-600">Transaction Management System</p>
         </div>
 
         {/* Form Card */}
         <div className="card p-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             Sign In
           </h2>
 
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center">
+          <p className="text-sm text-gray-500 mb-6 text-center">
             Use the credentials configured in your Supabase project.
           </p>
 
           {showResetForm ? (
             <>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center">
+              <p className="text-sm text-gray-500 mb-6 text-center">
                 Enter your email and we&apos;ll send you a link to reset your password.
               </p>
               <form onSubmit={handleResetPassword} className="space-y-5">
@@ -113,11 +113,11 @@ export default function Login() {
                   {loading ? <Spinner size="sm" /> : 'Send reset link'}
                 </button>
                 {resetSent && (
-                  <p className="text-sm text-green-600 dark:text-green-400 text-center">Check your email and then <button type="button" onClick={() => { setShowResetForm(false); setResetSent(false) }} className="underline">back to sign in</button>.</p>
+                  <p className="text-sm text-green-600 text-center">Check your email and then <button type="button" onClick={() => { setShowResetForm(false); setResetSent(false) }} className="underline">back to sign in</button>.</p>
                 )}
               </form>
               {!resetSent && (
-                <button type="button" onClick={() => setShowResetForm(false)} className="mt-4 w-full text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-400">
+                <button type="button" onClick={() => setShowResetForm(false)} className="mt-4 w-full text-sm text-gray-500 hover:text-gray-700">
                   Back to sign in
                 </button>
               )}
@@ -157,7 +157,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -165,7 +165,7 @@ export default function Login() {
               {errors.password && (
                 <p className="mt-1 text-sm text-red-500">{errors.password}</p>
               )}
-              <button type="button" onClick={() => setShowResetForm(true)} className="mt-1 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+              <button type="button" onClick={() => setShowResetForm(true)} className="mt-1 text-sm text-blue-600 hover:underline">
                 Forgot password?
               </button>
             </div>

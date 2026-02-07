@@ -47,10 +47,10 @@ export default function Pagination({
   if (totalPages <= 1 && !showPageSize && !showInfo) return null
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-white border-t border-gray-200">
       {/* Info */}
       {showInfo && totalItems > 0 && (
-        <div className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="text-sm text-gray-600">
           Showing <span className="font-medium">{startItem}</span> to{' '}
           <span className="font-medium">{endItem}</span> of{' '}
           <span className="font-medium">{totalItems}</span> results
@@ -61,11 +61,11 @@ export default function Pagination({
         {/* Page size selector */}
         {showPageSize && (
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 dark:text-gray-400">Show:</label>
+            <label className="text-sm text-gray-600">Show:</label>
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-1 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500"
             >
               {pageSizeOptions.map((size) => (
                 <option key={size} value={size}>
@@ -83,7 +83,7 @@ export default function Pagination({
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               aria-label="Previous page"
             >
               <ChevronLeft size={18} />
@@ -103,7 +103,7 @@ export default function Pagination({
                     className={`min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
                       currentPage === page
                         ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+                        : 'text-gray-600 hover:bg-gray-100'
                     }`}
                     aria-current={currentPage === page ? 'page' : undefined}
                   >
@@ -114,7 +114,7 @@ export default function Pagination({
             </div>
 
             {/* Mobile page indicator */}
-            <span className="sm:hidden px-3 text-sm text-gray-600 dark:text-gray-400">
+            <span className="sm:hidden px-3 text-sm text-gray-600">
               {currentPage} / {totalPages}
             </span>
 
@@ -122,7 +122,7 @@ export default function Pagination({
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               aria-label="Next page"
             >
               <ChevronRight size={18} />
