@@ -16,6 +16,7 @@ import {
 } from './ui/Icons'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useLanguage } from '../context/LanguageContext'
+import packageJson from '../../package.json'
 import { useAuth } from '../context/AuthContext'
 import { useKeyboardShortcuts } from '../context/KeyboardShortcutsContext'
 
@@ -153,6 +154,9 @@ export default function Sidebar({ mobileOpen, onClose }) {
               </div>
             </>
           )}
+        </div>
+        <div className="px-3 py-1.5 text-center">
+          <span className="text-[10px] text-blue-200/80 font-medium">v{packageJson.version}</span>
         </div>
       </div>
     </>
