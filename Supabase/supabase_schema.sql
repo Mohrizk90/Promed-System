@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.client_transactions (
     paid_amount NUMERIC DEFAULT 0 CHECK (paid_amount >= 0),
     remaining_amount NUMERIC NOT NULL CHECK (remaining_amount >= 0),
     transaction_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'invoice', 'paused', 'paid', 'done')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT client_transactions_amounts_check 
@@ -78,6 +79,7 @@ CREATE TABLE IF NOT EXISTS public.supplier_transactions (
     paid_amount NUMERIC DEFAULT 0 CHECK (paid_amount >= 0),
     remaining_amount NUMERIC NOT NULL CHECK (remaining_amount >= 0),
     transaction_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'invoice', 'paused', 'paid', 'done')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT supplier_transactions_amounts_check 

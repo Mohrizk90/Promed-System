@@ -31,6 +31,7 @@ function SupplierTransactions() {
   const [filterSupplierId, setFilterSupplierId] = useState('')
   const [filterProductId, setFilterProductId] = useState('')
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [formData, setFormData] = useState({
     supplier_id: '',
@@ -41,7 +42,8 @@ function SupplierTransactions() {
     quantity: '',
     total_amount: '',
     paid_amount: '0',
-    transaction_date: new Date().toISOString().split('T')[0]
+    transaction_date: new Date().toISOString().split('T')[0],
+    status: 'not_started'
   })
   const [supplierSuggestions, setSupplierSuggestions] = useState([])
   const [productSuggestions, setProductSuggestions] = useState([])
@@ -55,6 +57,7 @@ function SupplierTransactions() {
   const [searchParams, setSearchParams] = useSearchParams()
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
   const ROUTE_KEY = 'supplierTransactions'
+  const TRANSACTION_STATUS_OPTIONS = ['not_started', 'invoice', 'paused', 'paid', 'done']
 
   useEffect(() => {
     if (searchParams.has('pageSize')) return
@@ -363,7 +366,8 @@ function SupplierTransactions() {
         total_amount: parseFloat(formData.total_amount),
         paid_amount: parseFloat(formData.paid_amount) || 0,
         remaining_amount: parseFloat(formData.total_amount) - (parseFloat(formData.paid_amount) || 0),
-        transaction_date: formData.transaction_date
+        transaction_date: formData.transaction_date,
+        status: formData.status || 'not_started'
       }
 
       if (editingTransaction) {
@@ -450,7 +454,8 @@ function SupplierTransactions() {
         quantity: '',
         total_amount: '',
         paid_amount: '0',
-        transaction_date: new Date().toISOString().split('T')[0]
+        transaction_date: new Date().toISOString().split('T')[0],
+        status: 'not_started'
       })
       await fetchData()
     } catch (err) {
@@ -474,7 +479,8 @@ function SupplierTransactions() {
       quantity: transaction.quantity.toString(),
       total_amount: transaction.total_amount.toString(),
       paid_amount: transaction.paid_amount.toString(),
-      transaction_date: transaction.transaction_date
+      transaction_date: transaction.transaction_date,
+      status: transaction.status || 'not_started'
     })
     setShowModal(true)
   }
@@ -691,6 +697,10 @@ function SupplierTransactions() {
       result = result.filter(t => parseFloat(t.remaining_amount || 0) === 0)
     }
 
+    if (filterStatus && filterStatus !== 'all') {
+      result = result.filter(t => (t.status || 'not_started') === filterStatus)
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
       result = result.filter(t => {
@@ -704,11 +714,12 @@ function SupplierTransactions() {
     return result
   }
 
-  const hasActiveFilters = filterSupplierId || filterProductId || filterPaymentStatus !== 'all' || searchQuery.trim()
+  const hasActiveFilters = filterSupplierId || filterProductId || filterPaymentStatus !== 'all' || filterStatus !== 'all' || searchQuery.trim()
   const clearFilters = () => {
     setFilterSupplierId('')
     setFilterProductId('')
     setFilterPaymentStatus('all')
+    setFilterStatus('all')
     setSearchQuery('')
   }
 
@@ -723,7 +734,7 @@ function SupplierTransactions() {
 
   const prevFiltersRef = React.useRef(null)
   useEffect(() => {
-    const key = `${filterSupplierId}|${filterProductId}|${filterPaymentStatus}|${searchQuery}|${selectedMonth}|${includePastRemaining}`
+    const key = `${filterSupplierId}|${filterProductId}|${filterPaymentStatus}|${filterStatus}|${searchQuery}|${selectedMonth}|${includePastRemaining}`
     if (prevFiltersRef.current !== null && prevFiltersRef.current !== key) {
       setSearchParams((prev) => {
         const p = new URLSearchParams(prev)
@@ -732,7 +743,7 @@ function SupplierTransactions() {
       })
     }
     prevFiltersRef.current = key
-  }, [filterSupplierId, filterProductId, filterPaymentStatus, searchQuery, selectedMonth, includePastRemaining])
+  }, [filterSupplierId, filterProductId, filterPaymentStatus, filterStatus, searchQuery, selectedMonth, includePastRemaining])
 
   const getPastRemainingTotal = () => {
     if (!selectedMonth || !includePastRemaining) return 0
@@ -761,7 +772,8 @@ function SupplierTransactions() {
       [t('supplierTransactions.unitPrice')]: tx.unit_price ?? (tx.quantity ? parseFloat(tx.total_amount) / tx.quantity : ''),
       [t('supplierTransactions.totalAmount')]: tx.total_amount,
       [t('supplierTransactions.paidAmount')]: tx.paid_amount,
-      [t('supplierTransactions.remainingAmount')]: tx.remaining_amount
+      [t('supplierTransactions.remainingAmount')]: tx.remaining_amount,
+      [t('common.status')]: t('common.status_' + (tx.status || 'not_started').replace(/-/g, '_'))
     }))
 
     downloadCsv('supplier-transactions.csv', rows)
@@ -821,7 +833,8 @@ function SupplierTransactions() {
       quantity: '',
       total_amount: '',
       paid_amount: '0',
-      transaction_date: new Date().toISOString().split('T')[0]
+      transaction_date: new Date().toISOString().split('T')[0],
+      status: 'not_started'
     })
     setSupplierSuggestions([])
     setProductSuggestions([])
@@ -920,6 +933,15 @@ function SupplierTransactions() {
                   <option value="paid">{t('common.paidInFull')}</option>
                 </select>
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.status')}</label>
+                <select className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="all">{t('common.all')}</option>
+                  {TRANSACTION_STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{t('common.status_' + s.replace(/-/g, '_'))}</option>
+                  ))}
+                </select>
+              </div>
               {hasActiveFilters && (
                 <button type="button" onClick={clearFilters} className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                   {t('common.clearFilters')}
@@ -948,13 +970,14 @@ function SupplierTransactions() {
                 <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('supplierTransactions.total')}</th>
                 <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('supplierTransactions.paid')}</th>
                 <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('supplierTransactions.remaining')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-24">{t('common.status')}</th>
                 <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 print:hidden">{t('supplierTransactions.actions')}</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-2 py-4 text-center text-gray-500 text-sm">
+                  <td colSpan="10" className="px-2 py-4 text-center text-gray-500 text-sm">
                     {t('supplierTransactions.noTransactions')}
                   </td>
                 </tr>
@@ -974,6 +997,11 @@ function SupplierTransactions() {
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(transaction.total_amount)}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(transaction.paid_amount)}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700 dark:text-red-400">{formatCurrency(transaction.remaining_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                          {t('common.status_' + (transaction.status || 'not_started').replace(/-/g, '_'))}
+                        </span>
+                      </td>
                       <td className="px-2 py-1 rtl-flip print:hidden whitespace-nowrap">
                         <Dropdown
                           trigger={<MoreVertical size={20} />}
@@ -990,7 +1018,7 @@ function SupplierTransactions() {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan="9" className="px-2 py-0 align-top">
+                        <td colSpan="10" className="px-2 py-0 align-top">
                           <div className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-purple-200 bg-gradient-to-r from-purple-50/80 to-transparent rounded-r mb-1">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -1128,6 +1156,14 @@ function SupplierTransactions() {
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('supplierTransactions.transactionDate')} *</label>
                   <input type="date" required value={formData.transaction_date} onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.status')}</label>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    {TRANSACTION_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{t('common.status_' + s.replace(/-/g, '_'))}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="bg-gray-50 px-4 py-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 border-t">

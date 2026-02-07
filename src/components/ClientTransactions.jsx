@@ -31,6 +31,7 @@ function ClientTransactions() {
   const [filterClientId, setFilterClientId] = useState('')
   const [filterProductId, setFilterProductId] = useState('')
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all') // all, outstanding, paid
+  const [filterStatus, setFilterStatus] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [formData, setFormData] = useState({
     client_id: '',
@@ -41,7 +42,8 @@ function ClientTransactions() {
     quantity: '',
     total_amount: '',
     paid_amount: '0',
-    transaction_date: new Date().toISOString().split('T')[0]
+    transaction_date: new Date().toISOString().split('T')[0],
+    status: 'not_started'
   })
   const [clientSuggestions, setClientSuggestions] = useState([])
   const [productSuggestions, setProductSuggestions] = useState([])
@@ -55,6 +57,7 @@ function ClientTransactions() {
   const [searchParams, setSearchParams] = useSearchParams()
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
   const ROUTE_KEY = 'clientTransactions'
+  const TRANSACTION_STATUS_OPTIONS = ['not_started', 'invoice', 'paused', 'paid', 'done']
 
   // Restore from localStorage when URL has no params (e.g. after nav link to "/")
   useEffect(() => {
@@ -360,7 +363,8 @@ function ClientTransactions() {
         total_amount: parseFloat(formData.total_amount),
         paid_amount: parseFloat(formData.paid_amount) || 0,
         remaining_amount: parseFloat(formData.total_amount) - (parseFloat(formData.paid_amount) || 0),
-        transaction_date: formData.transaction_date
+        transaction_date: formData.transaction_date,
+        status: formData.status || 'not_started'
       }
 
       if (editingTransaction) {
@@ -447,7 +451,8 @@ function ClientTransactions() {
         quantity: '',
         total_amount: '',
         paid_amount: '0',
-        transaction_date: new Date().toISOString().split('T')[0]
+        transaction_date: new Date().toISOString().split('T')[0],
+        status: 'not_started'
       })
       await fetchData()
     } catch (err) {
@@ -467,6 +472,7 @@ function ClientTransactions() {
       total_amount: transaction.total_amount.toString(),
       paid_amount: transaction.paid_amount.toString(),
       transaction_date: transaction.transaction_date,
+      status: transaction.status || 'not_started',
       client_name: transaction.clients?.client_name || '',
       product_name: transaction.products?.product_name || '',
       product_price: (transaction.unit_price !== undefined && transaction.unit_price !== null)
@@ -692,6 +698,11 @@ function ClientTransactions() {
       result = result.filter(t => parseFloat(t.remaining_amount || 0) === 0)
     }
 
+    // Status filter
+    if (filterStatus && filterStatus !== 'all') {
+      result = result.filter(t => (t.status || 'not_started') === filterStatus)
+    }
+
     // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
@@ -706,11 +717,12 @@ function ClientTransactions() {
     return result
   }
 
-  const hasActiveFilters = filterClientId || filterProductId || filterPaymentStatus !== 'all' || searchQuery.trim()
+  const hasActiveFilters = filterClientId || filterProductId || filterPaymentStatus !== 'all' || filterStatus !== 'all' || searchQuery.trim()
   const clearFilters = () => {
     setFilterClientId('')
     setFilterProductId('')
     setFilterPaymentStatus('all')
+    setFilterStatus('all')
     setSearchQuery('')
   }
 
@@ -725,7 +737,7 @@ function ClientTransactions() {
 
   const prevFiltersRef = React.useRef(null)
   useEffect(() => {
-    const key = `${filterClientId}|${filterProductId}|${filterPaymentStatus}|${searchQuery}|${selectedMonth}|${includePastRemaining}`
+    const key = `${filterClientId}|${filterProductId}|${filterPaymentStatus}|${filterStatus}|${searchQuery}|${selectedMonth}|${includePastRemaining}`
     if (prevFiltersRef.current !== null && prevFiltersRef.current !== key) {
       setSearchParams((prev) => {
         const p = new URLSearchParams(prev)
@@ -734,7 +746,7 @@ function ClientTransactions() {
       })
     }
     prevFiltersRef.current = key
-  }, [filterClientId, filterProductId, filterPaymentStatus, searchQuery, selectedMonth, includePastRemaining])
+  }, [filterClientId, filterProductId, filterPaymentStatus, filterStatus, searchQuery, selectedMonth, includePastRemaining])
 
   const getPastRemainingTotal = () => {
     if (!selectedMonth || !includePastRemaining) return 0
@@ -763,7 +775,8 @@ function ClientTransactions() {
       [t('clientTransactions.unitPrice')]: tx.unit_price ?? (tx.quantity ? parseFloat(tx.total_amount) / tx.quantity : ''),
       [t('clientTransactions.totalAmount')]: tx.total_amount,
       [t('clientTransactions.paidAmount')]: tx.paid_amount,
-      [t('clientTransactions.remainingAmount')]: tx.remaining_amount
+      [t('clientTransactions.remainingAmount')]: tx.remaining_amount,
+      [t('common.status')]: t('common.status_' + (tx.status || 'not_started').replace(/-/g, '_'))
     }))
 
     downloadCsv('client-transactions.csv', rows)
@@ -928,6 +941,15 @@ function ClientTransactions() {
                   <option value="paid">{t('common.paidInFull')}</option>
                 </select>
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('common.status')}</label>
+                <select className="input py-2 text-sm w-36 rounded-lg border-gray-300 dark:border-gray-600" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="all">{t('common.all')}</option>
+                  {TRANSACTION_STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{t('common.status_' + s.replace(/-/g, '_'))}</option>
+                  ))}
+                </select>
+              </div>
               {hasActiveFilters && (
                 <button type="button" onClick={clearFilters} className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                   {t('common.clearFilters')}
@@ -958,13 +980,14 @@ function ClientTransactions() {
                 <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.total')}</th>
                 <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.paid')}</th>
                 <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.remaining')}</th>
+                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-24">{t('common.status')}</th>
                 <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 print:hidden">{t('clientTransactions.actions')}</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-2 py-4 text-center text-gray-500 text-sm">
+                  <td colSpan="10" className="px-2 py-4 text-center text-gray-500 text-sm">
                     {t('clientTransactions.noTransactions')}
                   </td>
                 </tr>
@@ -984,6 +1007,11 @@ function ClientTransactions() {
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCurrency(transaction.total_amount)}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(transaction.paid_amount)}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700 dark:text-red-400">{formatCurrency(transaction.remaining_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                          {t('common.status_' + (transaction.status || 'not_started').replace(/-/g, '_'))}
+                        </span>
+                      </td>
                       <td className="px-2 py-1 rtl-flip print:hidden whitespace-nowrap">
                         <Dropdown
                           trigger={<MoreVertical size={20} />}
@@ -1000,7 +1028,7 @@ function ClientTransactions() {
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan="9" className="px-2 py-0 align-top">
+                        <td colSpan="10" className="px-2 py-0 align-top">
                           <div className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-blue-200 bg-gradient-to-r from-blue-50/80 to-transparent rounded-r mb-1">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -1189,6 +1217,16 @@ function ClientTransactions() {
                   <input type="date" required value={formData.transaction_date} onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.status')}</label>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {TRANSACTION_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{t('common.status_' + s.replace(/-/g, '_'))}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="bg-gray-50 px-4 py-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 border-t">

@@ -281,7 +281,13 @@ export const translations = {
       signIn: 'Sign In',
       signUp: 'Sign Up',
       profile: 'Profile',
-      keyboard: 'Keyboard Shortcuts'
+      keyboard: 'Keyboard Shortcuts',
+      status: 'Status',
+      status_not_started: 'Not started',
+      status_invoice: 'Invoice',
+      status_paused: 'Paused',
+      status_paid: 'Paid',
+      status_done: 'Done'
     },
     // Auth
     auth: {
@@ -741,7 +747,13 @@ export const translations = {
       signIn: 'تسجيل الدخول',
       signUp: 'إنشاء حساب',
       profile: 'الملف الشخصي',
-      keyboard: 'اختصارات لوحة المفاتيح'
+      keyboard: 'اختصارات لوحة المفاتيح',
+      status: 'الحالة',
+      status_not_started: 'لم يبدأ',
+      status_invoice: 'فاتورة',
+      status_paused: 'متوقف',
+      status_paid: 'مدفوع',
+      status_done: 'منتهي'
     },
     // Auth
     auth: {
