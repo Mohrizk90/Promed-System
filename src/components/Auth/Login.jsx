@@ -76,7 +76,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-600 mb-2">Promed</h1>
+          <img src="/Logo_Promed.png" alt="Promed" className="h-14 mx-auto mb-3" />
           <p className="text-gray-600">Transaction Management System</p>
         </div>
 

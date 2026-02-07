@@ -1165,7 +1165,7 @@ function TransactionPage({ config }) {
                           className="inline-block"
                           items={[
                             { label: t('paymentsBreakdown.payments') + ` (${transactionPayments.length})`, icon: Wallet, onClick: () => toggleRowExpansion(transaction.transaction_id) },
-                            { label: (translationKey === 'clientTransactions' ? (t('clientTransactions.invoice') || 'Generate Invoice') : (t('supplierTransactions.invoice') || 'Generate Invoice')), icon: FileText, onClick: () => { try { generateInvoice(transaction, { currency, language }); success(t('common.saved') || 'Invoice generated') } catch (e) { showError(e?.message || 'Failed to generate invoice') } } },
+                            { label: (translationKey === 'clientTransactions' ? (t('clientTransactions.invoice') || 'Generate Invoice') : (t('supplierTransactions.invoice') || 'Generate Invoice')) + ` (${t('common.beta')})`, icon: FileText, onClick: async () => { try { await generateInvoice(transaction, { currency, language, payments: transactionPayments }); success(t('common.saved') || 'Invoice generated') } catch (e) { showError(e?.message || 'Failed to generate invoice') } } },
                             { divider: true },
                             { label: t(`${translationKey}.edit`), icon: EditIcon, onClick: () => handleEdit(transaction) },
                             { label: t(`${translationKey}.delete`), icon: Trash2, danger: true, onClick: () => handleDelete(transaction.transaction_id) }

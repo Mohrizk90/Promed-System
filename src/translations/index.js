@@ -313,7 +313,8 @@ export const translations = {
       paymentMethod_other: 'Other',
       referenceNumber: 'Reference #',
       referenceNumberPlaceholder: 'e.g. check number, transfer ref',
-      saved: 'Saved'
+      saved: 'Saved',
+      beta: 'Beta'
     },
     // Settings
     settings: {
@@ -888,7 +889,8 @@ export const translations = {
       paymentMethod_other: 'أخرى',
       referenceNumber: 'رقم المرجع',
       referenceNumberPlaceholder: 'مثال: رقم الشيك، مرجع التحويل',
-      saved: 'تم الحفظ'
+      saved: 'تم الحفظ',
+      beta: 'بيتا'
     },
     // Settings
     settings: {
