@@ -391,6 +391,11 @@ body {
 }
 
 /* Print styles */
+@page {
+  size: auto;
+  margin: 12mm;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -400,15 +405,31 @@ body {
   html, body {
     overflow: visible !important;
     max-width: none !important;
+    width: 100% !important;
     background: white;
     color: black;
   }
-  #root, .main-scroll-mobile {
+  #root {
+    overflow: visible !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+  .main-scroll-mobile {
     overflow: visible !important;
     max-width: none !important;
   }
-  .overflow-x-auto, .overflow-y-auto {
+  /* Unclip scroll containers and any overflow hidden (critical for RTL) */
+  .overflow-x-auto,
+  .overflow-y-auto,
+  .overflow-hidden,
+  .overflow-x-hidden {
     overflow: visible !important;
+  }
+  /* Main content area: full width so RTL content is not cropped */
+  main {
+    overflow: visible !important;
+    max-width: none !important;
+    width: 100% !important;
   }
 
   body {

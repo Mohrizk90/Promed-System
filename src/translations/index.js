@@ -148,7 +148,8 @@ export const translations = {
       transactionDeleted: 'Transaction deleted successfully!',
       selectMonth: 'Select Month',
       allMonths: 'All Months',
-      currentMonth: 'Current Month'
+      currentMonth: 'Current Month',
+      period: 'Period'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -185,7 +186,8 @@ export const translations = {
       transactionDeleted: 'Transaction deleted successfully!',
       selectMonth: 'Select Month',
       allMonths: 'All Months',
-      currentMonth: 'Current Month'
+      currentMonth: 'Current Month',
+      period: 'Period'
     },
     // Payments Breakdown
     paymentsBreakdown: {
@@ -606,7 +608,8 @@ export const translations = {
       transactionDeleted: 'تم حذف المعاملة بنجاح!',
       selectMonth: 'اختر الشهر',
       allMonths: 'جميع الأشهر',
-      currentMonth: 'الشهر الحالي'
+      currentMonth: 'الشهر الحالي',
+      period: 'الفترة'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -643,7 +646,8 @@ export const translations = {
       transactionDeleted: 'تم حذف المعاملة بنجاح!',
       selectMonth: 'اختر الشهر',
       allMonths: 'جميع الأشهر',
-      currentMonth: 'الشهر الحالي'
+      currentMonth: 'الشهر الحالي',
+      period: 'الفترة'
     },
     // Payments Breakdown
     paymentsBreakdown: {
