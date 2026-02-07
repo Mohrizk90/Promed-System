@@ -954,10 +954,10 @@ function ClientTransactions() {
                 <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-[14%] min-w-0">{t('clientTransactions.client')}</th>
                 <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-[14%] min-w-0">{t('clientTransactions.product')}</th>
                 <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-14">{t('clientTransactions.quantity')}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.unitPrice')}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.total')}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.paid')}</th>
-                <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.remaining')}</th>
+                <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.unitPrice')}</th>
+                <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.total')}</th>
+                <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.paid')}</th>
+                <th className="px-2 py-1 text-right font-semibold text-gray-700 dark:text-gray-200 uppercase w-20">{t('clientTransactions.remaining')}</th>
                 <th className="px-2 py-1 text-left font-semibold text-gray-700 dark:text-gray-200 uppercase w-28 print:hidden">{t('clientTransactions.actions')}</th>
               </tr>
             </thead>
