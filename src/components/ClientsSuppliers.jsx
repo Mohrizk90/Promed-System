@@ -482,8 +482,8 @@ function ClientsSuppliers() {
   // —— Clients page ——
   if (currentView === 'clients') {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <button
             type="button"
             onClick={() => navigate('/entities')}
@@ -495,44 +495,44 @@ function ClientsSuppliers() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12"><LoadingSpinner /></div>
+          <div className="flex justify-center py-8"><LoadingSpinner /></div>
         ) : (
-          <section className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <User size={20} className="text-blue-600" />
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <User size={18} className="text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-800">{t('entities.clientsSection')}</h2>
+                  <h2 className="text-base font-semibold text-gray-800">{t('entities.clientsSection')}</h2>
                   <span className="text-xs text-gray-500">{filteredClients.length} {filteredClients.length === 1 ? 'client' : 'clients'}</span>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 print:hidden">
-                <button type="button" onClick={() => window.print()} disabled={filteredClients.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                  <Printer size={16} />
+              <div className="flex flex-wrap items-center gap-1.5 print:hidden">
+                <button type="button" onClick={() => window.print()} disabled={filteredClients.length === 0} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                  <Printer size={14} />
                   {t('common.print')}
                 </button>
-                <button type="button" onClick={handleExportClientsCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                  <Download size={16} />
+                <button type="button" onClick={handleExportClientsCsv} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                  <Download size={14} />
                   {t('common.exportCsv')}
                 </button>
-                <button type="button" onClick={openAddClientModal} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                  <Plus size={16} />
+                <button type="button" onClick={openAddClientModal} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                  <Plus size={14} />
                   {t('entities.addClient')}
                 </button>
               </div>
             </div>
 
-            <div className="p-5">
-              <div className="relative mb-4">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <div className="p-3">
+              <div className="relative mb-3">
+                <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 <input
                   type="text"
                   placeholder={t('entities.searchPlaceholder')}
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
-                  className="input py-2.5 pl-10 pr-4 text-sm w-full rounded-xl border-gray-300"
+                  className="input py-2 pl-9 pr-3 text-sm w-full rounded-lg border-gray-300"
                 />
               </div>
 
@@ -546,11 +546,11 @@ function ClientsSuppliers() {
                 />
               ) : (
                 <>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {paginatedClients.map((client) => (
                       <div
                         key={client.client_id}
-                        className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+                        className="flex flex-col sm:flex-row sm:items-center gap-2 py-2 px-2.5 rounded-lg border border-gray-200 bg-white hover:border-blue-200 hover:shadow-sm transition-all"
                       >
                         <div
                           className="flex-1 min-w-0 cursor-pointer group"
@@ -560,40 +560,40 @@ function ClientsSuppliers() {
                           onKeyDown={(e) => e.key === 'Enter' && openClientDetail(client)}
                           aria-label={t('entities.viewDetails')}
                         >
-                          <p className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate" title={client.client_name}>
+                          <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate" title={client.client_name}>
                             {client.client_name}
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2" title={client.contact_info || client.address || ''}>
+                          <p className="text-xs text-gray-500 truncate" title={client.contact_info || client.address || ''}>
                             {[client.contact_info, client.address].filter(Boolean).join(' · ') || '—'}
                           </p>
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); openClientDetail(client) }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
                             title={t('entities.viewDetails')}
                           >
-                            <Eye size={16} />
+                            <Eye size={14} />
                             <span className="hidden sm:inline">{t('entities.viewDetails')}</span>
                           </button>
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleClientEditClick(client) }}
-                            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                            className="p-1.5 rounded-md text-gray-600 hover:bg-gray-100 transition-colors"
                             title={t('entities.edit')}
                             aria-label={t('entities.edit')}
                           >
-                            <Edit size={18} />
+                            <Edit size={16} />
                           </button>
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleClientDeleteClick(client) }}
-                            className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                            className="p-1.5 rounded-md text-red-600 hover:bg-red-50 transition-colors"
                             title={t('entities.delete')}
                             aria-label={t('entities.delete')}
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
@@ -706,8 +706,8 @@ function ClientsSuppliers() {
 
   // —— Suppliers page ——
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <button type="button" onClick={() => navigate('/entities')} className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium w-fit">
           <ArrowLeft size={18} />
           {t('entities.title')}
@@ -715,59 +715,59 @@ function ClientsSuppliers() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><LoadingSpinner /></div>
+        <div className="flex justify-center py-8"><LoadingSpinner /></div>
       ) : (
-        <section className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-50 to-white border-b border-gray-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-50 to-white border-b border-gray-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Truck size={20} className="text-purple-600" />
+              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                <Truck size={18} className="text-purple-600" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">{t('entities.suppliersSection')}</h2>
+                <h2 className="text-base font-semibold text-gray-800">{t('entities.suppliersSection')}</h2>
                 <span className="text-xs text-gray-500">{filteredSuppliers.length} {filteredSuppliers.length === 1 ? 'supplier' : 'suppliers'}</span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 print:hidden">
-              <button type="button" onClick={() => window.print()} disabled={filteredSuppliers.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                <Printer size={16} />
+            <div className="flex flex-wrap items-center gap-1.5 print:hidden">
+              <button type="button" onClick={() => window.print()} disabled={filteredSuppliers.length === 0} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                <Printer size={14} />
                 {t('common.print')}
               </button>
-              <button type="button" onClick={handleExportSuppliersCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                <Download size={16} />
+              <button type="button" onClick={handleExportSuppliersCsv} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                <Download size={14} />
                 {t('common.exportCsv')}
               </button>
-              <button type="button" onClick={openAddSupplierModal} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                <Plus size={16} />
+              <button type="button" onClick={openAddSupplierModal} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors">
+                <Plus size={14} />
                 {t('entities.addSupplier')}
               </button>
             </div>
           </div>
 
-          <div className="p-5">
-            <div className="relative mb-4">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <input type="text" placeholder={t('entities.searchPlaceholder')} value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} className="input py-2.5 pl-10 pr-4 text-sm w-full rounded-xl border-gray-300" />
+          <div className="p-3">
+            <div className="relative mb-3">
+              <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input type="text" placeholder={t('entities.searchPlaceholder')} value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} className="input py-2 pl-9 pr-3 text-sm w-full rounded-lg border-gray-300" />
             </div>
 
             {filteredSuppliers.length === 0 ? (
               <EmptyState icon="suppliers" title={suppliers.length === 0 ? t('entities.noSuppliers') : t('entities.noMatchingSuppliers')} description={suppliers.length === 0 ? t('entities.addFirstSupplierHint') : t('entities.tryDifferentSearch')} actionLabel={suppliers.length === 0 ? t('entities.addSupplier') : undefined} onAction={suppliers.length === 0 ? openAddSupplierModal : undefined} />
             ) : (
               <>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {paginatedSuppliers.map((supplier) => (
-                    <div key={supplier.supplier_id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-purple-200 hover:shadow-sm transition-all">
+                    <div key={supplier.supplier_id} className="flex flex-col sm:flex-row sm:items-center gap-2 py-2 px-2.5 rounded-lg border border-gray-200 bg-white hover:border-purple-200 hover:shadow-sm transition-all">
                       <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => openSupplierDetail(supplier)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && openSupplierDetail(supplier)} aria-label={t('entities.viewDetails')}>
-                        <p className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors truncate" title={supplier.supplier_name}>{supplier.supplier_name}</p>
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2" title={supplier.contact_info || supplier.address || ''}>{[supplier.contact_info, supplier.address].filter(Boolean).join(' · ') || '—'}</p>
+                        <p className="text-sm font-semibold text-gray-900 group-hover:text-purple-600 transition-colors truncate" title={supplier.supplier_name}>{supplier.supplier_name}</p>
+                        <p className="text-xs text-gray-500 truncate" title={supplier.contact_info || supplier.address || ''}>{[supplier.contact_info, supplier.address].filter(Boolean).join(' · ') || '—'}</p>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); openSupplierDetail(supplier) }} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors" title={t('entities.viewDetails')}>
-                          <Eye size={16} />
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); openSupplierDetail(supplier) }} className="inline-flex items-center gap-1 px-2 py-1 text-xs text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors" title={t('entities.viewDetails')}>
+                          <Eye size={14} />
                           <span className="hidden sm:inline">{t('entities.viewDetails')}</span>
                         </button>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); handleSupplierEditClick(supplier) }} className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors" title={t('entities.edit')} aria-label={t('entities.edit')}><Edit size={18} /></button>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); handleSupplierDeleteClick(supplier) }} className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title={t('entities.delete')} aria-label={t('entities.delete')}><Trash2 size={18} /></button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleSupplierEditClick(supplier) }} className="p-1.5 rounded-md text-gray-600 hover:bg-gray-100 transition-colors" title={t('entities.edit')} aria-label={t('entities.edit')}><Edit size={16} /></button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleSupplierDeleteClick(supplier) }} className="p-1.5 rounded-md text-red-600 hover:bg-red-50 transition-colors" title={t('entities.delete')} aria-label={t('entities.delete')}><Trash2 size={16} /></button>
                       </div>
                     </div>
                   ))}
