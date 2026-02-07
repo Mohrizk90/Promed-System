@@ -58,6 +58,17 @@ function ClientTransactions() {
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
   const ROUTE_KEY = 'clientTransactions'
   const TRANSACTION_STATUS_OPTIONS = ['not_started', 'invoice', 'paused', 'paid', 'done']
+  const getStatusBadgeClasses = (status) => {
+    const s = status || 'not_started'
+    const map = {
+      not_started: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
+      invoice: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
+      paused: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
+      paid: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
+      done: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200'
+    }
+    return map[s] || map.not_started
+  }
 
   // Restore from localStorage when URL has no params (e.g. after nav link to "/")
   useEffect(() => {
@@ -1008,7 +1019,7 @@ function ClientTransactions() {
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-green-700 dark:text-green-400">{formatCurrency(transaction.paid_amount)}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700 dark:text-red-400">{formatCurrency(transaction.remaining_amount)}</td>
                       <td className="px-2 py-1 whitespace-nowrap">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${getStatusBadgeClasses(transaction.status)}`}>
                           {t('common.status_' + (transaction.status || 'not_started').replace(/-/g, '_'))}
                         </span>
                       </td>
