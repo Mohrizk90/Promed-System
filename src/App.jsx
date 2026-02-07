@@ -50,9 +50,9 @@ function AppShell({ children }) {
     <div className="flex h-full min-h-0 bg-gray-100">
       <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Main content area: offset by sidebar on desktop, full width on mobile */}
-      <div className="flex-1 flex flex-col min-w-0 ms-0 md:ms-[16.5rem]">
+      <div className="flex-1 flex flex-col min-w-0 ms-0 md:ms-60">
         {/* Mobile top bar: hamburger + logo only */}
-        <header className="flex-shrink-0 flex items-center gap-2 h-16 px-3 bg-blue-700 text-white md:hidden border-b border-blue-600">
+        <header className="flex-shrink-0 flex items-center gap-2 h-12 px-3 bg-blue-700 text-white md:hidden border-b border-blue-600">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -63,7 +63,7 @@ function AppShell({ children }) {
           </button>
           <Link to="/dashboard" className="flex items-center" onClick={() => setSidebarOpen(false)}>
             <div className="bg-white rounded-lg px-2 py-1.5">
-              <img src="/Logo_Promed.png" alt="Promed" className="h-12 w-auto object-contain" />
+              <img src="/Logo_Promed.png" alt="Promed" className="h-8 w-auto object-contain" />
             </div>
           </Link>
         </header>
