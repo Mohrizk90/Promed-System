@@ -118,6 +118,7 @@ function AppContent() {
               <Route path="/entities" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
               <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
               <Route path="/entities/suppliers" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
+              <Route path="/entities/employees" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
               <Route path="/liabilities" element={<ProtectedRoute><Liabilities /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="/products" element={<ProtectedRoute><ProductInventory /></ProtectedRoute>} />

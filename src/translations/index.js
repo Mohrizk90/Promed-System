@@ -9,14 +9,27 @@ export const translations = {
       liabilities: 'Liabilities & Expenses',
       paymentsBreakdown: 'Payments Breakdown',
       products: 'Products',
+      inventory: 'Inventory',
       reports: 'Reports'
     },
     // Clients & Suppliers page
     entities: {
       title: 'Clients & Suppliers',
-      subtitle: 'Manage basic information about your clients and suppliers',
+      subtitle: 'Manage clients, suppliers and employees',
       clientsSection: 'Clients',
       suppliersSection: 'Suppliers',
+      employeesSection: 'Employees',
+      salariesData: 'Salaries',
+      addEmployee: 'Add Employee',
+      editingEmployee: 'Edit Employee',
+      noEmployees: 'No employees yet',
+      noMatchingEmployees: 'No matching employees',
+      addFirstEmployeeHint: 'Add your first employee to track info and salaries.',
+      role: 'Role',
+      rolePlaceholder: 'e.g. Manager, Technician',
+      monthlySalary: 'Monthly salary',
+      notes: 'Notes',
+      deleteEmployeeConfirm: 'Are you sure you want to delete this employee?',
       name: 'Name',
       contactInfo: 'Contact Info',
       address: 'Address',
@@ -377,12 +390,17 @@ export const translations = {
       total: 'Total',
       noData: 'No data for this period'
     },
-    // Product Inventory
+    // Inventory (Items + Products)
     inventory: {
-      title: 'Products & Inventory',
-      subtitle: 'Track stock levels, margins and product performance',
+      title: 'Inventory',
+      subtitle: 'Items and products: stock levels, cost and margins',
+      itemsTab: 'Items',
+      productsTab: 'Products',
       productName: 'Product',
       model: 'Model',
+      productCost: 'Product cost',
+      productCostPlaceholder: 'Optional cost per unit',
+      unitPrice: 'Unit price (sell)',
       avgBuyPrice: 'Avg Buy',
       avgSellPrice: 'Avg Sell',
       stockIn: 'Stock In',
@@ -399,7 +417,20 @@ export const translations = {
       products: 'products',
       noProducts: 'No products found',
       outOfStockBadge: 'OUT',
-      lowStockBadge: 'LOW'
+      lowStockBadge: 'LOW',
+      itemsCount: 'Items',
+      itemsValue: 'Items value',
+      addItem: 'Add item',
+      editItem: 'Edit item',
+      editProduct: 'Edit product',
+      itemName: 'Item name',
+      quantity: 'Quantity',
+      unitCost: 'Unit cost',
+      value: 'Value',
+      items: 'items',
+      noItems: 'No items yet',
+      itemAdded: 'Item added',
+      deleteItemConfirm: 'Delete this inventory item?'
     },
     // Auth
     auth: {
@@ -511,14 +542,27 @@ export const translations = {
       liabilities: 'الالتزامات والمصروفات',
       paymentsBreakdown: 'تفاصيل المدفوعات',
       products: 'المنتجات',
+      inventory: 'المخزون',
       reports: 'التقارير'
     },
     // Clients & Suppliers page
     entities: {
       title: 'العملاء والموردون',
-      subtitle: 'إدارة بيانات العملاء والموردين الأساسية',
+      subtitle: 'إدارة العملاء والموردين والموظفين',
       clientsSection: 'العملاء',
       suppliersSection: 'الموردون',
+      employeesSection: 'الموظفون',
+      salariesData: 'المرتبات',
+      addEmployee: 'إضافة موظف',
+      editingEmployee: 'تعديل الموظف',
+      noEmployees: 'لا يوجد موظفون بعد',
+      noMatchingEmployees: 'لا يوجد موظفون مطابقون',
+      addFirstEmployeeHint: 'أضف أول موظف لتتبع البيانات والمرتبات.',
+      role: 'الدور',
+      rolePlaceholder: 'مثال: مدير، فني',
+      monthlySalary: 'المرتب الشهري',
+      notes: 'ملاحظات',
+      deleteEmployeeConfirm: 'هل أنت متأكد من حذف هذا الموظف؟',
       name: 'الاسم',
       contactInfo: 'بيانات التواصل',
       address: 'العنوان',
@@ -955,12 +999,17 @@ export const translations = {
       total: 'الإجمالي',
       noData: 'لا توجد بيانات لهذه الفترة'
     },
-    // Product Inventory
+    // Inventory (Items + Products)
     inventory: {
-      title: 'المنتجات والمخزون',
-      subtitle: 'تتبع مستويات المخزون والهوامش وأداء المنتجات',
+      title: 'المخزون',
+      subtitle: 'العناصر والمنتجات: المستويات والتكلفة والهوامش',
+      itemsTab: 'العناصر',
+      productsTab: 'المنتجات',
       productName: 'المنتج',
       model: 'الموديل',
+      productCost: 'تكلفة المنتج',
+      productCostPlaceholder: 'اختياري لكل وحدة',
+      unitPrice: 'سعر الوحدة (بيع)',
       avgBuyPrice: 'متوسط الشراء',
       avgSellPrice: 'متوسط البيع',
       stockIn: 'الوارد',
@@ -977,7 +1026,20 @@ export const translations = {
       products: 'منتج',
       noProducts: 'لا توجد منتجات',
       outOfStockBadge: 'نفذ',
-      lowStockBadge: 'منخفض'
+      lowStockBadge: 'منخفض',
+      itemsCount: 'العناصر',
+      itemsValue: 'قيمة العناصر',
+      addItem: 'إضافة عنصر',
+      editItem: 'تعديل العنصر',
+      editProduct: 'تعديل المنتج',
+      itemName: 'اسم العنصر',
+      quantity: 'الكمية',
+      unitCost: 'التكلفة للوحدة',
+      value: 'القيمة',
+      items: 'عنصر',
+      noItems: 'لا توجد عناصر بعد',
+      itemAdded: 'تمت إضافة العنصر',
+      deleteItemConfirm: 'حذف هذا العنصر من المخزون؟'
     },
     // Auth
     auth: {

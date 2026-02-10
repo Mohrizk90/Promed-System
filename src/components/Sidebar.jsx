@@ -40,7 +40,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/suppliers', label: t('nav.supplierTransactions'), icon: Truck, shortcut: 's', color: 'violet' },
     { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e', color: 'emerald' },
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
-    { path: '/products', label: t('nav.products'), icon: Package, shortcut: 'p', color: 'teal', beta: true },
+    { path: '/products', label: t('nav.inventory'), icon: Package, shortcut: 'p', color: 'teal', beta: true },
     { path: '/reports/aging', label: t('nav.reports'), icon: PieChart, shortcut: 'r', color: 'rose', beta: true },
   ]
 

@@ -8,7 +8,7 @@ import Pagination from './ui/Pagination'
 import EmptyState from './ui/EmptyState'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Modal from './ui/Modal'
-import { User, Truck, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft, Printer } from './ui/Icons'
+import { User, Truck, UserPlus, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft, Printer, DollarSign } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 
@@ -21,32 +21,40 @@ const matchSearch = (text, query) => {
 function ClientsSuppliers() {
   const [clients, setClients] = useState([])
   const [suppliers, setSuppliers] = useState([])
+  const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
 
   const [editingClient, setEditingClient] = useState(null)
   const [editingSupplier, setEditingSupplier] = useState(null)
+  const [editingEmployee, setEditingEmployee] = useState(null)
 
   const [clientForm, setClientForm] = useState({ client_name: '', contact_info: '', address: '' })
   const [supplierForm, setSupplierForm] = useState({ supplier_name: '', contact_info: '', address: '' })
+  const [employeeForm, setEmployeeForm] = useState({ name: '', contact_info: '', role: '', monthly_salary: '', notes: '' })
 
   const [clientSearch, setClientSearch] = useState('')
   const [supplierSearch, setSupplierSearch] = useState('')
+  const [employeeSearch, setEmployeeSearch] = useState('')
 
   const [savingClient, setSavingClient] = useState(false)
   const [savingSupplier, setSavingSupplier] = useState(false)
+  const [savingEmployee, setSavingEmployee] = useState(false)
 
   const [searchParams, setSearchParams] = useSearchParams()
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
   const CLIENT_ROUTE_KEY = 'entities_client'
   const SUPPLIER_ROUTE_KEY = 'entities_supplier'
+  const EMPLOYEE_ROUTE_KEY = 'entities_employee'
 
   useEffect(() => {
-    if (searchParams.has('clientPageSize') && searchParams.has('supplierPageSize')) return
+    if (searchParams.has('clientPageSize') && searchParams.has('supplierPageSize') && searchParams.has('employeePageSize')) return
     const clientPrefs = !searchParams.has('clientPageSize') ? getPaginationPrefs(CLIENT_ROUTE_KEY) : null
     const supplierPrefs = !searchParams.has('supplierPageSize') ? getPaginationPrefs(SUPPLIER_ROUTE_KEY) : null
+    const employeePrefs = !searchParams.has('employeePageSize') ? getPaginationPrefs(EMPLOYEE_ROUTE_KEY) : null
     const needClient = clientPrefs && PAGE_SIZE_OPTIONS.includes(clientPrefs.pageSize)
     const needSupplier = supplierPrefs && PAGE_SIZE_OPTIONS.includes(supplierPrefs.pageSize)
-    if (needClient || needSupplier) {
+    const needEmployee = employeePrefs && PAGE_SIZE_OPTIONS.includes(employeePrefs.pageSize)
+    if (needClient || needSupplier || needEmployee) {
       setSearchParams((prev) => {
         const p = new URLSearchParams(prev)
         if (needClient) {
@@ -56,6 +64,10 @@ function ClientsSuppliers() {
         if (needSupplier) {
           p.set('supplierPage', String(supplierPrefs.page))
           p.set('supplierPageSize', String(supplierPrefs.pageSize))
+        }
+        if (needEmployee) {
+          p.set('employeePage', String(employeePrefs.page))
+          p.set('employeePageSize', String(employeePrefs.pageSize))
         }
         return p
       })
@@ -68,6 +80,10 @@ function ClientsSuppliers() {
   const supplierPage = Math.max(1, parseInt(searchParams.get('supplierPage'), 10) || 1)
   const supplierPageSizeParam = searchParams.get('supplierPageSize')
   const supplierPageSize = PAGE_SIZE_OPTIONS.includes(Number(supplierPageSizeParam)) ? Number(supplierPageSizeParam) : 10
+  const EMPLOYEE_ROUTE_KEY = 'entities_employee'
+  const employeePage = Math.max(1, parseInt(searchParams.get('employeePage'), 10) || 1)
+  const employeePageSizeParam = searchParams.get('employeePageSize')
+  const employeePageSize = PAGE_SIZE_OPTIONS.includes(Number(employeePageSizeParam)) ? Number(employeePageSizeParam) : 10
 
   const setClientPage = (page) => {
     setSearchParams((prev) => {
@@ -103,6 +119,23 @@ function ClientsSuppliers() {
     })
     setPaginationPrefs(SUPPLIER_ROUTE_KEY, { page: 1, pageSize: size })
   }
+  const setEmployeePage = (page) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('employeePage', String(page))
+      return p
+    })
+    setPaginationPrefs(EMPLOYEE_ROUTE_KEY, { page, pageSize: employeePageSize })
+  }
+  const setEmployeePageSizeAndReset = (size) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.set('employeePageSize', String(size))
+      p.set('employeePage', '1')
+      return p
+    })
+    setPaginationPrefs(EMPLOYEE_ROUTE_KEY, { page: 1, pageSize: size })
+  }
 
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -113,11 +146,12 @@ function ClientsSuppliers() {
 
   const [showClientFormModal, setShowClientFormModal] = useState(false)
   const [showSupplierFormModal, setShowSupplierFormModal] = useState(false)
+  const [showEmployeeFormModal, setShowEmployeeFormModal] = useState(false)
 
   const location = useLocation()
   const navigate = useNavigate()
   const pathname = location.pathname
-  const currentView = pathname === '/entities/clients' ? 'clients' : pathname === '/entities/suppliers' ? 'suppliers' : 'choice'
+  const currentView = pathname === '/entities/clients' ? 'clients' : pathname === '/entities/suppliers' ? 'suppliers' : pathname === '/entities/employees' ? 'employees' : 'choice'
 
   const { success, error: showError } = useToast()
   const { t, language } = useLanguage()
@@ -143,6 +177,16 @@ function ClientsSuppliers() {
     )
   }, [suppliers, supplierSearch])
 
+  const filteredEmployees = useMemo(() => {
+    if (!employeeSearch.trim()) return employees
+    return employees.filter(
+      (e) =>
+        matchSearch(e.name, employeeSearch) ||
+        matchSearch(e.contact_info, employeeSearch) ||
+        matchSearch(e.role, employeeSearch)
+    )
+  }, [employees, employeeSearch])
+
   const clientTotalPages = Math.max(1, Math.ceil(filteredClients.length / clientPageSize))
   const effectiveClientPage = Math.min(clientPage, clientTotalPages)
   const paginatedClients = useMemo(() => {
@@ -156,6 +200,13 @@ function ClientsSuppliers() {
     const start = (effectiveSupplierPage - 1) * supplierPageSize
     return filteredSuppliers.slice(start, start + supplierPageSize)
   }, [filteredSuppliers, effectiveSupplierPage, supplierPageSize])
+
+  const employeeTotalPages = Math.max(1, Math.ceil(filteredEmployees.length / employeePageSize))
+  const effectiveEmployeePage = Math.min(employeePage, employeeTotalPages)
+  const paginatedEmployees = useMemo(() => {
+    const start = (effectiveEmployeePage - 1) * employeePageSize
+    return filteredEmployees.slice(start, start + employeePageSize)
+  }, [filteredEmployees, effectiveEmployeePage, employeePageSize])
 
   useEffect(() => {
     fetchData()
@@ -206,9 +257,10 @@ function ClientsSuppliers() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [clientsResult, suppliersResult] = await Promise.all([
+      const [clientsResult, suppliersResult, employeesResult] = await Promise.all([
         supabase.from('clients').select('*').order('client_name'),
-        supabase.from('suppliers').select('*').order('supplier_name')
+        supabase.from('suppliers').select('*').order('supplier_name'),
+        supabase.from('employees').select('*').order('name')
       ])
 
       if (clientsResult.error) throw clientsResult.error
@@ -216,9 +268,11 @@ function ClientsSuppliers() {
 
       setClients(clientsResult.data || [])
       setSuppliers(suppliersResult.data || [])
+      setEmployees(employeesResult.error ? [] : (employeesResult.data || []))
     } catch (err) {
       console.error('Error loading entities:', err)
-      showError('Error loading clients and suppliers: ' + err.message)
+      showError('Error loading entities: ' + err.message)
+      setEmployees([])
     } finally {
       setLoading(false)
     }
@@ -236,6 +290,12 @@ function ClientsSuppliers() {
     setShowSupplierFormModal(false)
   }
 
+  const resetEmployeeForm = () => {
+    setEditingEmployee(null)
+    setEmployeeForm({ name: '', contact_info: '', role: '', monthly_salary: '', notes: '' })
+    setShowEmployeeFormModal(false)
+  }
+
   const openAddClientModal = () => {
     setEditingClient(null)
     setClientForm({ client_name: '', contact_info: '', address: '' })
@@ -246,6 +306,12 @@ function ClientsSuppliers() {
     setEditingSupplier(null)
     setSupplierForm({ supplier_name: '', contact_info: '', address: '' })
     setShowSupplierFormModal(true)
+  }
+
+  const openAddEmployeeModal = () => {
+    setEditingEmployee(null)
+    setEmployeeForm({ name: '', contact_info: '', role: '', monthly_salary: '', notes: '' })
+    setShowEmployeeFormModal(true)
   }
 
   const handleClientSubmit = async (e) => {
@@ -352,6 +418,62 @@ function ClientsSuppliers() {
     setShowSupplierFormModal(true)
   }
 
+  const handleEmployeeSubmit = async (e) => {
+    e.preventDefault()
+    if (!employeeForm.name.trim()) return
+    const salary = parseFloat(employeeForm.monthly_salary) || 0
+    if (salary < 0) return
+    try {
+      setSavingEmployee(true)
+      if (editingEmployee) {
+        const { error } = await supabase
+          .from('employees')
+          .update({
+            name: employeeForm.name.trim(),
+            contact_info: employeeForm.contact_info || null,
+            role: employeeForm.role || null,
+            monthly_salary: salary,
+            notes: employeeForm.notes || null
+          })
+          .eq('employee_id', editingEmployee.employee_id)
+        if (error) throw error
+        success(t('entities.save'))
+      } else {
+        const { error } = await supabase
+          .from('employees')
+          .insert([{
+            name: employeeForm.name.trim(),
+            contact_info: employeeForm.contact_info || null,
+            role: employeeForm.role || null,
+            monthly_salary: salary,
+            notes: employeeForm.notes || null
+          }])
+        if (error) throw error
+        success(t('entities.addEmployee'))
+      }
+      resetEmployeeForm()
+      setShowEmployeeFormModal(false)
+      await fetchData()
+    } catch (err) {
+      console.error('Error saving employee:', err)
+      showError('Error saving employee: ' + err.message)
+    } finally {
+      setSavingEmployee(false)
+    }
+  }
+
+  const handleEmployeeEditClick = (emp) => {
+    setEditingEmployee(emp)
+    setEmployeeForm({
+      name: emp.name || '',
+      contact_info: emp.contact_info || '',
+      role: emp.role || '',
+      monthly_salary: emp.monthly_salary != null ? String(emp.monthly_salary) : '',
+      notes: emp.notes || ''
+    })
+    setShowEmployeeFormModal(true)
+  }
+
   useEffect(() => {
     setClientPage(1)
   }, [clientSearch])
@@ -368,8 +490,12 @@ function ClientsSuppliers() {
         const { error } = await supabase.from('clients').delete().eq('client_id', deleteTarget.id)
         if (error) throw error
         success(t('entities.delete'))
-      } else {
+      } else if (deleteTarget.type === 'supplier') {
         const { error } = await supabase.from('suppliers').delete().eq('supplier_id', deleteTarget.id)
+        if (error) throw error
+        success(t('entities.delete'))
+      } else if (deleteTarget.type === 'employee') {
+        const { error } = await supabase.from('employees').delete().eq('employee_id', deleteTarget.id)
         if (error) throw error
         success(t('entities.delete'))
       }
@@ -377,7 +503,8 @@ function ClientsSuppliers() {
       await fetchData()
     } catch (err) {
       console.error('Error deleting:', err)
-      showError(deleteTarget.type === 'client' ? 'Error deleting client: ' + err.message : 'Error deleting supplier: ' + err.message)
+      const msg = deleteTarget.type === 'client' ? 'client' : deleteTarget.type === 'supplier' ? 'supplier' : 'employee'
+      showError(`Error deleting ${msg}: ` + err.message)
     } finally {
       setDeleting(false)
     }
@@ -389,6 +516,10 @@ function ClientsSuppliers() {
 
   const handleSupplierDeleteClick = (supplier) => {
     setDeleteTarget({ type: 'supplier', id: supplier.supplier_id, name: supplier.supplier_name })
+  }
+
+  const handleEmployeeDeleteClick = (emp) => {
+    setDeleteTarget({ type: 'employee', id: emp.employee_id, name: emp.name })
   }
 
   const openClientDetail = (client) => {
@@ -447,7 +578,7 @@ function ClientsSuppliers() {
           <p className="text-gray-600 text-sm mt-1 max-w-xl">{t('entities.subtitle')}</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl">
           <button
             type="button"
             onClick={() => navigate('/entities/clients')}
@@ -472,6 +603,19 @@ function ClientsSuppliers() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900">{t('entities.suppliersSection')}</h2>
               <p className="text-sm text-gray-500 mt-0.5">{t('entities.viewDetails')} & {t('entities.edit')}</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/entities/employees')}
+            className="flex items-center gap-4 p-6 rounded-xl border-2 border-gray-200 bg-white hover:border-amber-300 hover:shadow-md transition-all text-left group"
+          >
+            <div className="w-14 h-14 rounded-xl bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
+              <UserPlus size={28} className="text-amber-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{t('entities.employeesSection')}</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{t('entities.viewDetails')} & {t('entities.salariesData')}</p>
             </div>
           </button>
         </div>
@@ -699,7 +843,147 @@ function ClientsSuppliers() {
           )}
         </Modal>
 
-        <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
+        <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : deleteTarget?.type === 'employee' ? t('entities.deleteEmployeeConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
+
+        {/* Employee add/edit modal */}
+        <Modal isOpen={showEmployeeFormModal} onClose={resetEmployeeForm} title={editingEmployee ? t('entities.editingEmployee') : t('entities.addEmployee')} size="md" footer={
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={resetEmployeeForm} className="btn btn-secondary">{t('entities.cancel')}</button>
+            <button type="submit" form="employee-form" disabled={savingEmployee} className="btn btn-success">{savingEmployee ? t('clientTransactions.saving') : t('entities.save')}</button>
+          </div>
+        }>
+          <form id="employee-form" onSubmit={handleEmployeeSubmit} className="space-y-3">
+            <div>
+              <label className="label text-xs">{t('entities.name')}</label>
+              <input type="text" className="input py-2 text-sm" value={employeeForm.name} onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })} required />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.contactInfo')}</label>
+              <input type="text" className="input py-2 text-sm" value={employeeForm.contact_info} onChange={(e) => setEmployeeForm({ ...employeeForm, contact_info: e.target.value })} />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.role')}</label>
+              <input type="text" className="input py-2 text-sm" value={employeeForm.role} onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.target.value })} placeholder={t('entities.rolePlaceholder')} />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.monthlySalary')}</label>
+              <input type="number" min="0" step="0.01" className="input py-2 text-sm" value={employeeForm.monthly_salary} onChange={(e) => setEmployeeForm({ ...employeeForm, monthly_salary: e.target.value })} placeholder="0" />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.notes')}</label>
+              <textarea className="input py-2 text-sm min-h-[60px]" value={employeeForm.notes} onChange={(e) => setEmployeeForm({ ...employeeForm, notes: e.target.value })} />
+            </div>
+          </form>
+        </Modal>
+      </div>
+    )
+  }
+
+  // —— Employees page ——
+  if (currentView === 'employees') {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <button type="button" onClick={() => navigate('/entities')} className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium w-fit">
+            <ArrowLeft size={18} />
+            {t('entities.title')}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-8"><LoadingSpinner /></div>
+        ) : (
+          <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-amber-50 to-white border-b border-gray-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <UserPlus size={18} className="text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-gray-800">{t('entities.employeesSection')}</h2>
+                  <span className="text-xs text-gray-500">{filteredEmployees.length} {filteredEmployees.length === 1 ? 'employee' : 'employees'}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 print:hidden">
+                <button type="button" onClick={() => window.print()} disabled={filteredEmployees.length === 0} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                  <Printer size={14} />
+                  {t('common.print')}
+                </button>
+                <button type="button" onClick={openAddEmployeeModal} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors">
+                  <Plus size={14} />
+                  {t('entities.addEmployee')}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3">
+              <div className="relative mb-3">
+                <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input type="text" placeholder={t('entities.searchPlaceholder')} value={employeeSearch} onChange={(e) => setEmployeeSearch(e.target.value)} className="input py-2 pl-9 pr-3 text-sm w-full rounded-lg border-gray-300" />
+              </div>
+
+              {filteredEmployees.length === 0 ? (
+                <EmptyState icon="clients" title={employees.length === 0 ? t('entities.noEmployees') : t('entities.noMatchingEmployees')} description={employees.length === 0 ? t('entities.addFirstEmployeeHint') : t('entities.tryDifferentSearch')} actionLabel={employees.length === 0 ? t('entities.addEmployee') : undefined} onAction={employees.length === 0 ? openAddEmployeeModal : undefined} />
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    {paginatedEmployees.map((emp) => (
+                      <div key={emp.employee_id} className="flex flex-col sm:flex-row sm:items-center gap-2 py-2 px-2.5 rounded-lg border border-gray-200 bg-white hover:border-amber-200 hover:shadow-sm transition-all">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate" title={emp.name}>{emp.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{[emp.role, emp.contact_info].filter(Boolean).join(' · ') || '—'}</p>
+                          {emp.monthly_salary != null && Number(emp.monthly_salary) > 0 && (
+                            <p className="text-xs mt-0.5 flex items-center gap-0.5 text-green-700">
+                              <DollarSign size={12} />
+                              {t('entities.monthlySalary')}: {formatCurrency(emp.monthly_salary)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <button type="button" onClick={() => handleEmployeeEditClick(emp)} className="p-1.5 rounded-md text-gray-600 hover:bg-gray-100 transition-colors" title={t('entities.edit')} aria-label={t('entities.edit')}><Edit size={16} /></button>
+                          <button type="button" onClick={() => handleEmployeeDeleteClick(emp)} className="p-1.5 rounded-md text-red-600 hover:bg-red-50 transition-colors" title={t('entities.delete')} aria-label={t('entities.delete')}><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Pagination currentPage={effectiveEmployeePage} totalPages={employeeTotalPages} onPageChange={setEmployeePage} pageSize={employeePageSize} onPageSizeChange={(size) => setEmployeePageSizeAndReset(Number(size))} totalItems={filteredEmployees.length} pageSizeOptions={PAGE_SIZE_OPTIONS} />
+                </>
+              )}
+            </div>
+          </section>
+        )}
+
+        <Modal isOpen={showEmployeeFormModal} onClose={resetEmployeeForm} title={editingEmployee ? t('entities.editingEmployee') : t('entities.addEmployee')} size="md" footer={
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={resetEmployeeForm} className="btn btn-secondary">{t('entities.cancel')}</button>
+            <button type="submit" form="employee-form" disabled={savingEmployee} className="btn btn-success">{savingEmployee ? t('clientTransactions.saving') : t('entities.save')}</button>
+          </div>
+        }>
+          <form id="employee-form" onSubmit={handleEmployeeSubmit} className="space-y-3">
+            <div>
+              <label className="label text-xs">{t('entities.name')}</label>
+              <input type="text" className="input py-2 text-sm" value={employeeForm.name} onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })} required />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.contactInfo')}</label>
+              <input type="text" className="input py-2 text-sm" value={employeeForm.contact_info} onChange={(e) => setEmployeeForm({ ...employeeForm, contact_info: e.target.value })} />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.role')}</label>
+              <input type="text" className="input py-2 text-sm" value={employeeForm.role} onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.target.value })} placeholder={t('entities.rolePlaceholder')} />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.monthlySalary')}</label>
+              <input type="number" min="0" step="0.01" className="input py-2 text-sm" value={employeeForm.monthly_salary} onChange={(e) => setEmployeeForm({ ...employeeForm, monthly_salary: e.target.value })} placeholder="0" />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.notes')}</label>
+              <textarea className="input py-2 text-sm min-h-[60px]" value={employeeForm.notes} onChange={(e) => setEmployeeForm({ ...employeeForm, notes: e.target.value })} />
+            </div>
+          </form>
+        </Modal>
+
+        <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'employee' ? t('entities.deleteEmployeeConfirm') : ''} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
       </div>
     )
   }
