@@ -22,6 +22,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Printer,
+  Package,
 } from './ui/Icons'
 import {
   LineChart,
@@ -310,6 +311,36 @@ function Dashboard() {
     [liabilities]
   )
   const totalLiabilitiesRemaining = metrics.totalSupplierRemaining + totalOtherLiabilitiesRemaining
+
+  // Inventory value (current stock × avg buy price) — displayed only, not included in profit
+  const totalInventoryValue = useMemo(() => {
+    const supplierByProduct = new Map()
+    const clientByProduct = new Map()
+    supplierTransactions.forEach((tx) => {
+      const pid = tx.product_id
+      if (!supplierByProduct.has(pid)) supplierByProduct.set(pid, { qty: 0, total: 0 })
+      const e = supplierByProduct.get(pid)
+      e.qty += Number(tx.quantity) || 0
+      e.total += Number(tx.total_amount) || 0
+    })
+    clientTransactions.forEach((tx) => {
+      const pid = tx.product_id
+      if (!clientByProduct.has(pid)) clientByProduct.set(pid, { qty: 0 })
+      clientByProduct.get(pid).qty += Number(tx.quantity) || 0
+    })
+    let sum = 0
+    const allProductIds = new Set([...supplierByProduct.keys(), ...clientByProduct.keys()])
+    allProductIds.forEach((pid) => {
+      const s = supplierByProduct.get(pid) || { qty: 0, total: 0 }
+      const c = clientByProduct.get(pid) || { qty: 0 }
+      const stockIn = s.qty
+      const stockOut = c.qty
+      const currentStock = stockIn - stockOut
+      const avgBuyPrice = stockIn > 0 ? s.total / stockIn : 0
+      if (currentStock > 0 && avgBuyPrice > 0) sum += currentStock * avgBuyPrice
+    })
+    return sum
+  }, [clientTransactions, supplierTransactions])
 
   // Calculate percentage change
   const calculateChange = (current, previous) => {
@@ -693,6 +724,17 @@ function Dashboard() {
             value={formatCurrency(totalLiabilitiesRemaining)}
             subtitle={t('dashboard.supplierPayablesAndOther')}
             color="red"
+            small
+          />
+        </Link>
+
+        <Link to="/products" className="block transition-opacity hover:opacity-90">
+          <MetricCard
+            title={t('dashboard.inventoryValue')}
+            value={formatCurrency(totalInventoryValue)}
+            subtitle={t('dashboard.inventoryValueSubtitle')}
+            icon={Package}
+            color="blue"
             small
           />
         </Link>

@@ -113,7 +113,9 @@ export const translations = {
       outstandingLabel: 'Outstanding',
       addTransactionsPrompt: 'Add transactions to see insights',
       inLabel: 'in',
-      outLabel: 'out'
+      outLabel: 'out',
+      inventoryValue: 'Inventory Value',
+      inventoryValueSubtitle: 'Current stock value (not included in profit)'
     },
     // Client Transactions
     clientTransactions: {
@@ -689,7 +691,9 @@ export const translations = {
       outstandingLabel: 'المستحق',
       addTransactionsPrompt: 'أضف معاملات لرؤية التحليلات',
       inLabel: 'داخل',
-      outLabel: 'خارج'
+      outLabel: 'خارج',
+      inventoryValue: 'قيمة المخزون',
+      inventoryValueSubtitle: 'قيمة المخزون الحالية (غير محسوبة في الربح)'
     },
     // Client Transactions
     clientTransactions: {
