@@ -80,7 +80,6 @@ function ClientsSuppliers() {
   const supplierPage = Math.max(1, parseInt(searchParams.get('supplierPage'), 10) || 1)
   const supplierPageSizeParam = searchParams.get('supplierPageSize')
   const supplierPageSize = PAGE_SIZE_OPTIONS.includes(Number(supplierPageSizeParam)) ? Number(supplierPageSizeParam) : 10
-  const EMPLOYEE_ROUTE_KEY = 'entities_employee'
   const employeePage = Math.max(1, parseInt(searchParams.get('employeePage'), 10) || 1)
   const employeePageSizeParam = searchParams.get('employeePageSize')
   const employeePageSize = PAGE_SIZE_OPTIONS.includes(Number(employeePageSizeParam)) ? Number(employeePageSizeParam) : 10
