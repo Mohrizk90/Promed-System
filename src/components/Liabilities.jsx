@@ -27,6 +27,9 @@ const CATEGORY_KEYS = [
   'custom'
 ]
 
+// Quick filter buttons: only these three categories
+const QUICK_CATEGORY_KEYS = ['supplier', 'salaries', 'taxes']
+
 function Liabilities() {
   const [liabilities, setLiabilities] = useState([])
   const [supplierPayables, setSupplierPayables] = useState([])
@@ -58,7 +61,7 @@ function Liabilities() {
   const [deletePaymentTarget, setDeletePaymentTarget] = useState(null)
   const [deletingPayment, setDeletingPayment] = useState(false)
   const [formErrors, setFormErrors] = useState({})
-  const [showPaidColumn, setShowPaidColumn] = useState(true)
+  const [paidOnly, setPaidOnly] = useState(false)
 
   const [searchParams, setSearchParams] = useSearchParams()
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
@@ -174,6 +177,7 @@ function Liabilities() {
       else list = list.filter((r) => r.source === 'liability' && r.category === categoryFilter)
     }
     if (outstandingOnly) list = list.filter((r) => parseFloat(r.remaining_amount || 0) > 0)
+    if (paidOnly) list = list.filter((r) => parseFloat(r.remaining_amount || 0) <= 0)
     if (recurringOnly) list = list.filter((r) => r.source === 'liability' && !!r.recurring)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
@@ -203,7 +207,7 @@ function Liabilities() {
       if (!isNaN(max)) list = list.filter((r) => parseFloat(r.remaining_amount || 0) <= max)
     }
     return list
-  }, [combinedList, categoryFilter, outstandingOnly, recurringOnly, searchQuery, dueFilter, today, dueDateFrom, dueDateTo, amountMin, amountMax])
+  }, [combinedList, categoryFilter, outstandingOnly, paidOnly, recurringOnly, searchQuery, dueFilter, today, dueDateFrom, dueDateTo, amountMin, amountMax])
 
   const sortedList = useMemo(() => {
     const list = [...filteredList]
@@ -534,7 +538,7 @@ function Liabilities() {
           </div>
         )}
 
-      {/* Category quick-filter buttons (Salaries, Taxes, etc.) */}
+      {/* Category quick-filter: Supplier, Salaries, Taxes only */}
       {combinedList.length > 0 && (
         <div className="print:hidden mb-3">
           <p className="text-xs font-medium text-gray-500 mb-2">{t('liabilities.category')} – {t('common.quickFilter')}</p>
@@ -546,27 +550,14 @@ function Liabilities() {
             >
               {t('liabilities.filterAllCategories')}
             </button>
-            <button
-              type="button"
-              onClick={() => { setCategoryFilter('supplier'); setPage(1) }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'supplier' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}`}
-            >
-              {t('liabilities.supplier')}
-            </button>
-            {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => {
+            {QUICK_CATEGORY_KEYS.map((key) => {
               const isActive = categoryFilter === key
               const styles = {
+                supplier: { active: 'bg-purple-600 text-white', inactive: 'bg-purple-100 text-purple-700 hover:bg-purple-200' },
                 salaries: { active: 'bg-amber-600 text-white', inactive: 'bg-amber-100 text-amber-800 hover:bg-amber-200' },
                 taxes: { active: 'bg-red-600 text-white', inactive: 'bg-red-100 text-red-800 hover:bg-red-200' },
-                tax_accountant: { active: 'bg-red-500 text-white', inactive: 'bg-red-100/80 text-red-700 hover:bg-red-200' },
-                invoices_accountant: { active: 'bg-blue-600 text-white', inactive: 'bg-blue-100 text-blue-800 hover:bg-blue-200' },
-                municipal: { active: 'bg-teal-600 text-white', inactive: 'bg-teal-100 text-teal-800 hover:bg-teal-200' },
-                lawyer: { active: 'bg-slate-600 text-white', inactive: 'bg-slate-100 text-slate-700 hover:bg-slate-200' },
-                insurance: { active: 'bg-green-600 text-white', inactive: 'bg-green-100 text-green-800 hover:bg-green-200' },
-                liabilities: { active: 'bg-orange-600 text-white', inactive: 'bg-orange-100 text-orange-800 hover:bg-orange-200' },
-                other: { active: 'bg-gray-600 text-white', inactive: 'bg-gray-200 text-gray-700 hover:bg-gray-300' },
               }
-              const s = styles[key] || styles.other
+              const s = styles[key] || styles.supplier
               return (
                 <button
                   key={key}
@@ -574,7 +565,7 @@ function Liabilities() {
                   onClick={() => { setCategoryFilter(key); setPage(1) }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive ? s.active : s.inactive}`}
                 >
-                  {t('liabilities.categoryOption_' + key)}
+                  {key === 'supplier' ? t('liabilities.supplier') : t('liabilities.categoryOption_' + key)}
                 </button>
               )
             })}
@@ -622,16 +613,34 @@ function Liabilities() {
                 <div className="h-8 w-px bg-gray-200 hidden sm:block" aria-hidden />
                 <div className="flex flex-wrap items-center gap-4">
                   <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors">
-                    <input type="checkbox" checked={outstandingOnly} onChange={(e) => { setOutstandingOnly(e.target.checked); setPage(1) }} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
+                    <input
+                      type="checkbox"
+                      checked={outstandingOnly}
+                      onChange={(e) => {
+                        setOutstandingOnly(e.target.checked)
+                        if (e.target.checked) setPaidOnly(false)
+                        setPage(1)
+                      }}
+                      className="rounded border-gray-400 text-amber-600 focus:ring-amber-500"
+                    />
                     <span className="text-sm text-gray-700">{t('liabilities.outstandingOnly')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={paidOnly}
+                      onChange={(e) => {
+                        setPaidOnly(e.target.checked)
+                        if (e.target.checked) setOutstandingOnly(false)
+                        setPage(1)
+                      }}
+                      className="rounded border-gray-400 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-sm text-gray-700">{t('liabilities.paidOnly')}</span>
                   </label>
                   <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors">
                     <input type="checkbox" checked={recurringOnly} onChange={(e) => { setRecurringOnly(e.target.checked); setPage(1) }} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
                     <span className="text-sm text-gray-700">{t('liabilities.recurringOnly')}</span>
-                  </label>
-                  <label className="flex items-center gap-2 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors">
-                    <input type="checkbox" checked={showPaidColumn} onChange={(e) => setShowPaidColumn(e.target.checked)} className="rounded border-gray-400 text-amber-600 focus:ring-amber-500" />
-                    <span className="text-sm text-gray-700">{t('liabilities.showPaidColumn')}</span>
                   </label>
                 </div>
               </div>
@@ -700,11 +709,9 @@ function Liabilities() {
                   <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('total_amount')} className="hover:underline ml-auto">{t('liabilities.value')} {sortBy === 'total_amount' && (sortAsc ? '↑' : '↓')}</button>
                   </th>
-                  {showPaidColumn && (
-                    <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20 whitespace-nowrap rtl-flip">
-                      <button type="button" onClick={() => toggleSort('paid_amount')} className="hover:underline ml-auto">{t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? '↑' : '↓')}</button>
-                    </th>
-                  )}
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20 whitespace-nowrap rtl-flip">
+                    <button type="button" onClick={() => toggleSort('paid_amount')} className="hover:underline ml-auto">{t('liabilities.paid')} {sortBy === 'paid_amount' && (sortAsc ? '↑' : '↓')}</button>
+                  </th>
                   <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20 whitespace-nowrap rtl-flip">
                     <button type="button" onClick={() => toggleSort('remaining_amount')} className="hover:underline ml-auto">{t('liabilities.remaining')} {sortBy === 'remaining_amount' && (sortAsc ? '↑' : '↓')}</button>
                   </th>
@@ -734,7 +741,7 @@ function Liabilities() {
                           {row.source === 'liability' && row.notes && <span className="ml-0.5 text-gray-400" title={row.notes}>📝</span>}
                         </td>
                         <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900 whitespace-nowrap">{formatCurrency(row.total_amount)}</td>
-                        {showPaidColumn && <td className="px-2 py-1 text-right tabular-nums text-green-700 whitespace-nowrap">{formatCurrency(row.paid_amount)}</td>}
+                        <td className="px-2 py-1 text-right tabular-nums text-green-700 whitespace-nowrap">{formatCurrency(row.paid_amount)}</td>
                         <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700 whitespace-nowrap">{formatCurrency(row.remaining_amount)}</td>
                         <td className="px-2 py-1 text-right rtl-flip whitespace-nowrap">
                           {row.due_date ? (
@@ -762,7 +769,7 @@ function Liabilities() {
                       </tr>
                         {isExpanded && (
                           <tr>
-                            <td colSpan={showPaidColumn ? 7 : 6} className="px-2 py-1 align-top rtl-flip">
+                            <td colSpan={7} className="px-2 py-1 align-top rtl-flip">
                               <div className="payment-detail-row py-1.5 pl-2 pr-1 border-l-4 border-amber-200 bg-amber-50/50 rounded-r text-xs">
                                 <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                                   <div className="flex items-center gap-2">
@@ -800,14 +807,14 @@ function Liabilities() {
                 </tbody>
                 <tfoot className="border-t-2 border-amber-200">
                 <tr className="bg-amber-50">
-                  <td colSpan={showPaidColumn ? 7 : 6} className="px-3 py-2 rtl-flip">
+                  <td colSpan={7} className="px-3 py-2 rtl-flip">
                     <span className="text-xs font-semibold uppercase tracking-wide text-amber-800">{t('liabilities.summary')}</span>
                   </td>
                 </tr>
                 <tr className="bg-amber-50/80 font-semibold text-sm">
                   <td colSpan={2} className="px-3 py-2.5 text-gray-800 rtl-flip">{t('liabilities.total')}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-gray-900 whitespace-nowrap">{formatCurrency(totalAmountSum)}</td>
-                  {showPaidColumn && <td className="px-3 py-2.5 text-right tabular-nums text-green-700 whitespace-nowrap">{formatCurrency(paidSum)}</td>}
+                  <td className="px-3 py-2.5 text-right tabular-nums text-green-700 whitespace-nowrap">{formatCurrency(paidSum)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-red-700 whitespace-nowrap">{formatCurrency(remainingSum)}</td>
                   <td colSpan={2} />
                 </tr>
@@ -815,7 +822,7 @@ function Liabilities() {
                   <tr key={c.category} className={`text-sm border-t border-gray-200 ${idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
                     <td colSpan={2} className="px-3 py-1.5 rtl-flip text-gray-600">{c.category === 'supplier' ? t('liabilities.supplier') : (CATEGORY_KEYS.includes(c.category) ? t('liabilities.categoryOption_' + (c.category || 'other')) : (c.category || '–'))}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums text-gray-700 whitespace-nowrap">{formatCurrency(c.total)}</td>
-                    {showPaidColumn && <td className="px-3 py-1.5 text-right tabular-nums text-green-600 whitespace-nowrap">{formatCurrency(c.paid)}</td>}
+                    <td className="px-3 py-1.5 text-right tabular-nums text-green-600 whitespace-nowrap">{formatCurrency(c.paid)}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums text-red-600 whitespace-nowrap">{formatCurrency(c.remaining)}</td>
                     <td colSpan={2} />
                   </tr>

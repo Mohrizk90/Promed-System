@@ -498,7 +498,7 @@ export const translations = {
       deletePaymentConfirm: 'Delete this payment?',
       paymentDeleted: 'Payment deleted',
       remainingByCategory: 'Remaining by category',
-      showPaidColumn: 'Show paid column'
+      paidOnly: 'Paid only'
     }
   },
   ar: {
@@ -619,7 +619,7 @@ export const translations = {
       deletePaymentConfirm: 'حذف هذه الدفعة؟',
       paymentDeleted: 'تم حذف الدفعة',
       remainingByCategory: 'المتبقي حسب الفئة',
-      showPaidColumn: 'إظهار عمود المدفوع'
+      paidOnly: 'المدفوع فقط'
     },
     // Dashboard
     dashboard: {
