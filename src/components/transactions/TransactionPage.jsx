@@ -14,7 +14,7 @@ import { generateInvoice } from '../../utils/generateInvoice'
 import CsvImportModal from '../CsvImportModal'
 import { getPaginationPrefs, setPaginationPrefs } from '../../utils/paginationPrefs'
 
-const TRANSACTION_STATUS_OPTIONS = ['not_started', 'invoice', 'paused', 'paid', 'done']
+const TRANSACTION_STATUS_OPTIONS = ['not_started', 'in_progress', 'invoice', 'paused', 'paid', 'done']
 
 function TransactionPage({ config }) {
   const {
@@ -88,6 +88,7 @@ function TransactionPage({ config }) {
     const s = status || 'not_started'
     const map = {
       not_started: 'bg-gray-100 text-gray-700',
+      in_progress: 'bg-sky-100 text-sky-800',
       invoice: 'bg-blue-100 text-blue-800',
       paused: 'bg-amber-100 text-amber-800',
       paid: 'bg-green-100 text-green-800',
