@@ -16,6 +16,7 @@ const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
+import RamadanIntro from './components/RamadanIntro'
 import ProtectedRoute from './components/ProtectedRoute'
 import { Breadcrumbs } from './components/ui'
 import { Menu } from './components/ui/Icons'
@@ -50,7 +51,7 @@ function AppShell({ children }) {
     <div className="flex h-full min-h-0 bg-gray-100">
       <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Main content area: offset by sidebar on desktop, full width on mobile */}
-      <div className="flex-1 flex flex-col min-w-0 ms-0 md:ms-60">
+        <div className="flex-1 flex flex-col min-w-0 ms-0 md:ms-60">
         {/* Mobile top bar: hamburger + logo only */}
         <header className="flex-shrink-0 flex items-center gap-2 h-12 px-3 bg-blue-700 text-white md:hidden border-b border-blue-600">
           <button
@@ -67,6 +68,12 @@ function AppShell({ children }) {
             </div>
           </Link>
         </header>
+        {/* Ramadan Kareem celebration header */}
+        <div className="flex-shrink-0 bg-gradient-to-r from-emerald-700 via-teal-700 to-cyan-800 text-white text-center py-2 px-3 shadow-sm">
+          <p className="text-sm sm:text-base font-semibold tracking-wide">
+            🌙 Ramadan Kareem
+          </p>
+        </div>
         {children}
       </div>
     </div>
@@ -144,6 +151,7 @@ function AppContent() {
 
         {showAppShell && <BottomNav />}
 
+        {showAppShell && <RamadanIntro />}
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </div>
     </>

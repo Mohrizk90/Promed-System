@@ -798,6 +798,43 @@ function TransactionPage({ config }) {
       .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
   }
 
+  // Transaction IDs that match current filters (entity, product, status, search) — used for payment-date-based paid
+  const filteredTransactionIds = useMemo(() => {
+    let result = transactions
+    if (filterEntityId) result = result.filter(t => t[entityIdField] === parseInt(filterEntityId))
+    if (filterProductId) result = result.filter(t => t.product_id === parseInt(filterProductId))
+    if (filterPaymentStatus === 'outstanding') result = result.filter(t => parseFloat(t.remaining_amount || 0) > 0)
+    else if (filterPaymentStatus === 'paid') result = result.filter(t => parseFloat(t.remaining_amount || 0) === 0)
+    if (filterStatus && filterStatus !== 'all') result = result.filter(t => (t.status || 'not_started') === filterStatus)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      result = result.filter(t => {
+        const relation = t[entityRelationName]
+        const entityName = (relation?.[entityNameField] || '').toLowerCase()
+        const productName = (t.products?.product_name || '').toLowerCase()
+        const model = (t.products?.model || '').toLowerCase()
+        return entityName.includes(q) || productName.includes(q) || model.includes(q)
+      })
+    }
+    return new Set(result.map(t => t.transaction_id))
+  }, [transactions, filterEntityId, filterProductId, filterPaymentStatus, filterStatus, searchQuery, entityIdField, entityRelationName, entityNameField])
+
+  const calculatePaid = () => {
+    if (!selectedMonth) {
+      return filteredTransactions.reduce((sum, t) => sum + parseFloat(t.paid_amount || 0), 0)
+    }
+    const [year, month] = selectedMonth.split('-')
+    const monthStart = new Date(parseInt(year), parseInt(month) - 1, 1)
+    const monthEnd = new Date(parseInt(year), parseInt(month), 0)
+    return payments
+      .filter(p => {
+        const d = new Date(p.payment_date)
+        if (d < monthStart || d > monthEnd) return false
+        return filteredTransactionIds.has(p.transaction_id)
+      })
+      .reduce((sum, p) => sum + parseFloat(p.payment_amount || 0), 0)
+  }
+
   const handleExportCsv = () => {
     if (!filteredTransactions || filteredTransactions.length === 0) {
       showError(t('common.noDataToExport'))
@@ -833,21 +870,6 @@ function TransactionPage({ config }) {
       .reduce((sum, t) => sum + parseFloat(t.total_amount || 0), 0)
     
     return monthTotal + (includePastRemaining ? getPastRemainingTotal() : 0)
-  }
-
-  const calculatePaid = () => {
-    const monthPaid = filteredTransactions
-      .filter(t => {
-        if (!selectedMonth) return true
-        const [year, month] = selectedMonth.split('-')
-        const transactionDate = new Date(t.transaction_date)
-        const selectedDate = new Date(parseInt(year), parseInt(month) - 1, 1)
-        const nextMonth = new Date(parseInt(year), parseInt(month), 1)
-        return transactionDate >= selectedDate && transactionDate < nextMonth
-      })
-      .reduce((sum, t) => sum + parseFloat(t.paid_amount || 0), 0)
-    
-    return monthPaid
   }
 
   const calculateRemaining = () => {

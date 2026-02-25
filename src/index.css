@@ -554,6 +554,79 @@ body {
   animation: success-check 0.4s ease-out;
 }
 
+/* Ramadan intro: falling sparkles / drop */
+@keyframes ramadan-drop {
+  0% {
+    transform: translateY(-120%) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes ramadan-sparkle {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes ramadan-hilal-float {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.95; }
+  50% { transform: translateY(-8px) scale(1.05); opacity: 1; }
+}
+
+@keyframes ramadan-text-drop {
+  0% {
+    transform: translateY(-80px);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+  85% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes ramadan-overlay-fade-out {
+  to {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.animate-ramadan-drop {
+  animation: ramadan-drop 4s ease-in forwards;
+}
+
+.animate-ramadan-sparkle {
+  animation: ramadan-sparkle 1.5s ease-in-out infinite;
+}
+
+.animate-ramadan-hilal {
+  animation: ramadan-hilal-float 3s ease-in-out infinite;
+}
+
+.animate-ramadan-text {
+  animation: ramadan-text-drop 0.8s ease-out forwards;
+}
+
+.animate-ramadan-overlay-out {
+  animation: ramadan-overlay-fade-out 0.6s ease-out forwards;
+}
+
 /* Confetti effect */
 .confetti-piece {
   position: absolute;

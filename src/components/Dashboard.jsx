@@ -248,6 +248,20 @@ function Dashboard() {
     })
   }
 
+  // Sum paid amounts from payments by payment_date in bounds (for correct period totals)
+  const paidInPeriodFromPayments = (paymentsList, bounds, transactionType) => {
+    if (!bounds?.start || !paymentsList?.length) return 0
+    const start = bounds.start
+    const end = bounds.end
+    return paymentsList
+      .filter(p => {
+        if (p.transaction_type !== transactionType) return false
+        const d = new Date(p.payment_date)
+        return d >= start && d <= end
+      })
+      .reduce((sum, p) => sum + Number(p.payment_amount || 0), 0)
+  }
+
   const currentBounds = getDateBounds()
   const previousBounds = getPreviousPeriodBounds()
 
@@ -271,12 +285,17 @@ function Dashboard() {
     [supplierTransactions, previousBounds.start, previousBounds.end]
   )
 
-  // Calculate metrics for a set of transactions
-  const calculateMetrics = (clientTxs, supplierTxs) => {
+  // Calculate metrics for a set of transactions (sales, remaining from txs; paid can be overridden by payment-date sums)
+  const calculateMetrics = (clientTxs, supplierTxs, opts = {}) => {
+    const { clientPaidOverride, supplierPaidOverride } = opts
     const totalClientSales = clientTxs.reduce((sum, tx) => sum + Number(tx.total_amount || 0), 0)
     const totalSupplierPurchases = supplierTxs.reduce((sum, tx) => sum + Number(tx.total_amount || 0), 0)
-    const totalClientPaid = clientTxs.reduce((sum, tx) => sum + Number(tx.paid_amount || 0), 0)
-    const totalSupplierPaid = supplierTxs.reduce((sum, tx) => sum + Number(tx.paid_amount || 0), 0)
+    const totalClientPaid = clientPaidOverride !== undefined
+      ? clientPaidOverride
+      : clientTxs.reduce((sum, tx) => sum + Number(tx.paid_amount || 0), 0)
+    const totalSupplierPaid = supplierPaidOverride !== undefined
+      ? supplierPaidOverride
+      : supplierTxs.reduce((sum, tx) => sum + Number(tx.paid_amount || 0), 0)
     const totalClientRemaining = clientTxs.reduce((sum, tx) => sum + Number(tx.remaining_amount || 0), 0)
     const totalSupplierRemaining = supplierTxs.reduce((sum, tx) => sum + Number(tx.remaining_amount || 0), 0)
 
@@ -296,15 +315,40 @@ function Dashboard() {
     }
   }
 
-  const metrics = useMemo(
-    () => calculateMetrics(filteredClientTransactions, filteredSupplierTransactions),
-    [filteredClientTransactions, filteredSupplierTransactions]
+  const clientPaidInPeriod = useMemo(
+    () => (currentBounds.start ? paidInPeriodFromPayments(payments, currentBounds, 'client') : null),
+    [payments, currentBounds.start, currentBounds.end]
+  )
+  const supplierPaidInPeriod = useMemo(
+    () => (currentBounds.start ? paidInPeriodFromPayments(payments, currentBounds, 'supplier') : null),
+    [payments, currentBounds.start, currentBounds.end]
+  )
+  const prevClientPaidInPeriod = useMemo(
+    () => (previousBounds.start ? paidInPeriodFromPayments(payments, previousBounds, 'client') : null),
+    [payments, previousBounds.start, previousBounds.end]
+  )
+  const prevSupplierPaidInPeriod = useMemo(
+    () => (previousBounds.start ? paidInPeriodFromPayments(payments, previousBounds, 'supplier') : null),
+    [payments, previousBounds.start, previousBounds.end]
   )
 
-  const prevMetrics = useMemo(
-    () => calculateMetrics(prevClientTransactions, prevSupplierTransactions),
-    [prevClientTransactions, prevSupplierTransactions]
-  )
+  const metrics = useMemo(() => {
+    const base = calculateMetrics(filteredClientTransactions, filteredSupplierTransactions,
+      currentBounds.start
+        ? { clientPaidOverride: clientPaidInPeriod, supplierPaidOverride: supplierPaidInPeriod }
+        : {}
+    )
+    return base
+  }, [filteredClientTransactions, filteredSupplierTransactions, currentBounds.start, clientPaidInPeriod, supplierPaidInPeriod])
+
+  const prevMetrics = useMemo(() => {
+    const base = calculateMetrics(prevClientTransactions, prevSupplierTransactions,
+      previousBounds.start
+        ? { clientPaidOverride: prevClientPaidInPeriod, supplierPaidOverride: prevSupplierPaidInPeriod }
+        : {}
+    )
+    return base
+  }, [prevClientTransactions, prevSupplierTransactions, previousBounds.start, prevClientPaidInPeriod, prevSupplierPaidInPeriod])
 
   const totalOtherLiabilitiesRemaining = useMemo(
     () => liabilities.reduce((s, l) => s + parseFloat(l.remaining_amount || 0), 0),
@@ -409,9 +453,12 @@ function Dashboard() {
     ].filter(item => item.value > 0)
   }, [metrics, t])
 
-  // Top clients by revenue
+  // Top clients by revenue (paid = payments in period when date filter is on)
   const topClientsData = useMemo(() => {
     const clientMap = new Map()
+    const txIdToClient = new Map(
+      clientTransactions.map(tx => [tx.transaction_id ?? tx.id, { id: tx.client_id, name: tx.clients?.client_name || 'Unknown' }])
+    )
 
     filteredClientTransactions.forEach(tx => {
       const id = tx.client_id || 0
@@ -423,18 +470,35 @@ function Dashboard() {
 
       const client = clientMap.get(id)
       client.total += Number(tx.total_amount || 0)
-      client.paid += Number(tx.paid_amount || 0)
+      if (!currentBounds.start) client.paid += Number(tx.paid_amount || 0)
       client.remaining += Number(tx.remaining_amount || 0)
     })
+
+    if (currentBounds.start && payments.length) {
+      payments
+        .filter(p => p.transaction_type === 'client')
+        .forEach(p => {
+          const d = new Date(p.payment_date)
+          if (d < currentBounds.start || d > currentBounds.end) return
+          const info = txIdToClient.get(p.transaction_id)
+          if (!info) return
+          const id = info.id || 0
+          if (!clientMap.has(id)) clientMap.set(id, { name: info.name, total: 0, paid: 0, remaining: 0 })
+          clientMap.get(id).paid += Number(p.payment_amount || 0)
+        })
+    }
 
     return Array.from(clientMap.values())
       .sort((a, b) => b.total - a.total)
       .slice(0, 5)
-  }, [filteredClientTransactions])
+  }, [filteredClientTransactions, clientTransactions, payments, currentBounds.start, currentBounds.end])
 
-  // Top suppliers by purchases
+  // Top suppliers by purchases (paid = payments in period when date filter is on)
   const topSuppliersData = useMemo(() => {
     const supplierMap = new Map()
+    const txIdToSupplier = new Map(
+      supplierTransactions.map(tx => [tx.transaction_id ?? tx.id, { id: tx.supplier_id, name: tx.suppliers?.supplier_name || 'Unknown' }])
+    )
 
     filteredSupplierTransactions.forEach(tx => {
       const id = tx.supplier_id || 0
@@ -446,14 +510,28 @@ function Dashboard() {
 
       const supplier = supplierMap.get(id)
       supplier.total += Number(tx.total_amount || 0)
-      supplier.paid += Number(tx.paid_amount || 0)
+      if (!currentBounds.start) supplier.paid += Number(tx.paid_amount || 0)
       supplier.remaining += Number(tx.remaining_amount || 0)
     })
+
+    if (currentBounds.start && payments.length) {
+      payments
+        .filter(p => p.transaction_type === 'supplier')
+        .forEach(p => {
+          const d = new Date(p.payment_date)
+          if (d < currentBounds.start || d > currentBounds.end) return
+          const info = txIdToSupplier.get(p.transaction_id)
+          if (!info) return
+          const id = info.id || 0
+          if (!supplierMap.has(id)) supplierMap.set(id, { name: info.name, total: 0, paid: 0, remaining: 0 })
+          supplierMap.get(id).paid += Number(p.payment_amount || 0)
+        })
+    }
 
     return Array.from(supplierMap.values())
       .sort((a, b) => b.total - a.total)
       .slice(0, 5)
-  }, [filteredSupplierTransactions])
+  }, [filteredSupplierTransactions, supplierTransactions, payments, currentBounds.start, currentBounds.end])
 
   // Top products
   const topProductsData = useMemo(() => {
