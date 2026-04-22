@@ -350,6 +350,32 @@ function Dashboard() {
     return base
   }, [prevClientTransactions, prevSupplierTransactions, previousBounds.start, prevClientPaidInPeriod, prevSupplierPaidInPeriod])
 
+  const pastRemainingBeforeStart = (txs, start) => {
+    if (!start) return 0
+    return (txs || [])
+      .filter((tx) => {
+        const d = new Date(tx.transaction_date)
+        return d < start && Number(tx.remaining_amount || 0) > 0
+      })
+      .reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0)
+  }
+
+  const pastClientRemaining = useMemo(
+    () => (currentBounds.start ? pastRemainingBeforeStart(clientTransactions, currentBounds.start) : 0),
+    [clientTransactions, currentBounds.start]
+  )
+  const pastSupplierRemaining = useMemo(
+    () => (currentBounds.start ? pastRemainingBeforeStart(supplierTransactions, currentBounds.start) : 0),
+    [supplierTransactions, currentBounds.start]
+  )
+
+  const accountsReceivableTotal = currentBounds.start
+    ? (metrics.totalClientRemaining + pastClientRemaining)
+    : metrics.totalClientRemaining
+  const accountsPayableTotal = currentBounds.start
+    ? (metrics.totalSupplierRemaining + pastSupplierRemaining)
+    : metrics.totalSupplierRemaining
+
   const totalOtherLiabilitiesRemaining = useMemo(
     () => liabilities.reduce((s, l) => s + parseFloat(l.remaining_amount || 0), 0),
     [liabilities]
@@ -771,8 +797,12 @@ function Dashboard() {
         <Link to="/?paymentStatus=outstanding" className="block transition-opacity hover:opacity-90">
           <MetricCard
             title={t('dashboard.accountsReceivable')}
-            value={formatCurrency(metrics.totalClientRemaining)}
-            subtitle={t('dashboard.outstandingFromClients')}
+            value={formatCurrency(accountsReceivableTotal)}
+            subtitle={
+              currentBounds.start
+                ? `${t('common.current')}: ${formatCurrency(metrics.totalClientRemaining)} / ${t('common.previous')}: ${formatCurrency(pastClientRemaining)}`
+                : t('dashboard.outstandingFromClients')
+            }
             color="orange"
             small
           />
@@ -781,8 +811,12 @@ function Dashboard() {
         <Link to="/suppliers?paymentStatus=outstanding" className="block transition-opacity hover:opacity-90">
           <MetricCard
             title={t('dashboard.accountsPayable')}
-            value={formatCurrency(metrics.totalSupplierRemaining)}
-            subtitle={t('dashboard.owedToSuppliers')}
+            value={formatCurrency(accountsPayableTotal)}
+            subtitle={
+              currentBounds.start
+                ? `${t('common.current')}: ${formatCurrency(metrics.totalSupplierRemaining)} / ${t('common.previous')}: ${formatCurrency(pastSupplierRemaining)}`
+                : t('dashboard.owedToSuppliers')
+            }
             color="red"
             small
           />
