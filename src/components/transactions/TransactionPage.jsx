@@ -939,6 +939,42 @@ function TransactionPage({ config }) {
     return monthTotal + (includePastRemaining ? getPastRemainingTotal() : 0)
   }
 
+  const monthTotals = useMemo(() => {
+    if (!selectedMonth) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
+    const [year, month] = selectedMonth.split('-')
+    const selectedDate = new Date(parseInt(year), parseInt(month) - 1, 1)
+    const nextMonth = new Date(parseInt(year), parseInt(month), 1)
+
+    const monthTotal = filteredTransactions
+      .filter((t) => {
+        const d = new Date(t.transaction_date)
+        return d >= selectedDate && d < nextMonth
+      })
+      .reduce((sum, t) => sum + parseFloat(t.total_amount || 0), 0)
+
+    const monthRemaining = filteredTransactions
+      .filter((t) => {
+        const d = new Date(t.transaction_date)
+        return d >= selectedDate && d < nextMonth
+      })
+      .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
+
+    return { monthTotal, monthRemaining }
+  }, [selectedMonth, filteredTransactions])
+
+  const previousPaidTotal = useMemo(() => {
+    if (!monthBounds?.start) return 0
+    const start = monthBounds.start
+    return payments
+      .filter((p) => {
+        const d = new Date(p.payment_date)
+        if (Number.isNaN(d.getTime())) return false
+        if (d >= start) return false
+        return filteredTransactionIds.has(p.transaction_id)
+      })
+      .reduce((sum, p) => sum + parseFloat(p.payment_amount || 0), 0)
+  }, [payments, monthBounds?.start, filteredTransactionIds])
+
   const calculateRemaining = () => {
     const monthRemaining = filteredTransactions
       .filter(t => {
@@ -1183,11 +1219,53 @@ function TransactionPage({ config }) {
         </div>
 
         {/* Summary cards - compact */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}><p className="text-xs font-medium">{t(`${translationKey}.totalAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculateTotal())}</p></div>
-          <div className="bg-green-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t(`${translationKey}.paidAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculatePaid())}</p></div>
-          <div className="bg-red-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t(`${translationKey}.remainingAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculateRemaining())}</p></div>
-        </div>
+        {selectedMonth ? (
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
+            {/* Expected (based on transactions) */}
+            <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}>
+              <p className="text-xs font-medium">{t('common.expected')} {t('common.current')}</p>
+              <p className="text-lg font-bold">{formatCurrency(monthTotals.monthTotal)}</p>
+              <p className="text-[11px] opacity-90">{t(`${translationKey}.totalAmount`)}</p>
+            </div>
+            <div className="bg-red-600 text-white p-2.5 rounded shadow">
+              <p className="text-xs font-medium">{t('common.expected')} {t('common.current')}</p>
+              <p className="text-lg font-bold">{formatCurrency(monthTotals.monthRemaining)}</p>
+              <p className="text-[11px] opacity-90">{t(`${translationKey}.remainingAmount`)}</p>
+            </div>
+
+            {/* Actual (based on payments) */}
+            <div className="bg-green-600 text-white p-2.5 rounded shadow">
+              <p className="text-xs font-medium">{t('common.actual')} {t('common.current')}</p>
+              <p className="text-lg font-bold">{formatCurrency(calculatePaid())}</p>
+              <p className="text-[11px] opacity-90">{t(`${translationKey}.paidAmount`)}</p>
+            </div>
+
+            {/* Previous months (separated) */}
+            <div className="bg-slate-700 text-white p-2.5 rounded shadow">
+              <p className="text-xs font-medium">{t('common.expected')} {t('common.previous')}</p>
+              <p className="text-lg font-bold">{formatCurrency(includePastRemaining ? getPastRemainingTotal() : 0)}</p>
+              <p className="text-[11px] opacity-90">{t(`${translationKey}.remainingAmount`)}</p>
+            </div>
+            <div className="bg-slate-600 text-white p-2.5 rounded shadow">
+              <p className="text-xs font-medium">{t('common.actual')} {t('common.previous')}</p>
+              <p className="text-lg font-bold">{formatCurrency(previousPaidTotal)}</p>
+              <p className="text-[11px] opacity-90">{t(`${translationKey}.paidAmount`)}</p>
+            </div>
+
+            {/* Totals (what users usually want at a glance) */}
+            <div className="bg-gray-900 text-white p-2.5 rounded shadow">
+              <p className="text-xs font-medium">{t('common.total')}</p>
+              <p className="text-lg font-bold">{formatCurrency(calculateRemaining())}</p>
+              <p className="text-[11px] opacity-90">{t(`${translationKey}.remainingAmount`)}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}><p className="text-xs font-medium">{t(`${translationKey}.totalAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculateTotal())}</p></div>
+            <div className="bg-green-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t(`${translationKey}.paidAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculatePaid())}</p></div>
+            <div className="bg-red-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t(`${translationKey}.remainingAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculateRemaining())}</p></div>
+          </div>
+        )}
       </div>
 
       {/* Table - grows with content, page scrolls */}
