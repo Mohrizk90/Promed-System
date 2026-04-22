@@ -83,6 +83,9 @@ function TransactionPage({ config }) {
   })
   const [showCsvImportModal, setShowCsvImportModal] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
+  const paymentDetailsRefs = React.useRef(new Map())
+  const paymentModalContentRef = React.useRef(null)
+  const paymentAmountInputRef = React.useRef(null)
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
   const getStatusBadgeClasses = (status) => {
     const s = status || 'not_started'
@@ -96,6 +99,12 @@ function TransactionPage({ config }) {
     }
     return map[s] || map.not_started
   }
+
+  useEffect(() => {
+    if (!showPaymentModal) return
+    if (paymentModalContentRef.current) paymentModalContentRef.current.scrollTop = 0
+    if (paymentAmountInputRef.current) paymentAmountInputRef.current.focus()
+  }, [showPaymentModal])
 
   // Restore from localStorage when URL has no params (e.g. after nav link to "/")
   useEffect(() => {
@@ -392,16 +401,24 @@ function TransactionPage({ config }) {
 
       const unitPrice = formData.product_price ? parseFloat(formData.product_price) : (formData.total_amount && formData.quantity ? parseFloat(formData.total_amount) / parseInt(formData.quantity) : 0)
 
+      const totalAmountNum = parseFloat(formData.total_amount)
+      const paidAmountNum = parseFloat(formData.paid_amount) || 0
+      const remainingAmountNum = totalAmountNum - paidAmountNum
+      const computedStatus =
+        remainingAmountNum <= 0
+          ? ((formData.status || 'not_started') === 'done' ? 'done' : 'paid')
+          : (formData.status || 'not_started')
+
       const transactionData = {
         [entityIdField]: parseInt(entityId),
         product_id: parseInt(productId),
         quantity: parseInt(formData.quantity),
         unit_price: unitPrice,
-        total_amount: parseFloat(formData.total_amount),
-        paid_amount: parseFloat(formData.paid_amount) || 0,
-        remaining_amount: parseFloat(formData.total_amount) - (parseFloat(formData.paid_amount) || 0),
+        total_amount: totalAmountNum,
+        paid_amount: paidAmountNum,
+        remaining_amount: remainingAmountNum,
         transaction_date: formData.transaction_date,
-        status: formData.status || 'not_started',
+        status: computedStatus,
         invoice_number: formData.invoice_number || null,
         payment_terms: formData.payment_terms || 'none',
         due_date: formData.due_date || null
@@ -589,6 +606,10 @@ function TransactionPage({ config }) {
       // Calculate new amounts before inserting
       const newPaidAmount = parseFloat(transaction.paid_amount || 0) + paymentAmount
       const newRemainingAmount = parseFloat(transaction.total_amount) - newPaidAmount
+      const nextStatus =
+        newRemainingAmount <= 0
+          ? (transaction.status === 'done' ? 'done' : 'paid')
+          : (((transaction.status || 'not_started') === 'paid') ? 'in_progress' : (transaction.status || 'not_started'))
 
       const { data: paymentData, error: paymentError } = await supabase
         .from('payments')
@@ -621,7 +642,8 @@ function TransactionPage({ config }) {
         .from(transactionTable)
         .update({
           paid_amount: newPaidAmount,
-          remaining_amount: newRemainingAmount
+          remaining_amount: newRemainingAmount,
+          status: nextStatus
         })
         .eq('transaction_id', transactionId)
 
@@ -673,12 +695,17 @@ function TransactionPage({ config }) {
 
       const newPaidAmount = Math.max(0, parseFloat(transaction.paid_amount || 0) - parseFloat(payment.payment_amount))
       const newRemainingAmount = parseFloat(transaction.total_amount) - newPaidAmount
+      const nextStatus =
+        newRemainingAmount <= 0
+          ? ((transaction.status || 'not_started') === 'done' ? 'done' : 'paid')
+          : (((transaction.status || 'not_started') === 'paid') ? 'in_progress' : (transaction.status || 'not_started'))
 
       await supabase
         .from(transactionTable)
         .update({
           paid_amount: newPaidAmount,
-          remaining_amount: newRemainingAmount
+          remaining_amount: newRemainingAmount,
+          status: nextStatus
         })
         .eq('transaction_id', transactionId)
 
@@ -697,6 +724,14 @@ function TransactionPage({ config }) {
       newExpanded.add(transactionId)
     }
     setExpandedRows(newExpanded)
+
+    // When opening payments, auto-scroll to the expanded section.
+    if (!expandedRows.has(transactionId)) {
+      requestAnimationFrame(() => {
+        const el = paymentDetailsRefs.current.get(transactionId)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    }
   }
 
   const getFilteredTransactions = () => {
@@ -819,17 +854,49 @@ function TransactionPage({ config }) {
     return new Set(result.map(t => t.transaction_id))
   }, [transactions, filterEntityId, filterProductId, filterPaymentStatus, filterStatus, searchQuery, entityIdField, entityRelationName, entityNameField])
 
+  const monthBounds = useMemo(() => {
+    if (!selectedMonth) return null
+    const [year, month] = selectedMonth.split('-')
+    const start = new Date(parseInt(year), parseInt(month) - 1, 1)
+    const end = new Date(parseInt(year), parseInt(month), 1) // exclusive
+    return { start, end }
+  }, [selectedMonth])
+
+  const paidMapsByTransactionId = useMemo(() => {
+    if (!monthBounds) return { inMonth: new Map(), beforeMonth: new Map() }
+    const inMonth = new Map()
+    const beforeMonth = new Map()
+
+    for (const p of payments) {
+      const txId = p.transaction_id
+      if (!txId) continue
+      const amt = parseFloat(p.payment_amount || 0) || 0
+      if (amt === 0) continue
+
+      const d = new Date(p.payment_date)
+      if (Number.isNaN(d.getTime())) continue
+
+      if (d >= monthBounds.start && d < monthBounds.end) {
+        inMonth.set(txId, (inMonth.get(txId) || 0) + amt)
+      } else if (d < monthBounds.start) {
+        beforeMonth.set(txId, (beforeMonth.get(txId) || 0) + amt)
+      }
+    }
+
+    return { inMonth, beforeMonth }
+  }, [payments, monthBounds])
+
   const calculatePaid = () => {
     if (!selectedMonth) {
       return filteredTransactions.reduce((sum, t) => sum + parseFloat(t.paid_amount || 0), 0)
     }
-    const [year, month] = selectedMonth.split('-')
-    const monthStart = new Date(parseInt(year), parseInt(month) - 1, 1)
-    const monthEnd = new Date(parseInt(year), parseInt(month), 0)
+    const monthStart = monthBounds?.start
+    const monthEndExclusive = monthBounds?.end
+    if (!monthStart || !monthEndExclusive) return 0
     return payments
       .filter(p => {
         const d = new Date(p.payment_date)
-        if (d < monthStart || d > monthEnd) return false
+        if (d < monthStart || d >= monthEndExclusive) return false
         return filteredTransactionIds.has(p.transaction_id)
       })
       .reduce((sum, p) => sum + parseFloat(p.payment_amount || 0), 0)
@@ -1164,7 +1231,20 @@ function TransactionPage({ config }) {
                       <td className="px-2 py-1 whitespace-nowrap text-gray-900">{transaction.quantity}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-gray-900">{formatCurrency(unitPrice)}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-gray-900">{formatCurrency(transaction.total_amount)}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-green-700">{formatCurrency(transaction.paid_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums text-green-700">
+                        {selectedMonth ? (
+                          <div className="leading-tight">
+                            <div className="font-semibold">{formatCurrency(paidMapsByTransactionId.inMonth.get(transaction.transaction_id) || 0)}</div>
+                            {(paidMapsByTransactionId.beforeMonth.get(transaction.transaction_id) || 0) > 0 && (
+                              <div className="text-[10px] text-gray-500">
+                                +{formatCurrency(paidMapsByTransactionId.beforeMonth.get(transaction.transaction_id) || 0)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          formatCurrency(transaction.paid_amount)
+                        )}
+                      </td>
                       <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700">{formatCurrency(transaction.remaining_amount)}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-gray-600">
                         {transaction.due_date ? (
@@ -1199,15 +1279,34 @@ function TransactionPage({ config }) {
                     {isExpanded && (
                       <tr>
                         <td colSpan="12" className="px-2 py-0 align-top">
-                          <div className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-blue-200 bg-gradient-to-r from-blue-50/80 to-transparent rounded-r mb-1">
+                          <div
+                            ref={(el) => {
+                              if (el) paymentDetailsRefs.current.set(transaction.transaction_id, el)
+                              else paymentDetailsRefs.current.delete(transaction.transaction_id)
+                            }}
+                            className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-blue-200 bg-gradient-to-r from-blue-50/80 to-transparent rounded-r mb-1"
+                          >
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <h4 className="font-semibold text-gray-800 text-xs flex items-center gap-1">
                                   <span className="w-1.5 h-4 bg-blue-500 rounded"></span>
                                   {t('paymentsBreakdown.payments')}
                                 </h4>
-                                <div className="flex gap-2 text-xs">
-                                  <span className="text-green-700 font-medium">{t('dashboard.paid')}: {formatCurrency(transaction.paid_amount)}</span>
+                                <div className="flex gap-2 text-xs flex-wrap">
+                                  {selectedMonth ? (
+                                    <>
+                                      <span className="text-green-700 font-medium">
+                                        {t('dashboard.paid')}: {formatCurrency(paidMapsByTransactionId.inMonth.get(transaction.transaction_id) || 0)}
+                                      </span>
+                                      {(paidMapsByTransactionId.beforeMonth.get(transaction.transaction_id) || 0) > 0 && (
+                                        <span className="text-gray-600 font-medium">
+                                          {t('common.previous')}: {formatCurrency(paidMapsByTransactionId.beforeMonth.get(transaction.transaction_id) || 0)}
+                                        </span>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-green-700 font-medium">{t('dashboard.paid')}: {formatCurrency(transaction.paid_amount)}</span>
+                                  )}
                                   <span className="text-red-600 font-medium">{t('dashboard.remaining')}: {formatCurrency(transaction.remaining_amount)}</span>
                                 </div>
                               </div>
@@ -1460,10 +1559,10 @@ function TransactionPage({ config }) {
               <h3 className="text-lg font-bold text-white">{t('paymentsBreakdown.addPayment')}</h3>
             </div>
             <form onSubmit={handleAddPayment} className="flex flex-col min-h-0">
-              <div className="bg-white px-4 py-3 space-y-3">
+              <div ref={paymentModalContentRef} className="bg-white px-4 py-3 space-y-3 overflow-y-auto">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentsBreakdown.paymentAmount')} *</label>
-                  <input type="number" required step="0.01" min="0.01" value={paymentFormData.payment_amount} onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" />
+                  <input ref={paymentAmountInputRef} type="number" required step="0.01" min="0.01" value={paymentFormData.payment_amount} onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentsBreakdown.paymentDate')} *</label>
