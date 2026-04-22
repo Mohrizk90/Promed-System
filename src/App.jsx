@@ -16,7 +16,6 @@ const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
-import RamadanIntro from './components/RamadanIntro'
 import ProtectedRoute from './components/ProtectedRoute'
 import { Breadcrumbs } from './components/ui'
 import { Menu } from './components/ui/Icons'
@@ -68,12 +67,6 @@ function AppShell({ children }) {
             </div>
           </Link>
         </header>
-        {/* Ramadan Kareem celebration header */}
-        <div className="flex-shrink-0 bg-gradient-to-r from-emerald-700 via-teal-700 to-cyan-800 text-white text-center py-2 px-3 shadow-sm">
-          <p className="text-sm sm:text-base font-semibold tracking-wide">
-            🌙 Ramadan Kareem
-          </p>
-        </div>
         {children}
       </div>
     </div>
@@ -151,7 +144,6 @@ function AppContent() {
 
         {showAppShell && <BottomNav />}
 
-        {showAppShell && <RamadanIntro />}
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </div>
     </>
