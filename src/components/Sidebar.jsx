@@ -6,8 +6,6 @@ import {
   Truck,
   Users,
   CreditCard,
-  Package,
-  PieChart,
   X,
   HelpCircle,
   Settings,
@@ -40,18 +38,14 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/suppliers', label: t('nav.supplierTransactions'), icon: Truck, shortcut: 's', color: 'violet' },
     { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e', color: 'emerald' },
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
-    { path: '/products', label: t('nav.inventory'), icon: Package, shortcut: 'p', color: 'teal', beta: true },
-    { path: '/reports/aging', label: t('nav.reports'), icon: PieChart, shortcut: 'r', color: 'rose', beta: true },
   ]
 
   const iconColors = {
     indigo: { inactive: 'bg-indigo-500/90 text-white', active: 'bg-indigo-100 text-indigo-600' },
     cyan: { inactive: 'bg-cyan-500/90 text-white', active: 'bg-cyan-100 text-cyan-600' },
     violet: { inactive: 'bg-violet-500/90 text-white', active: 'bg-violet-100 text-violet-600' },
-    teal: { inactive: 'bg-teal-500/90 text-white', active: 'bg-teal-100 text-teal-600' },
     emerald: { inactive: 'bg-emerald-500/90 text-white', active: 'bg-emerald-100 text-emerald-600' },
     amber: { inactive: 'bg-amber-500/90 text-white', active: 'bg-amber-100 text-amber-700' },
-    rose: { inactive: 'bg-rose-500/90 text-white', active: 'bg-rose-100 text-rose-600' },
   }
 
   const handleNavClick = () => { if (onClose) onClose() }
