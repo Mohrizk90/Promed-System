@@ -28,10 +28,8 @@ const NAV_SHORTCUTS = [
   { path: '/dashboard', shortcut: 'd' },
   { path: '/', shortcut: 'c' },
   { path: '/suppliers', shortcut: 's' },
-  { path: '/products', shortcut: 'p' },
   { path: '/entities', shortcut: 'e' },
   { path: '/liabilities', shortcut: 'l' },
-  { path: '/reports/aging', shortcut: 'r' },
 ]
 
 function AppShell({ children }) {
