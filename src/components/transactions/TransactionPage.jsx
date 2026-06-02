@@ -939,30 +939,6 @@ function TransactionPage({ config }) {
     return monthTotal + (includePastRemaining ? getPastRemainingTotal() : 0)
   }
 
-  const monthTotals = useMemo(() => {
-    if (!selectedMonth) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
-    if (!selectedMonth.includes('-')) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
-    const [year, month] = selectedMonth.split('-')
-    const selectedDate = new Date(parseInt(year), parseInt(month) - 1, 1)
-    const nextMonth = new Date(parseInt(year), parseInt(month), 1)
-
-    const monthTotal = filteredTransactions
-      .filter((t) => {
-        const d = new Date(t.transaction_date)
-        return d >= selectedDate && d < nextMonth
-      })
-      .reduce((sum, t) => sum + parseFloat(t.total_amount || 0), 0)
-
-    const monthRemaining = filteredTransactions
-      .filter((t) => {
-        const d = new Date(t.transaction_date)
-        return d >= selectedDate && d < nextMonth
-      })
-      .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
-
-    return { monthTotal, monthRemaining }
-  }, [selectedMonth, filteredTransactions])
-
   const previousPaidTotal = useMemo(() => {
     if (!monthBounds?.start) return 0
     const start = monthBounds.start
@@ -990,6 +966,30 @@ function TransactionPage({ config }) {
     
     return monthRemaining + (includePastRemaining ? getPastRemainingTotal() : 0)
   }
+
+  const monthTotals = useMemo(() => {
+    if (!selectedMonth) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
+    if (!selectedMonth.includes('-')) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
+    const [year, month] = selectedMonth.split('-')
+    const selectedDate = new Date(parseInt(year), parseInt(month) - 1, 1)
+    const nextMonth = new Date(parseInt(year), parseInt(month), 1)
+
+    const monthTotal = filteredTransactions
+      .filter((t) => {
+        const d = new Date(t.transaction_date)
+        return d >= selectedDate && d < nextMonth
+      })
+      .reduce((sum, t) => sum + parseFloat(t.total_amount || 0), 0)
+
+    const monthRemaining = filteredTransactions
+      .filter((t) => {
+        const d = new Date(t.transaction_date)
+        return d >= selectedDate && d < nextMonth
+      })
+      .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
+
+    return { monthTotal, monthRemaining }
+  }, [selectedMonth, filteredTransactions])
 
   const handleCsvImport = async (rows) => {
     try {
