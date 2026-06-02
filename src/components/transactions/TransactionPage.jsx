@@ -16,6 +16,22 @@ import { getPaginationPrefs, setPaginationPrefs } from '../../utils/paginationPr
 
 const TRANSACTION_STATUS_OPTIONS = ['not_started', 'in_progress', 'invoice', 'paused', 'paid', 'done']
 
+/**
+ * Decide the next status for a transaction after a payment is added or deleted.
+ * - When fully paid (newRemaining <= 0): keep 'done' if the user had marked it
+ *   'done', otherwise set to 'paid'.
+ * - When no longer fully paid: downgrade 'paid' and 'done' to 'in_progress';
+ *   other statuses (not_started, in_progress, invoice, paused) are preserved.
+ */
+export function nextStatusAfterPaymentChange(prevStatus, newRemainingAmount) {
+  const prev = prevStatus || 'not_started'
+  if (newRemainingAmount <= 0) {
+    return prev === 'done' ? 'done' : 'paid'
+  }
+  if (prev === 'paid' || prev === 'done') return 'in_progress'
+  return prev
+}
+
 function TransactionPage({ config }) {
   const {
     entityType,
@@ -404,10 +420,7 @@ function TransactionPage({ config }) {
       const totalAmountNum = parseFloat(formData.total_amount)
       const paidAmountNum = parseFloat(formData.paid_amount) || 0
       const remainingAmountNum = totalAmountNum - paidAmountNum
-      const computedStatus =
-        remainingAmountNum <= 0
-          ? ((formData.status || 'not_started') === 'done' ? 'done' : 'paid')
-          : (formData.status || 'not_started')
+      const computedStatus = nextStatusAfterPaymentChange(formData.status, remainingAmountNum)
 
       const transactionData = {
         [entityIdField]: parseInt(entityId),
@@ -606,10 +619,7 @@ function TransactionPage({ config }) {
       // Calculate new amounts before inserting
       const newPaidAmount = parseFloat(transaction.paid_amount || 0) + paymentAmount
       const newRemainingAmount = parseFloat(transaction.total_amount) - newPaidAmount
-      const nextStatus =
-        newRemainingAmount <= 0
-          ? (transaction.status === 'done' ? 'done' : 'paid')
-          : (((transaction.status || 'not_started') === 'paid') ? 'in_progress' : (transaction.status || 'not_started'))
+      const nextStatus = nextStatusAfterPaymentChange(transaction.status, newRemainingAmount)
 
       const { data: paymentData, error: paymentError } = await supabase
         .from('payments')
@@ -695,10 +705,7 @@ function TransactionPage({ config }) {
 
       const newPaidAmount = Math.max(0, parseFloat(transaction.paid_amount || 0) - parseFloat(payment.payment_amount))
       const newRemainingAmount = parseFloat(transaction.total_amount) - newPaidAmount
-      const nextStatus =
-        newRemainingAmount <= 0
-          ? ((transaction.status || 'not_started') === 'done' ? 'done' : 'paid')
-          : (((transaction.status || 'not_started') === 'paid') ? 'in_progress' : (transaction.status || 'not_started'))
+      const nextStatus = nextStatusAfterPaymentChange(transaction.status, newRemainingAmount)
 
       await supabase
         .from(transactionTable)
@@ -887,11 +894,16 @@ function TransactionPage({ config }) {
   }, [payments, monthBounds])
 
   const calculatePaid = () => {
-    if (!selectedMonth) {
-      return filteredTransactions.reduce((sum, t) => sum + parseFloat(t.paid_amount || 0), 0)
-    }
     const monthStart = monthBounds?.start
     const monthEndExclusive = monthBounds?.end
+    if (!selectedMonth) {
+      // All Months: sum the payments table (source of truth) filtered by the
+      // current entity/product/status/search filters, so the All-Months total
+      // matches the sum of the per-month breakdowns.
+      return payments
+        .filter(p => filteredTransactionIds.has(p.transaction_id))
+        .reduce((sum, p) => sum + parseFloat(p.payment_amount || 0), 0)
+    }
     if (!monthStart || !monthEndExclusive) return 0
     return payments
       .filter(p => {
@@ -939,30 +951,6 @@ function TransactionPage({ config }) {
     return monthTotal + (includePastRemaining ? getPastRemainingTotal() : 0)
   }
 
-  const monthTotals = useMemo(() => {
-    if (!selectedMonth) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
-    if (!selectedMonth.includes('-')) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
-    const [year, month] = selectedMonth.split('-')
-    const selectedDate = new Date(parseInt(year), parseInt(month) - 1, 1)
-    const nextMonth = new Date(parseInt(year), parseInt(month), 1)
-
-    const monthTotal = filteredTransactions
-      .filter((t) => {
-        const d = new Date(t.transaction_date)
-        return d >= selectedDate && d < nextMonth
-      })
-      .reduce((sum, t) => sum + parseFloat(t.total_amount || 0), 0)
-
-    const monthRemaining = filteredTransactions
-      .filter((t) => {
-        const d = new Date(t.transaction_date)
-        return d >= selectedDate && d < nextMonth
-      })
-      .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
-
-    return { monthTotal, monthRemaining }
-  }, [selectedMonth, filteredTransactions])
-
   const previousPaidTotal = useMemo(() => {
     if (!monthBounds?.start) return 0
     const start = monthBounds.start
@@ -990,6 +978,30 @@ function TransactionPage({ config }) {
     
     return monthRemaining + (includePastRemaining ? getPastRemainingTotal() : 0)
   }
+
+  const monthTotals = useMemo(() => {
+    if (!selectedMonth) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
+    if (!selectedMonth.includes('-')) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
+    const [year, month] = selectedMonth.split('-')
+    const selectedDate = new Date(parseInt(year), parseInt(month) - 1, 1)
+    const nextMonth = new Date(parseInt(year), parseInt(month), 1)
+
+    const monthTotal = filteredTransactions
+      .filter((t) => {
+        const d = new Date(t.transaction_date)
+        return d >= selectedDate && d < nextMonth
+      })
+      .reduce((sum, t) => sum + parseFloat(t.total_amount || 0), 0)
+
+    const monthRemaining = filteredTransactions
+      .filter((t) => {
+        const d = new Date(t.transaction_date)
+        return d >= selectedDate && d < nextMonth
+      })
+      .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
+
+    return { monthTotal, monthRemaining }
+  }, [selectedMonth, filteredTransactions])
 
   const handleCsvImport = async (rows) => {
     try {
@@ -1370,6 +1382,7 @@ function TransactionPage({ config }) {
                                 <h4 className="font-semibold text-gray-800 text-xs flex items-center gap-1">
                                   <span className="w-1.5 h-4 bg-blue-500 rounded"></span>
                                   {t('paymentsBreakdown.payments')}
+                                  <span className="ml-1 text-gray-500 font-normal">({transactionPayments.length})</span>
                                 </h4>
                                 <div className="flex gap-2 text-xs flex-wrap">
                                   {selectedMonth ? (
@@ -1406,7 +1419,7 @@ function TransactionPage({ config }) {
                               </button>
                             </div>
                             {transactionPayments.length > 0 ? (
-                              <div className="space-y-1">
+                              <div className="max-h-64 overflow-y-auto pr-1 space-y-1">
                                 {transactionPayments.map((payment, idx) => (
                                   <div
                                     key={payment.payment_id}

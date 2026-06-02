@@ -773,7 +773,7 @@ function Liabilities() {
                               <div className="payment-detail-row py-1.5 pl-2 pr-1 border-l-4 border-amber-200 bg-amber-50/50 rounded-r text-xs">
                                 <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                                   <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-gray-800">{t('paymentsBreakdown.payments')}</span>
+                                    <span className="font-semibold text-gray-800">{t('paymentsBreakdown.payments')} <span className="text-gray-500 font-normal">({paymentsForRow.length})</span></span>
                                     <span className="text-green-700">{t('dashboard.paid')}: {formatCurrency(row.paid_amount)}</span>
                                     <span className="text-red-600">{t('dashboard.remaining')}: {formatCurrency(row.remaining_amount)}</span>
                                   </div>
@@ -783,20 +783,22 @@ function Liabilities() {
                                     </button>
                                   )}
                                 </div>
-                                {loadingPayments ? (
-                                  <p className="text-gray-500 py-1">{t('common.loading')}</p>
-                                ) : paymentsForRow.length === 0 ? (
-                                  <p className="text-gray-500 py-1 text-center border border-dashed border-gray-300 rounded">{t('liabilities.noPayments')}</p>
-                                ) : (
-                                  <div className="space-y-0.5">
-                                    {paymentsForRow.map((p) => (
-                                      <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white rounded border border-gray-200">
-                                        <span>{p.payment_date} – {formatCurrency(p.payment_amount)}</span>
-                                        <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                                <div className="max-h-64 overflow-y-auto pr-1">
+                                  {loadingPayments ? (
+                                    <p className="text-gray-500 py-1">{t('common.loading')}</p>
+                                  ) : paymentsForRow.length === 0 ? (
+                                    <p className="text-gray-500 py-1 text-center border border-dashed border-gray-300 rounded">{t('liabilities.noPayments')}</p>
+                                  ) : (
+                                    <div className="space-y-0.5">
+                                      {paymentsForRow.map((p) => (
+                                        <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white rounded border border-gray-200">
+                                          <span>{p.payment_date} – {formatCurrency(p.payment_amount)}</span>
+                                          <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                           </tr>
