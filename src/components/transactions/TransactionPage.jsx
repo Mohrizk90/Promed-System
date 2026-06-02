@@ -941,6 +941,7 @@ function TransactionPage({ config }) {
 
   const monthTotals = useMemo(() => {
     if (!selectedMonth) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
+    if (!selectedMonth.includes('-')) return { monthTotal: calculateTotal(), monthRemaining: calculateRemaining() }
     const [year, month] = selectedMonth.split('-')
     const selectedDate = new Date(parseInt(year), parseInt(month) - 1, 1)
     const nextMonth = new Date(parseInt(year), parseInt(month), 1)

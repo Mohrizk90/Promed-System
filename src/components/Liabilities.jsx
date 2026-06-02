@@ -82,7 +82,7 @@ function Liabilities() {
 
   // Sync selectedMonth -> due date range (due in that month)
   useEffect(() => {
-    if (!selectedMonth) return
+    if (!selectedMonth || !selectedMonth.includes('-')) return
     const [y, m] = selectedMonth.split('-').map(Number)
     const first = `${y}-${String(m).padStart(2, '0')}-01`
     const lastDay = new Date(y, m, 0).getDate()
@@ -488,7 +488,7 @@ function Liabilities() {
   const formatCurrency = (n) => (language === 'ar' ? formatNum(n) + ' ' + currency : currency + ' ' + formatNum(n))
 
   const periodLabel = useMemo(() => {
-    if (!selectedMonth) return null
+    if (!selectedMonth || !selectedMonth.includes('-')) return null
     const [y, m] = selectedMonth.split('-').map(Number)
     const d = new Date(y, m - 1, 1)
     return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
