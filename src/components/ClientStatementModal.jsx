@@ -60,6 +60,30 @@ function formatToday() {
   return new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+const COLUMN_META = {
+  date: { align: 'left', width: '11%' },
+  type: { align: 'left', width: '16%' },
+  invNumber: { align: 'center', width: '9%' },
+  wht: { align: 'center', width: '7%' },
+  invAmount: { align: 'right', width: '14%' },
+  payment: { align: 'right', width: '14%' },
+  balance: { align: 'right', width: '14%' },
+  invoiceNumber: { align: 'center', width: '9%' },
+  product: { align: 'left', width: '24%' },
+  total: { align: 'right', width: '11%' },
+  paid: { align: 'right', width: '11%' },
+  remaining: { align: 'right', width: '11%' },
+  dueDate: { align: 'center', width: '11%' },
+  status: { align: 'left', width: '11%' },
+}
+
+function columnAlignClass(id) {
+  const align = COLUMN_META[id]?.align || 'left'
+  if (align === 'right') return 'text-right'
+  if (align === 'center') return 'text-center'
+  return 'text-left'
+}
+
 export default function ClientStatementModal({
   isOpen,
   onClose,
@@ -202,6 +226,13 @@ export default function ClientStatementModal({
 
   const clientName = client?.client_name || '—'
   const statementPeriod = formatStatementPeriod(dateFrom, dateTo)
+  const companyContactLines = [
+    company.companyAddress,
+    company.companyPhone,
+    company.companyEmail,
+  ].filter(Boolean)
+  const clientAddress = client?.address?.trim() || ''
+  const clientContact = client?.contact_info?.trim() || ''
 
   const renderLedgerCell = (row, id) => {
     switch (id) {
@@ -356,13 +387,15 @@ export default function ClientStatementModal({
         <div className="client-statement-document max-w-3xl mx-auto bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="text-center border-b border-gray-300 pb-3 mb-3">
             <p className="text-sm font-bold text-gray-900">{company.companyName}</p>
-            {(company.companyAddress || company.companyPhone || company.companyEmail) && (
-              <p className="text-[11px] text-gray-600 mt-0.5">
-                {[company.companyAddress, company.companyPhone, company.companyEmail].filter(Boolean).join(' · ')}
-              </p>
+            {companyContactLines.length > 0 && (
+              <div className="mt-1 space-y-0.5 text-[11px] text-gray-600">
+                {company.companyAddress && <p>{company.companyAddress}</p>}
+                {company.companyPhone && <p>{company.companyPhone}</p>}
+                {company.companyEmail && <p>{company.companyEmail}</p>}
+              </div>
             )}
             {company.companyTagline && (
-              <p className="text-[11px] text-gray-500 mt-0.5">{company.companyTagline}</p>
+              <p className="text-[11px] text-gray-500 mt-1">{company.companyTagline}</p>
             )}
           </div>
 
@@ -371,17 +404,19 @@ export default function ClientStatementModal({
           </h1>
           <div className="border-b border-gray-400 my-2" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
-            <div>
-              <p><span className="font-semibold">{t('entities.statementNumber')}:</span> {statementPeriod}</p>
-              <p className="mt-1"><span className="font-semibold">{t('clientTransactions.date')}:</span> {formatToday()}</p>
-            </div>
-            <div className="sm:text-right">
-              <p className="font-semibold text-gray-700">{t('entities.statementBillTo')}</p>
-              <p className="font-bold text-gray-900">{clientName}</p>
-              {client?.address && <p className="text-gray-600">{client.address}</p>}
-              {client?.contact_info && <p className="text-gray-600">{client.contact_info}</p>}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-xs">
+            <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 items-baseline">
+              <dt className="font-semibold text-gray-700 whitespace-nowrap">{t('entities.statementNumber')}:</dt>
+              <dd className="text-gray-900">{statementPeriod}</dd>
+              <dt className="font-semibold text-gray-700 whitespace-nowrap">{t('clientTransactions.date')}:</dt>
+              <dd className="text-gray-900">{formatToday()}</dd>
+            </dl>
+            <dl className="sm:text-right space-y-0.5">
+              <dt className="font-semibold text-gray-700">{t('entities.statementBillTo')}:</dt>
+              <dd className="font-bold text-gray-900">{clientName}</dd>
+              {clientAddress && <dd className="text-gray-600">{clientAddress}</dd>}
+              {clientContact && <dd className="text-gray-600">{clientContact}</dd>}
+            </dl>
           </div>
 
           {rows.length === 0 ? (
@@ -389,10 +424,18 @@ export default function ClientStatementModal({
           ) : (
             <div className="overflow-x-auto">
               <table className="client-statement-table w-full text-xs border-collapse table-fixed">
+                <colgroup>
+                  {visibleColumnIds.map((id) => (
+                    <col key={id} style={{ width: COLUMN_META[id]?.width || 'auto' }} />
+                  ))}
+                </colgroup>
                 <thead>
                   <tr>
                     {visibleColumnIds.map((id) => (
-                      <th key={id} className="px-2 py-1.5 text-left font-semibold uppercase text-[10px] tracking-wide">
+                      <th
+                        key={id}
+                        className={`px-2 py-1.5 font-semibold uppercase text-[10px] tracking-wide ${columnAlignClass(id)}`}
+                      >
                         {viewMode === 'ledger' ? ledgerColumnLabel(id) : transactionColumnLabel(id)}
                       </th>
                     ))}
@@ -404,10 +447,8 @@ export default function ClientStatementModal({
                       {visibleColumnIds.map((id) => (
                         <td
                           key={id}
-                          className={`px-2 py-1 border-t border-gray-200 ${
-                            ['invAmount', 'payment', 'balance', 'total', 'paid', 'remaining'].includes(id)
-                              ? 'text-right tabular-nums'
-                              : ''
+                          className={`px-2 py-1 border-t border-gray-200 tabular-nums ${columnAlignClass(id)} ${
+                            id === 'product' || id === 'type' ? 'break-words' : 'whitespace-nowrap'
                           } ${row.type === 'openingBalance' && id === 'type' ? 'font-semibold uppercase' : ''}`}
                         >
                           {viewMode === 'ledger' ? renderLedgerCell(row, id) : renderTransactionCell(row, id)}
@@ -423,27 +464,27 @@ export default function ClientStatementModal({
                         const isFirstAmount = !visibleColumnIds.slice(0, index).some((c) => ['total', 'paid', 'remaining'].includes(c))
                         if (id === 'total') {
                           return (
-                            <td key={id} className="px-2 py-1 text-right tabular-nums">
+                            <td key={id} className={`px-2 py-1 tabular-nums ${columnAlignClass(id)}`}>
                               {isFirstAmount ? `${t('entities.statementTotals')}: ` : ''}{formatCurrency(totals.total)}
                             </td>
                           )
                         }
                         if (id === 'paid') {
                           return (
-                            <td key={id} className="px-2 py-1 text-right tabular-nums text-green-800">
+                            <td key={id} className={`px-2 py-1 tabular-nums text-green-800 ${columnAlignClass(id)}`}>
                               {isFirstAmount ? `${t('entities.statementTotals')}: ` : ''}{formatCurrency(totals.paid)}
                             </td>
                           )
                         }
                         if (id === 'remaining') {
                           return (
-                            <td key={id} className="px-2 py-1 text-right tabular-nums text-red-800">
+                            <td key={id} className={`px-2 py-1 tabular-nums text-red-800 ${columnAlignClass(id)}`}>
                               {isFirstAmount ? `${t('entities.statementTotals')}: ` : ''}{formatCurrency(totals.remaining)}
                             </td>
                           )
                         }
                         return (
-                          <td key={id} className="px-2 py-1">
+                          <td key={id} className={`px-2 py-1 ${columnAlignClass(id)}`}>
                             {index === 0 ? t('entities.statementTotals') : ''}
                           </td>
                         )

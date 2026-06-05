@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { downloadCsv } from '../utils/exportCsv'
-import { getCompanySettings, saveCompanySettings } from '../utils/companySettings'
+import { getCompanySettingsForm, saveCompanySettings } from '../utils/companySettings'
 import {
   User as UserIcon,
   Globe,
@@ -35,7 +35,7 @@ export default function Settings() {
   const [defaultPaymentTerms, setDefaultPaymentTerms] = useState(
     () => localStorage.getItem('defaultPaymentTerms') || 'none'
   )
-  const [companyForm, setCompanyForm] = useState(() => getCompanySettings())
+  const [companyForm, setCompanyForm] = useState(() => getCompanySettingsForm())
   const [exporting, setExporting] = useState(false)
 
   const handlePaymentTermsChange = (value) => {
@@ -177,6 +177,7 @@ export default function Settings() {
               className="input"
               value={companyForm.companyName}
               onChange={(e) => setCompanyForm({ ...companyForm, companyName: e.target.value })}
+              placeholder="Promed"
             />
           </div>
           <div>
@@ -186,6 +187,7 @@ export default function Settings() {
               className="input"
               value={companyForm.companyAddress}
               onChange={(e) => setCompanyForm({ ...companyForm, companyAddress: e.target.value })}
+              placeholder={t('settings.companyAddressPlaceholder')}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -196,6 +198,7 @@ export default function Settings() {
                 className="input"
                 value={companyForm.companyPhone}
                 onChange={(e) => setCompanyForm({ ...companyForm, companyPhone: e.target.value })}
+                placeholder={t('settings.companyPhonePlaceholder')}
               />
             </div>
             <div>
@@ -205,6 +208,7 @@ export default function Settings() {
                 className="input"
                 value={companyForm.companyEmail}
                 onChange={(e) => setCompanyForm({ ...companyForm, companyEmail: e.target.value })}
+                placeholder={t('settings.companyEmailPlaceholder')}
               />
             </div>
           </div>

@@ -6,27 +6,38 @@ const STORAGE_KEYS = {
   companyTagline: 'companyTagline',
 }
 
-export const DEFAULT_COMPANY_SETTINGS = {
-  companyName: 'Promed for Manufacturing',
-  companyAddress: '3rd Industrial, October City',
-  companyPhone: '(122) 399-7576',
-  companyEmail: 'grizk1965@gmail.com',
-  companyTagline: '',
+const FALLBACK_COMPANY_NAME = 'Promed'
+
+function readStored(key) {
+  const value = localStorage.getItem(STORAGE_KEYS[key])
+  return value == null ? '' : value
 }
 
-export function getCompanySettings() {
+/** Settings form / empty state – no fabricated contact details. */
+export function getCompanySettingsForm() {
   return {
-    companyName: localStorage.getItem(STORAGE_KEYS.companyName) || DEFAULT_COMPANY_SETTINGS.companyName,
-    companyAddress: localStorage.getItem(STORAGE_KEYS.companyAddress) || DEFAULT_COMPANY_SETTINGS.companyAddress,
-    companyPhone: localStorage.getItem(STORAGE_KEYS.companyPhone) || DEFAULT_COMPANY_SETTINGS.companyPhone,
-    companyEmail: localStorage.getItem(STORAGE_KEYS.companyEmail) || DEFAULT_COMPANY_SETTINGS.companyEmail,
-    companyTagline: localStorage.getItem(STORAGE_KEYS.companyTagline) || DEFAULT_COMPANY_SETTINGS.companyTagline,
+    companyName: readStored('companyName'),
+    companyAddress: readStored('companyAddress'),
+    companyPhone: readStored('companyPhone'),
+    companyEmail: readStored('companyEmail'),
+    companyTagline: readStored('companyTagline'),
+  }
+}
+
+/** Statement / invoice letterhead – only saved values, minimal name fallback. */
+export function getCompanySettings() {
+  const form = getCompanySettingsForm()
+  return {
+    companyName: form.companyName.trim() || FALLBACK_COMPANY_NAME,
+    companyAddress: form.companyAddress.trim(),
+    companyPhone: form.companyPhone.trim(),
+    companyEmail: form.companyEmail.trim(),
+    companyTagline: form.companyTagline.trim(),
   }
 }
 
 export function saveCompanySettings(settings) {
   Object.entries(STORAGE_KEYS).forEach(([field, key]) => {
-    const value = settings[field] ?? ''
-    localStorage.setItem(key, value)
+    localStorage.setItem(key, (settings[field] ?? '').trim())
   })
 }

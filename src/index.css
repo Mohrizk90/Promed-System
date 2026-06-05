@@ -412,6 +412,11 @@ body {
     background: #f9fafb;
   }
 
+  .client-statement-table th,
+  .client-statement-table td {
+    vertical-align: top;
+  }
+
   /* Print styles */
 @page {
   size: auto;

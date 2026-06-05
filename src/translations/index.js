@@ -393,7 +393,10 @@ export const translations = {
       companyPhone: 'Phone',
       companyEmail: 'Email',
       companyTagline: 'Tagline (optional)',
-      saveCompanyInfo: 'Save company info'
+      saveCompanyInfo: 'Save company info',
+      companyAddressPlaceholder: 'Street, city',
+      companyPhonePlaceholder: 'Phone number',
+      companyEmailPlaceholder: 'Email address'
     },
     // Aging Report
     aging: {
@@ -1046,7 +1049,10 @@ export const translations = {
       companyPhone: 'الهاتف',
       companyEmail: 'البريد الإلكتروني',
       companyTagline: 'شعار (اختياري)',
-      saveCompanyInfo: 'حفظ معلومات الشركة'
+      saveCompanyInfo: 'حفظ معلومات الشركة',
+      companyAddressPlaceholder: 'الشارع، المدينة',
+      companyPhonePlaceholder: 'رقم الهاتف',
+      companyEmailPlaceholder: 'البريد الإلكتروني'
     },
     // Aging Report
     aging: {
