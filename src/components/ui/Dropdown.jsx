@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import { MoreVertical, ChevronDown } from './Icons'
 
 export default function Dropdown({
@@ -8,7 +8,45 @@ export default function Dropdown({
   className = '',
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [openUpward, setOpenUpward] = useState(false)
   const dropdownRef = useRef(null)
+  const buttonRef = useRef(null)
+  const menuRef = useRef(null)
+
+  const updateMenuPlacement = useCallback(() => {
+    const button = buttonRef.current
+    const menu = menuRef.current
+    if (!button || !menu) return
+
+    const buttonRect = button.getBoundingClientRect()
+    const menuHeight = menu.offsetHeight
+    const gap = 8
+    const spaceBelow = window.innerHeight - buttonRect.bottom
+    const spaceAbove = buttonRect.top
+
+    setOpenUpward(spaceBelow < menuHeight + gap && spaceAbove > spaceBelow)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setOpenUpward(false)
+      return
+    }
+    updateMenuPlacement()
+  }, [isOpen, items, updateMenuPlacement])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleReposition = () => updateMenuPlacement()
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+
+    return () => {
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [isOpen, updateMenuPlacement])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -42,6 +80,7 @@ export default function Dropdown({
   return (
     <div ref={dropdownRef} className={`relative ${className}`}>
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
         aria-haspopup="true"
@@ -52,7 +91,8 @@ export default function Dropdown({
 
       {isOpen && (
         <div 
-          className={`dropdown ${align === 'left' ? 'left-0' : 'right-0'}`}
+          ref={menuRef}
+          className={`dropdown ${align === 'left' ? 'left-0' : 'right-0'} ${openUpward ? 'dropdown-up' : ''}`}
           role="menu"
         >
           {items.map((item, index) => {
