@@ -398,7 +398,21 @@ body {
   .metric-card-orange::before { @apply bg-orange-500; }
 }
 
-/* Print styles */
+  /* Client statement table (screen + print) */
+  .client-statement-table thead tr {
+    background: #374151;
+    color: white;
+  }
+
+  .client-statement-table thead th {
+    color: white;
+  }
+
+  .client-statement-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+  }
+
+  /* Print styles */
 @page {
   size: auto;
   margin: 10mm;
@@ -478,6 +492,61 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     border: 1px solid rgba(0, 0, 0, 0.15);
+  }
+
+  /* Client account statement print */
+  body.printing-statement aside,
+  body.printing-statement header,
+  body.printing-statement nav,
+  body.printing-statement .fixed.bottom-0,
+  body.printing-statement .statement-controls,
+  body.printing-statement .modal-header,
+  body.printing-statement .modal-footer,
+  body.printing-statement .modal-overlay > .modal-content > .modal-header button {
+    display: none !important;
+  }
+
+  body.printing-statement .modal-overlay {
+    position: static !important;
+    background: white !important;
+    padding: 0 !important;
+  }
+
+  body.printing-statement .modal-content {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    max-height: none !important;
+  }
+
+  body.printing-statement .modal-body {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  body.printing-statement .client-statement-document {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .client-statement-table thead tr {
+    background: #374151 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .client-statement-table thead th {
+    color: white !important;
+  }
+
+  .client-statement-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 

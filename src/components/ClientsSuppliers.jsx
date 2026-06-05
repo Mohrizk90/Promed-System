@@ -8,11 +8,10 @@ import Pagination from './ui/Pagination'
 import EmptyState from './ui/EmptyState'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Modal from './ui/Modal'
-import { User, Truck, UserPlus, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft, Printer, DollarSign, FileText } from './ui/Icons'
+import { User, Truck, UserPlus, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft, Printer, DollarSign } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
-import { getCompanySettings } from '../utils/companySettings'
-import { generateStatement } from '../utils/generateStatement'
+import ClientStatementModal from './ClientStatementModal'
 
 const matchSearch = (text, query) => {
   if (!query.trim()) return true
@@ -150,10 +149,7 @@ function ClientsSuppliers() {
   const [detailTransactions, setDetailTransactions] = useState([])
   const [detailPayments, setDetailPayments] = useState([])
   const [detailLoading, setDetailLoading] = useState(false)
-  const [generatingStatement, setGeneratingStatement] = useState(false)
-  const [statementDateFrom, setStatementDateFrom] = useState(() => defaultStatementDates().from)
-  const [statementDateTo, setStatementDateTo] = useState(() => defaultStatementDates().to)
-  const [statementOpeningBalance, setStatementOpeningBalance] = useState('')
+  const [showStatementModal, setShowStatementModal] = useState(false)
 
   const [showClientFormModal, setShowClientFormModal] = useState(false)
   const [showSupplierFormModal, setShowSupplierFormModal] = useState(false)
@@ -552,10 +548,6 @@ function ClientsSuppliers() {
   }
 
   const openClientDetail = (client) => {
-    const dates = defaultStatementDates()
-    setStatementDateFrom(dates.from)
-    setStatementDateTo(dates.to)
-    setStatementOpeningBalance('')
     setDetailEntity({ type: 'client', data: client })
   }
 
@@ -565,40 +557,13 @@ function ClientsSuppliers() {
 
   const closeDetail = () => setDetailEntity(null)
 
-  const handleGenerateStatement = async () => {
+  const openStatementModal = () => {
     if (detailEntity?.type !== 'client') return
     if (detailTransactions.length === 0) {
       showError(t('entities.statementNoData'))
       return
     }
-
-    try {
-      setGeneratingStatement(true)
-      const company = getCompanySettings()
-      const openingBalance = statementOpeningBalance.trim() === ''
-        ? undefined
-        : Number(statementOpeningBalance)
-
-      await generateStatement({
-        client: detailEntity.data,
-        transactions: detailTransactions,
-        payments: detailPayments,
-        options: {
-          ...company,
-          currency,
-          language,
-          dateFrom: statementDateFrom || null,
-          dateTo: statementDateTo || null,
-          openingBalance,
-        },
-      })
-      success(t('entities.statementGenerated'))
-    } catch (err) {
-      console.error('Error generating statement:', err)
-      showError(err?.message || 'Failed to generate statement')
-    } finally {
-      setGeneratingStatement(false)
-    }
+    setShowStatementModal(true)
   }
 
   const formatCurrency = (value) => {
@@ -617,27 +582,6 @@ function ClientsSuppliers() {
           <p className="text-sm text-gray-600"><span className="font-medium">{t('entities.contactInfo')}:</span> {detailEntity.data.contact_info || '—'}</p>
           <p className="text-sm text-gray-600 mt-1"><span className="font-medium">{t('entities.address')}:</span> {detailEntity.data.address || '—'}</p>
         </div>
-
-        {detailEntity.type === 'client' && (
-          <div className="p-4 rounded-lg bg-blue-50/60 border border-blue-200 print:hidden">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">{t('entities.statementPeriod')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="label text-xs">{t('entities.statementFrom')}</label>
-                <input type="date" className="input py-2 text-sm" value={statementDateFrom} onChange={(e) => setStatementDateFrom(e.target.value)} />
-              </div>
-              <div>
-                <label className="label text-xs">{t('entities.statementTo')}</label>
-                <input type="date" className="input py-2 text-sm" value={statementDateTo} onChange={(e) => setStatementDateTo(e.target.value)} />
-              </div>
-              <div>
-                <label className="label text-xs">{t('entities.openingBalance')}</label>
-                <input type="number" step="0.01" className="input py-2 text-sm" value={statementOpeningBalance} onChange={(e) => setStatementOpeningBalance(e.target.value)} placeholder="Auto" title={t('entities.openingBalanceHint')} />
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">{t('entities.openingBalanceHint')}</p>
-          </div>
-        )}
 
         {!detailLoading && detailTransactions.length > 0 && (
           <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
@@ -685,17 +629,33 @@ function ClientsSuppliers() {
       {detailEntity?.type === 'client' && (
         <button
           type="button"
-          onClick={handleGenerateStatement}
-          disabled={generatingStatement || detailLoading || detailTransactions.length === 0}
+          onClick={openStatementModal}
+          disabled={detailLoading || detailTransactions.length === 0}
           className="btn btn-primary flex items-center gap-2"
         >
-          <FileText size={18} />
-          {generatingStatement ? t('entities.generatingStatement') : t('entities.generateStatement')}
+          <Printer size={18} />
+          {t('entities.accountStatement')}
         </button>
       )}
       <button type="button" onClick={closeDetail} className="btn btn-secondary">{t('common.close')}</button>
     </div>
   )
+
+  const renderStatementModal = () => {
+    if (detailEntity?.type !== 'client') return null
+    const dates = defaultStatementDates()
+    return (
+      <ClientStatementModal
+        isOpen={showStatementModal}
+        onClose={() => setShowStatementModal(false)}
+        client={detailEntity.data}
+        transactions={detailTransactions}
+        payments={detailPayments}
+        initialDateFrom={dates.from}
+        initialDateTo={dates.to}
+      />
+    )
+  }
 
   const handleExportClientsCsv = () => {
     if (!clients || clients.length === 0) {
@@ -954,6 +914,8 @@ function ClientsSuppliers() {
           {renderDetailModalBody()}
         </Modal>
 
+        {renderStatementModal()}
+
         <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : deleteTarget?.type === 'employee' ? t('entities.deleteEmployeeConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
 
         {/* Employee add/edit modal */}
@@ -1201,6 +1163,8 @@ function ClientsSuppliers() {
       <Modal isOpen={!!detailEntity} onClose={closeDetail} title={detailEntity ? ( <span className="flex items-center gap-2"> {detailEntity.type === 'client' ? <User size={22} className="text-blue-600 flex-shrink-0" /> : <Truck size={22} className="text-purple-600 flex-shrink-0" />} {detailEntity.type === 'client' ? detailEntity.data.client_name : detailEntity.data.supplier_name} <span className="text-sm font-normal text-gray-500">— {t('entities.transactionHistory')}</span> </span> ) : ''} size="xl" showClose={true} footer={renderDetailModalFooter()}>
         {renderDetailModalBody()}
       </Modal>
+
+      {renderStatementModal()}
 
       <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
     </div>
