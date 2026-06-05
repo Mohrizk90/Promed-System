@@ -1,5 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { MoreVertical, ChevronDown } from './Icons'
+
+const MENU_GAP = 8
+const MENU_WIDTH = 192
+const VIEWPORT_PADDING = 8
 
 export default function Dropdown({
   trigger,
@@ -8,11 +13,73 @@ export default function Dropdown({
   className = '',
 }) {
   const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef(null)
+  const containerRef = useRef(null)
+  const triggerRef = useRef(null)
+  const menuRef = useRef(null)
+
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current
+    const menu = menuRef.current
+    if (!trigger || !menu) return
+
+    const triggerRect = trigger.getBoundingClientRect()
+    const menuRect = menu.getBoundingClientRect()
+    const menuHeight = menuRect.height || MENU_WIDTH
+    const menuWidth = menuRect.width || MENU_WIDTH
+
+    const spaceBelow = window.innerHeight - triggerRect.bottom - MENU_GAP
+    const spaceAbove = triggerRect.top - MENU_GAP
+    const openUp = spaceBelow < menuHeight && spaceAbove > spaceBelow
+    const placement = openUp ? 'up' : 'down'
+
+    let top =
+      placement === 'down'
+        ? triggerRect.bottom + MENU_GAP
+        : triggerRect.top - menuHeight - MENU_GAP
+
+    let left =
+      align === 'right' ? triggerRect.right - menuWidth : triggerRect.left
+
+    left = Math.max(
+      VIEWPORT_PADDING,
+      Math.min(left, window.innerWidth - menuWidth - VIEWPORT_PADDING)
+    )
+
+    if (placement === 'down') {
+      top = Math.min(top, window.innerHeight - menuHeight - VIEWPORT_PADDING)
+    } else {
+      top = Math.max(VIEWPORT_PADDING, top)
+    }
+
+    menu.style.top = `${top}px`
+    menu.style.left = `${left}px`
+    menu.style.visibility = 'visible'
+    menu.classList.remove('dropdown-up', 'dropdown-down')
+    menu.classList.add(`dropdown-${placement}`)
+  }, [align])
+
+  useLayoutEffect(() => {
+    if (!isOpen) return
+
+    updatePosition()
+
+    const handleScrollOrResize = () => updatePosition()
+    window.addEventListener('resize', handleScrollOrResize)
+    document.addEventListener('scroll', handleScrollOrResize, true)
+
+    return () => {
+      window.removeEventListener('resize', handleScrollOrResize)
+      document.removeEventListener('scroll', handleScrollOrResize, true)
+    }
+  }, [isOpen, updatePosition])
 
   useEffect(() => {
+    if (!isOpen) return
+
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      const inContainer = containerRef.current?.contains(event.target)
+      const inMenu = menuRef.current?.contains(event.target)
+      if (!inContainer && !inMenu) {
         setIsOpen(false)
       }
     }
@@ -25,12 +92,12 @@ export default function Dropdown({
 
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('keydown', handleEscape)
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [])
+  }, [isOpen])
 
   const handleItemClick = (item) => {
     if (item.onClick) {
@@ -40,8 +107,9 @@ export default function Dropdown({
   }
 
   return (
-    <div ref={dropdownRef} className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative inline-block ${className}`}>
       <button
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
         aria-haspopup="true"
@@ -50,36 +118,45 @@ export default function Dropdown({
         {trigger || <MoreVertical size={20} />}
       </button>
 
-      {isOpen && (
-        <div 
-          className={`dropdown ${align === 'left' ? 'left-0' : 'right-0'}`}
-          role="menu"
-        >
-          {items.map((item, index) => {
-            if (item.divider) {
-              return <div key={index} className="h-px bg-gray-200 my-1" />
-            }
+      {isOpen &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="dropdown dropdown-down"
+            style={{
+              position: 'fixed',
+              visibility: 'hidden',
+              zIndex: 9999,
+              width: MENU_WIDTH,
+            }}
+            role="menu"
+          >
+            {items.map((item, index) => {
+              if (item.divider) {
+                return <div key={index} className="h-px bg-gray-200 my-1" />
+              }
 
-            const Icon = item.icon
+              const Icon = item.icon
 
-            return (
-              <button
-                key={index}
-                onClick={() => handleItemClick(item)}
-                disabled={item.disabled}
-                className={`dropdown-item ${item.danger ? 'text-red-600 hover:bg-red-50' : ''} ${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                role="menuitem"
-              >
-                {Icon && <Icon size={16} />}
-                <span>{item.label}</span>
-                {item.shortcut && (
-                  <span className="ml-auto text-xs text-gray-400">{item.shortcut}</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      )}
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleItemClick(item)}
+                  disabled={item.disabled}
+                  className={`dropdown-item ${item.danger ? 'text-red-600 hover:bg-red-50' : ''} ${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  role="menuitem"
+                >
+                  {Icon && <Icon size={16} />}
+                  <span>{item.label}</span>
+                  {item.shortcut && (
+                    <span className="ml-auto text-xs text-gray-400">{item.shortcut}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

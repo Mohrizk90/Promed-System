@@ -35,6 +35,7 @@ export default {
       animation: {
         'slide-in': 'slide-in 0.3s ease-out',
         'slide-up': 'slide-up 0.3s ease-out',
+        'slide-down': 'slide-down 0.3s ease-out',
         'fade-in': 'fade-in 0.2s ease-out',
         'scale-in': 'scale-in 0.2s ease-out',
         'pulse-once': 'pulse-once 0.5s ease-out',
@@ -47,6 +48,10 @@ export default {
         },
         'slide-up': {
           from: { transform: 'translateY(10px)', opacity: '0' },
+          to: { transform: 'translateY(0)', opacity: '1' },
+        },
+        'slide-down': {
+          from: { transform: 'translateY(-10px)', opacity: '0' },
           to: { transform: 'translateY(0)', opacity: '1' },
         },
         'fade-in': {

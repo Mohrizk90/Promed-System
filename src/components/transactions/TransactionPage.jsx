@@ -11,6 +11,8 @@ import Dropdown from '../ui/Dropdown'
 import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical, Filter, Upload, FileText } from '../ui/Icons'
 import { downloadCsv } from '../../utils/exportCsv'
 import { generateInvoice } from '../../utils/generateInvoice'
+import { generateStatement } from '../../utils/generateStatement'
+import { getCompanySettings } from '../../utils/companySettings'
 import CsvImportModal from '../CsvImportModal'
 import { getPaginationPrefs, setPaginationPrefs } from '../../utils/paginationPrefs'
 
@@ -98,6 +100,7 @@ function TransactionPage({ config }) {
     reference_number: ''
   })
   const [showCsvImportModal, setShowCsvImportModal] = useState(false)
+  const [generatingStatement, setGeneratingStatement] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const paymentDetailsRefs = React.useRef(new Map())
   const paymentModalContentRef = React.useRef(null)
@@ -936,6 +939,54 @@ function TransactionPage({ config }) {
     downloadCsv(csvFilename, rows)
   }
 
+  const handleGenerateStatement = async () => {
+    if (entityType !== 'client' || !filterEntityId) return
+
+    const clientTx = transactions.filter((tx) => String(tx[entityIdField]) === String(filterEntityId))
+    if (clientTx.length === 0) {
+      showError(t('entities.statementNoData'))
+      return
+    }
+
+    const txIds = new Set(clientTx.map((tx) => tx.transaction_id))
+    const clientPayments = payments.filter((p) => txIds.has(p.transaction_id))
+    const client = entities.find((e) => String(e[entityIdField]) === String(filterEntityId))
+
+    let dateFrom = null
+    let dateTo = null
+    if (selectedMonth) {
+      const [year, month] = selectedMonth.split('-').map(Number)
+      dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
+      const lastDay = new Date(year, month, 0).getDate()
+      dateTo = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    } else {
+      const year = new Date().getFullYear()
+      dateFrom = `${year}-01-01`
+      dateTo = `${year}-12-31`
+    }
+
+    try {
+      setGeneratingStatement(true)
+      await generateStatement({
+        client: client || { client_name: clientTx[0]?.[entityRelationName]?.[entityNameField] || 'Client' },
+        transactions: clientTx,
+        payments: clientPayments,
+        options: {
+          ...getCompanySettings(),
+          currency,
+          language,
+          dateFrom,
+          dateTo,
+        },
+      })
+      success(t('entities.statementGenerated'))
+    } catch (err) {
+      showError(err?.message || 'Failed to generate statement')
+    } finally {
+      setGeneratingStatement(false)
+    }
+  }
+
   const calculateTotal = () => {
     const monthTotal = filteredTransactions
       .filter(t => {
@@ -1155,6 +1206,17 @@ function TransactionPage({ config }) {
             <button type="button" onClick={handleExportCsv} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded text-sm">
               {t('common.exportCsv')}
             </button>
+            {entityType === 'client' && filterEntityId && (
+              <button
+                type="button"
+                onClick={handleGenerateStatement}
+                disabled={generatingStatement}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded text-sm flex items-center gap-2"
+              >
+                <FileText size={18} />
+                {generatingStatement ? t('entities.generatingStatement') : t('clientTransactions.generateStatement')}
+              </button>
+            )}
             <button onClick={() => { resetForm(); setShowModal(true) }} className={`bg-${primaryColor}-600 hover:bg-${primaryColor}-700 text-white font-semibold py-2 px-4 rounded text-sm`}>
               {t(`${translationKey}.addTransaction`)}
             </button>

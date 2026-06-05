@@ -8,14 +8,21 @@ import Pagination from './ui/Pagination'
 import EmptyState from './ui/EmptyState'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Modal from './ui/Modal'
-import { User, Truck, UserPlus, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft, Printer, DollarSign } from './ui/Icons'
+import { User, Truck, UserPlus, Edit, Trash2, Search, Plus, Download, Eye, ArrowLeft, Printer, DollarSign, FileText } from './ui/Icons'
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
+import { getCompanySettings } from '../utils/companySettings'
+import { generateStatement } from '../utils/generateStatement'
 
 const matchSearch = (text, query) => {
   if (!query.trim()) return true
   const q = query.trim().toLowerCase()
   return (text || '').toLowerCase().includes(q)
+}
+
+const defaultStatementDates = () => {
+  const year = new Date().getFullYear()
+  return { from: `${year}-01-01`, to: `${year}-12-31` }
 }
 
 function ClientsSuppliers() {
@@ -141,7 +148,12 @@ function ClientsSuppliers() {
 
   const [detailEntity, setDetailEntity] = useState(null)
   const [detailTransactions, setDetailTransactions] = useState([])
+  const [detailPayments, setDetailPayments] = useState([])
   const [detailLoading, setDetailLoading] = useState(false)
+  const [generatingStatement, setGeneratingStatement] = useState(false)
+  const [statementDateFrom, setStatementDateFrom] = useState(() => defaultStatementDates().from)
+  const [statementDateTo, setStatementDateTo] = useState(() => defaultStatementDates().to)
+  const [statementOpeningBalance, setStatementOpeningBalance] = useState('')
 
   const [showClientFormModal, setShowClientFormModal] = useState(false)
   const [showSupplierFormModal, setShowSupplierFormModal] = useState(false)
@@ -214,6 +226,7 @@ function ClientsSuppliers() {
   useEffect(() => {
     if (!detailEntity) {
       setDetailTransactions([])
+      setDetailPayments([])
       return
     }
     const fetchDetailTransactions = async () => {
@@ -227,9 +240,24 @@ function ClientsSuppliers() {
               products:product_id (product_name, model, unit_price)
             `)
             .eq('client_id', detailEntity.data.client_id)
-            .order('transaction_date', { ascending: false })
+            .order('transaction_date', { ascending: true })
           if (error) throw error
-          setDetailTransactions(data || [])
+          const txs = data || []
+          setDetailTransactions(txs)
+
+          const txIds = txs.map((tx) => tx.transaction_id)
+          if (txIds.length === 0) {
+            setDetailPayments([])
+          } else {
+            const { data: paymentData, error: paymentError } = await supabase
+              .from('payments')
+              .select('*')
+              .eq('transaction_type', 'client')
+              .in('transaction_id', txIds)
+              .order('payment_date', { ascending: true })
+            if (paymentError) throw paymentError
+            setDetailPayments(paymentData || [])
+          }
         } else {
           const { data, error } = await supabase
             .from('supplier_transactions')
@@ -241,11 +269,13 @@ function ClientsSuppliers() {
             .order('transaction_date', { ascending: false })
           if (error) throw error
           setDetailTransactions(data || [])
+          setDetailPayments([])
         }
       } catch (err) {
         console.error('Error loading entity transactions:', err)
         showError('Error loading transactions: ' + err.message)
         setDetailTransactions([])
+        setDetailPayments([])
       } finally {
         setDetailLoading(false)
       }
@@ -522,6 +552,10 @@ function ClientsSuppliers() {
   }
 
   const openClientDetail = (client) => {
+    const dates = defaultStatementDates()
+    setStatementDateFrom(dates.from)
+    setStatementDateTo(dates.to)
+    setStatementOpeningBalance('')
     setDetailEntity({ type: 'client', data: client })
   }
 
@@ -531,12 +565,137 @@ function ClientsSuppliers() {
 
   const closeDetail = () => setDetailEntity(null)
 
+  const handleGenerateStatement = async () => {
+    if (detailEntity?.type !== 'client') return
+    if (detailTransactions.length === 0) {
+      showError(t('entities.statementNoData'))
+      return
+    }
+
+    try {
+      setGeneratingStatement(true)
+      const company = getCompanySettings()
+      const openingBalance = statementOpeningBalance.trim() === ''
+        ? undefined
+        : Number(statementOpeningBalance)
+
+      await generateStatement({
+        client: detailEntity.data,
+        transactions: detailTransactions,
+        payments: detailPayments,
+        options: {
+          ...company,
+          currency,
+          language,
+          dateFrom: statementDateFrom || null,
+          dateTo: statementDateTo || null,
+          openingBalance,
+        },
+      })
+      success(t('entities.statementGenerated'))
+    } catch (err) {
+      console.error('Error generating statement:', err)
+      showError(err?.message || 'Failed to generate statement')
+    } finally {
+      setGeneratingStatement(false)
+    }
+  }
+
   const formatCurrency = (value) => {
     const n = Number(value)
     if (Number.isNaN(n)) return '—'
     const str = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     return language === 'ar' ? str + ' ' + currency : currency + ' ' + str
   }
+
+  const renderDetailModalBody = () => {
+    if (!detailEntity) return null
+    return (
+      <div className="space-y-4">
+        <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('entities.contactAndAddress')}</h3>
+          <p className="text-sm text-gray-600"><span className="font-medium">{t('entities.contactInfo')}:</span> {detailEntity.data.contact_info || '—'}</p>
+          <p className="text-sm text-gray-600 mt-1"><span className="font-medium">{t('entities.address')}:</span> {detailEntity.data.address || '—'}</p>
+        </div>
+
+        {detailEntity.type === 'client' && (
+          <div className="p-4 rounded-lg bg-blue-50/60 border border-blue-200 print:hidden">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">{t('entities.statementPeriod')}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="label text-xs">{t('entities.statementFrom')}</label>
+                <input type="date" className="input py-2 text-sm" value={statementDateFrom} onChange={(e) => setStatementDateFrom(e.target.value)} />
+              </div>
+              <div>
+                <label className="label text-xs">{t('entities.statementTo')}</label>
+                <input type="date" className="input py-2 text-sm" value={statementDateTo} onChange={(e) => setStatementDateTo(e.target.value)} />
+              </div>
+              <div>
+                <label className="label text-xs">{t('entities.openingBalance')}</label>
+                <input type="number" step="0.01" className="input py-2 text-sm" value={statementOpeningBalance} onChange={(e) => setStatementOpeningBalance(e.target.value)} placeholder="Auto" title={t('entities.openingBalanceHint')} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">{t('entities.openingBalanceHint')}</p>
+          </div>
+        )}
+
+        {!detailLoading && detailTransactions.length > 0 && (
+          <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
+            <span className="font-medium text-gray-700">{detailTransactions.length} {detailTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
+            <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
+            <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
+            <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
+          </div>
+        )}
+        <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
+        {detailLoading ? <div className="flex justify-center py-6"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 py-4">{t('entities.noTransactionsForEntity')}</p> : (
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="min-w-full text-xs divide-y divide-gray-200">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-16">{t('common.invoiceNumber')}</th>
+                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase min-w-0">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.total')}</th>
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.paid')}</th>
+                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.remaining')}</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {[...detailTransactions].sort((a, b) => String(b.transaction_date).localeCompare(String(a.transaction_date))).map((tx) => (
+                  <tr key={tx.transaction_id} className="hover:bg-gray-50">
+                    <td className="px-2 py-1 text-gray-700 whitespace-nowrap">{tx.transaction_date}</td>
+                    <td className="px-2 py-1 text-gray-600 whitespace-nowrap">{tx.invoice_number || '—'}</td>
+                    <td className="px-2 py-1 text-gray-800 max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
+                    <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
+                    <td className="px-2 py-1 text-right tabular-nums text-green-700">{formatCurrency(tx.paid_amount)}</td>
+                    <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700">{formatCurrency(tx.remaining_amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderDetailModalFooter = () => (
+    <div className="flex flex-wrap gap-2 justify-end w-full">
+      {detailEntity?.type === 'client' && (
+        <button
+          type="button"
+          onClick={handleGenerateStatement}
+          disabled={generatingStatement || detailLoading || detailTransactions.length === 0}
+          className="btn btn-primary flex items-center gap-2"
+        >
+          <FileText size={18} />
+          {generatingStatement ? t('entities.generatingStatement') : t('entities.generateStatement')}
+        </button>
+      )}
+      <button type="button" onClick={closeDetail} className="btn btn-secondary">{t('common.close')}</button>
+    </div>
+  )
 
   const handleExportClientsCsv = () => {
     if (!clients || clients.length === 0) {
@@ -791,55 +950,8 @@ function ClientsSuppliers() {
         </Modal>
 
         {/* Detail modal */}
-        <Modal isOpen={!!detailEntity} onClose={closeDetail} title={detailEntity ? ( <span className="flex items-center gap-2"> {detailEntity.type === 'client' ? <User size={22} className="text-blue-600 flex-shrink-0" /> : <Truck size={22} className="text-purple-600 flex-shrink-0" />} {detailEntity.type === 'client' ? detailEntity.data.client_name : detailEntity.data.supplier_name} <span className="text-sm font-normal text-gray-500">— {t('entities.transactionHistory')}</span> </span> ) : ''} size="xl" showClose={true} footer={<button type="button" onClick={closeDetail} className="btn btn-secondary">{t('common.close')}</button>}>
-          {detailEntity && (
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('entities.contactAndAddress')}</h3>
-                <p className="text-sm text-gray-600"><span className="font-medium">{t('entities.contactInfo')}:</span> {detailEntity.data.contact_info || '—'}</p>
-                <p className="text-sm text-gray-600 mt-1"><span className="font-medium">{t('entities.address')}:</span> {detailEntity.data.address || '—'}</p>
-              </div>
-              {!detailLoading && detailTransactions.length > 0 && (
-                <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
-                  <span className="font-medium text-gray-700">{detailTransactions.length} {detailTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
-                  <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
-                  <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
-                  <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
-                </div>
-              )}
-              <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
-              {detailLoading ? <div className="flex justify-center py-6"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 py-4">{t('entities.noTransactionsForEntity')}</p> : (
-                <div className="overflow-x-auto rounded-lg border border-gray-200">
-                  <table className="min-w-full text-xs divide-y divide-gray-200">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
-                        <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase min-w-0">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-14">{t('clientTransactions.quantity')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.unitPrice') : t('supplierTransactions.unitPrice')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.total')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.paid')}</th>
-                        <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.remaining')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {detailTransactions.map((tx) => (
-                        <tr key={tx.transaction_id} className="hover:bg-gray-50">
-                          <td className="px-2 py-1 text-gray-700 whitespace-nowrap">{tx.transaction_date}</td>
-                          <td className="px-2 py-1 text-gray-800 max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
-                          <td className="px-2 py-1 text-right text-gray-700">{tx.quantity}</td>
-                          <td className="px-2 py-1 text-right tabular-nums text-gray-700">{formatCurrency(tx.unit_price)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums text-green-700">{formatCurrency(tx.paid_amount)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700">{formatCurrency(tx.remaining_amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
+        <Modal isOpen={!!detailEntity} onClose={closeDetail} title={detailEntity ? ( <span className="flex items-center gap-2"> {detailEntity.type === 'client' ? <User size={22} className="text-blue-600 flex-shrink-0" /> : <Truck size={22} className="text-purple-600 flex-shrink-0" />} {detailEntity.type === 'client' ? detailEntity.data.client_name : detailEntity.data.supplier_name} <span className="text-sm font-normal text-gray-500">— {t('entities.transactionHistory')}</span> </span> ) : ''} size="xl" showClose={true} footer={renderDetailModalFooter()}>
+          {renderDetailModalBody()}
         </Modal>
 
         <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : deleteTarget?.type === 'employee' ? t('entities.deleteEmployeeConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
@@ -1086,55 +1198,8 @@ function ClientsSuppliers() {
       </Modal>
 
       {/* Detail modal (same as clients) */}
-      <Modal isOpen={!!detailEntity} onClose={closeDetail} title={detailEntity ? ( <span className="flex items-center gap-2"> {detailEntity.type === 'client' ? <User size={22} className="text-blue-600 flex-shrink-0" /> : <Truck size={22} className="text-purple-600 flex-shrink-0" />} {detailEntity.type === 'client' ? detailEntity.data.client_name : detailEntity.data.supplier_name} <span className="text-sm font-normal text-gray-500">— {t('entities.transactionHistory')}</span> </span> ) : ''} size="xl" showClose={true} footer={<button type="button" onClick={closeDetail} className="btn btn-secondary">{t('common.close')}</button>}>
-        {detailEntity && (
-          <div className="space-y-4">
-            <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('entities.contactAndAddress')}</h3>
-              <p className="text-sm text-gray-600"><span className="font-medium">{t('entities.contactInfo')}:</span> {detailEntity.data.contact_info || '—'}</p>
-              <p className="text-sm text-gray-600 mt-1"><span className="font-medium">{t('entities.address')}:</span> {detailEntity.data.address || '—'}</p>
-            </div>
-            {!detailLoading && detailTransactions.length > 0 && (
-              <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
-                <span className="font-medium text-gray-700">{detailTransactions.length} {detailTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
-                <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
-                <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
-                <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
-              </div>
-            )}
-            <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
-            {detailLoading ? <div className="flex justify-center py-6"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 py-4">{t('entities.noTransactionsForEntity')}</p> : (
-              <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="min-w-full text-xs divide-y divide-gray-200">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.date') : t('supplierTransactions.date')}</th>
-                      <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase min-w-0">{detailEntity.type === 'client' ? t('clientTransactions.product') : t('supplierTransactions.product')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-14">{t('clientTransactions.quantity')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{detailEntity.type === 'client' ? t('clientTransactions.unitPrice') : t('supplierTransactions.unitPrice')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.total')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.paid')}</th>
-                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-20">{t('clientTransactions.remaining')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {detailTransactions.map((tx) => (
-                      <tr key={tx.transaction_id} className="hover:bg-gray-50">
-                        <td className="px-2 py-1 text-gray-700 whitespace-nowrap">{tx.transaction_date}</td>
-                        <td className="px-2 py-1 text-gray-800 max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
-                        <td className="px-2 py-1 text-right text-gray-700">{tx.quantity}</td>
-                        <td className="px-2 py-1 text-right tabular-nums text-gray-700">{formatCurrency(tx.unit_price)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums text-green-700">{formatCurrency(tx.paid_amount)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700">{formatCurrency(tx.remaining_amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+      <Modal isOpen={!!detailEntity} onClose={closeDetail} title={detailEntity ? ( <span className="flex items-center gap-2"> {detailEntity.type === 'client' ? <User size={22} className="text-blue-600 flex-shrink-0" /> : <Truck size={22} className="text-purple-600 flex-shrink-0" />} {detailEntity.type === 'client' ? detailEntity.data.client_name : detailEntity.data.supplier_name} <span className="text-sm font-normal text-gray-500">— {t('entities.transactionHistory')}</span> </span> ) : ''} size="xl" showClose={true} footer={renderDetailModalFooter()}>
+        {renderDetailModalBody()}
       </Modal>
 
       <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />

@@ -54,7 +54,16 @@ export const translations = {
       viewDetails: 'View details',
       transactionHistory: 'Transaction history',
       noTransactionsForEntity: 'No transactions yet',
-      contactAndAddress: 'Contact & address'
+      contactAndAddress: 'Contact & address',
+      generateStatement: 'Generate Statement',
+      statementPeriod: 'Statement period',
+      statementFrom: 'From',
+      statementTo: 'To',
+      openingBalance: 'Opening balance',
+      openingBalanceHint: 'Leave blank to auto-calculate from prior activity',
+      generatingStatement: 'Generating…',
+      statementGenerated: 'Statement downloaded',
+      statementNoData: 'No transactions to include in statement'
     },
     // Dashboard
     dashboard: {
@@ -167,7 +176,8 @@ export const translations = {
       allMonths: 'All Months',
       currentMonth: 'Current Month',
       period: 'Period',
-      invoice: 'Generate Invoice'
+      invoice: 'Generate Invoice',
+      generateStatement: 'Generate Statement'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -355,7 +365,15 @@ export const translations = {
       exporting: 'Exporting...',
       exportSuccess: 'All data exported successfully!',
       signOut: 'Sign Out',
-      saved: 'Preference saved'
+      saved: 'Preference saved',
+      companyInfo: 'Company Information',
+      companyInfoDesc: 'Used on invoices and client statements',
+      companyName: 'Company name',
+      companyAddress: 'Address',
+      companyPhone: 'Phone',
+      companyEmail: 'Email',
+      companyTagline: 'Tagline (optional)',
+      saveCompanyInfo: 'Save company info'
     },
     // Aging Report
     aging: {
@@ -593,7 +611,16 @@ export const translations = {
       viewDetails: 'عرض التفاصيل',
       transactionHistory: 'سجل المعاملات',
       noTransactionsForEntity: 'لا توجد معاملات بعد',
-      contactAndAddress: 'التواصل والعنوان'
+      contactAndAddress: 'التواصل والعنوان',
+      generateStatement: 'إنشاء كشف حساب',
+      statementPeriod: 'فترة الكشف',
+      statementFrom: 'من',
+      statementTo: 'إلى',
+      openingBalance: 'الرصيد الافتتاحي',
+      openingBalanceHint: 'اتركه فارغاً للحساب التلقائي من النشاط السابق',
+      generatingStatement: 'جاري الإنشاء…',
+      statementGenerated: 'تم تنزيل كشف الحساب',
+      statementNoData: 'لا توجد معاملات لتضمينها في الكشف'
     },
     // Liabilities & Expenses (الجه، البيان، القيمة، مدفوع، متبقى)
     liabilities: {
@@ -782,7 +809,8 @@ export const translations = {
       allMonths: 'جميع الأشهر',
       currentMonth: 'الشهر الحالي',
       period: 'الفترة',
-      invoice: 'إنشاء فاتورة'
+      invoice: 'إنشاء فاتورة',
+      generateStatement: 'إنشاء كشف حساب'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -970,7 +998,15 @@ export const translations = {
       exporting: 'جاري التصدير...',
       exportSuccess: 'تم تصدير جميع البيانات بنجاح!',
       signOut: 'تسجيل الخروج',
-      saved: 'تم حفظ التفضيل'
+      saved: 'تم حفظ التفضيل',
+      companyInfo: 'معلومات الشركة',
+      companyInfoDesc: 'تُستخدم في الفواتير وكشوف حسابات العملاء',
+      companyName: 'اسم الشركة',
+      companyAddress: 'العنوان',
+      companyPhone: 'الهاتف',
+      companyEmail: 'البريد الإلكتروني',
+      companyTagline: 'شعار (اختياري)',
+      saveCompanyInfo: 'حفظ معلومات الشركة'
     },
     // Aging Report
     aging: {

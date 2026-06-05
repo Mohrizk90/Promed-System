@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { downloadCsv } from '../utils/exportCsv'
+import { getCompanySettings, saveCompanySettings } from '../utils/companySettings'
 import {
   User as UserIcon,
   Globe,
@@ -13,6 +14,7 @@ import {
   CreditCard,
   Mail,
   Spinner,
+  FileText,
 } from './ui/Icons'
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -33,11 +35,18 @@ export default function Settings() {
   const [defaultPaymentTerms, setDefaultPaymentTerms] = useState(
     () => localStorage.getItem('defaultPaymentTerms') || 'none'
   )
+  const [companyForm, setCompanyForm] = useState(() => getCompanySettings())
   const [exporting, setExporting] = useState(false)
 
   const handlePaymentTermsChange = (value) => {
     setDefaultPaymentTerms(value)
     localStorage.setItem('defaultPaymentTerms', value)
+    success(t('settings.saved'))
+  }
+
+  const handleCompanySave = (e) => {
+    e.preventDefault()
+    saveCompanySettings(companyForm)
     success(t('settings.saved'))
   }
 
@@ -148,6 +157,71 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+      {/* Company Information */}
+      <form onSubmit={handleCompanySave} className="card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+            <FileText size={20} className="text-indigo-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">{t('settings.companyInfo')}</h2>
+            <p className="text-sm text-gray-500">{t('settings.companyInfoDesc')}</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="label">{t('settings.companyName')}</label>
+            <input
+              type="text"
+              className="input"
+              value={companyForm.companyName}
+              onChange={(e) => setCompanyForm({ ...companyForm, companyName: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">{t('settings.companyAddress')}</label>
+            <input
+              type="text"
+              className="input"
+              value={companyForm.companyAddress}
+              onChange={(e) => setCompanyForm({ ...companyForm, companyAddress: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">{t('settings.companyPhone')}</label>
+              <input
+                type="text"
+                className="input"
+                value={companyForm.companyPhone}
+                onChange={(e) => setCompanyForm({ ...companyForm, companyPhone: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">{t('settings.companyEmail')}</label>
+              <input
+                type="email"
+                className="input"
+                value={companyForm.companyEmail}
+                onChange={(e) => setCompanyForm({ ...companyForm, companyEmail: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">{t('settings.companyTagline')}</label>
+            <input
+              type="text"
+              className="input"
+              value={companyForm.companyTagline}
+              onChange={(e) => setCompanyForm({ ...companyForm, companyTagline: e.target.value })}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary">
+            {t('settings.saveCompanyInfo')}
+          </button>
+        </div>
+      </form>
 
       {/* Default Payment Terms */}
       <div className="card p-6">
