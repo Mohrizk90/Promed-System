@@ -342,16 +342,11 @@ body {
     @apply opacity-100;
   }
 
-  /* Dropdown */
+  /* Dropdown – opens upward so table action menus are not clipped by scroll containers */
   .dropdown {
-    @apply absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 animate-slide-up;
-  }
-
-  .dropdown-up {
+    @apply absolute right-0 mb-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 animate-slide-up;
     top: auto;
     bottom: 100%;
-    margin-top: 0;
-    margin-bottom: 0.5rem;
   }
 
   .dropdown-item {
