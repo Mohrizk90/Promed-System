@@ -150,6 +150,7 @@ function ClientsSuppliers() {
   const [detailPayments, setDetailPayments] = useState([])
   const [detailLoading, setDetailLoading] = useState(false)
   const [showStatementModal, setShowStatementModal] = useState(false)
+  const [statementPayload, setStatementPayload] = useState(null)
 
   const [showClientFormModal, setShowClientFormModal] = useState(false)
   const [showSupplierFormModal, setShowSupplierFormModal] = useState(false)
@@ -563,7 +564,16 @@ function ClientsSuppliers() {
       showError(t('entities.statementNoData'))
       return
     }
+    const dates = defaultStatementDates()
+    setStatementPayload({
+      client: detailEntity.data,
+      transactions: detailTransactions,
+      payments: detailPayments,
+      dateFrom: dates.from,
+      dateTo: dates.to,
+    })
     setShowStatementModal(true)
+    setDetailEntity(null)
   }
 
   const formatCurrency = (value) => {
@@ -642,17 +652,19 @@ function ClientsSuppliers() {
   )
 
   const renderStatementModal = () => {
-    if (detailEntity?.type !== 'client') return null
-    const dates = defaultStatementDates()
+    if (!statementPayload) return null
     return (
       <ClientStatementModal
         isOpen={showStatementModal}
-        onClose={() => setShowStatementModal(false)}
-        client={detailEntity.data}
-        transactions={detailTransactions}
-        payments={detailPayments}
-        initialDateFrom={dates.from}
-        initialDateTo={dates.to}
+        onClose={() => {
+          setShowStatementModal(false)
+          setStatementPayload(null)
+        }}
+        client={statementPayload.client}
+        transactions={statementPayload.transactions}
+        payments={statementPayload.payments}
+        initialDateFrom={statementPayload.dateFrom}
+        initialDateTo={statementPayload.dateTo}
       />
     )
   }

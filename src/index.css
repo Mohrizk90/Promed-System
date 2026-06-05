@@ -494,45 +494,33 @@ body {
     border: 1px solid rgba(0, 0, 0, 0.15);
   }
 
-  /* Client account statement print */
-  body.printing-statement aside,
-  body.printing-statement header,
-  body.printing-statement nav,
-  body.printing-statement .fixed.bottom-0,
-  body.printing-statement .statement-controls,
-  body.printing-statement .modal-header,
-  body.printing-statement .modal-footer,
-  body.printing-statement .modal-overlay > .modal-content > .modal-header button {
-    display: none !important;
+  /* Client account statement print – only the statement document */
+  body.printing-statement * {
+    visibility: hidden;
   }
 
-  body.printing-statement .modal-overlay {
-    position: static !important;
-    background: white !important;
-    padding: 0 !important;
-  }
-
-  body.printing-statement .modal-content {
-    box-shadow: none !important;
-    border: none !important;
-    max-width: none !important;
-    width: 100% !important;
-    margin: 0 !important;
-    max-height: none !important;
-  }
-
-  body.printing-statement .modal-body {
-    overflow: visible !important;
-    padding: 0 !important;
+  body.printing-statement .client-statement-document,
+  body.printing-statement .client-statement-document * {
+    visibility: visible;
   }
 
   body.printing-statement .client-statement-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 0 !important;
   }
 
-  .client-statement-table thead tr {
+  body.printing-statement .client-statement-table {
+    font-size: 10px;
+  }
+
+  body.printing-statement .client-statement-table thead tr {
     background: #374151 !important;
     color: white !important;
     -webkit-print-color-adjust: exact;

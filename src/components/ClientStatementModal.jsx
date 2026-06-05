@@ -91,11 +91,24 @@ export default function ClientStatementModal({
   }, [isOpen, initialDateFrom, initialDateTo, initialOpeningBalance])
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.classList.add('printing-statement')
+    if (!isOpen) return
+
+    const enablePrintMode = () => document.body.classList.add('printing-statement')
+    const disablePrintMode = () => document.body.classList.remove('printing-statement')
+
+    window.addEventListener('beforeprint', enablePrintMode)
+    window.addEventListener('afterprint', disablePrintMode)
+
+    return () => {
+      window.removeEventListener('beforeprint', enablePrintMode)
+      window.removeEventListener('afterprint', disablePrintMode)
+      disablePrintMode()
     }
-    return () => document.body.classList.remove('printing-statement')
   }, [isOpen])
+
+  const handlePrint = () => {
+    window.print()
+  }
 
   const formatCurrency = (value) => {
     if (value === '' || value == null) return ''
@@ -241,26 +254,26 @@ export default function ClientStatementModal({
       isOpen={isOpen}
       onClose={onClose}
       title={t('entities.accountStatement')}
-      size="full"
+      size="xl"
       footer={
         <div className="flex flex-wrap gap-2 justify-end w-full statement-controls">
-          <button type="button" onClick={onClose} className="btn btn-secondary">
+          <button type="button" onClick={onClose} className="btn btn-secondary py-1.5 px-3 text-sm">
             {t('common.close')}
           </button>
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={handlePrint}
             disabled={rows.length === 0}
-            className="btn btn-primary flex items-center gap-2"
+            className="btn btn-primary flex items-center gap-2 py-1.5 px-3 text-sm"
           >
-            <Printer size={18} />
+            <Printer size={16} />
             {t('entities.printStatement')}
           </button>
         </div>
       }
     >
-      <div className="space-y-4">
-        <div className="statement-controls grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 rounded-lg bg-blue-50/60 border border-blue-200">
+      <div className="space-y-3">
+        <div className="statement-controls grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-blue-50/60 border border-blue-200 text-sm">
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-800">{t('entities.statementPeriod')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -340,25 +353,25 @@ export default function ClientStatementModal({
           </div>
         </div>
 
-        <div className="client-statement-document bg-white border border-gray-200 rounded-lg p-6 sm:p-8 shadow-sm">
-          <div className="text-center border-b border-gray-300 pb-4 mb-4">
-            <p className="text-lg font-bold text-gray-900">{company.companyName}</p>
+        <div className="client-statement-document max-w-3xl mx-auto bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+          <div className="text-center border-b border-gray-300 pb-3 mb-3">
+            <p className="text-sm font-bold text-gray-900">{company.companyName}</p>
             {(company.companyAddress || company.companyPhone || company.companyEmail) && (
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-[11px] text-gray-600 mt-0.5">
                 {[company.companyAddress, company.companyPhone, company.companyEmail].filter(Boolean).join(' · ')}
               </p>
             )}
             {company.companyTagline && (
-              <p className="text-xs text-gray-500 mt-0.5">{company.companyTagline}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{company.companyTagline}</p>
             )}
           </div>
 
-          <h1 className="text-center text-xl font-bold text-gray-900 tracking-wide uppercase">
+          <h1 className="text-center text-sm font-bold text-gray-900 tracking-wide uppercase">
             {t('entities.statementTitle')} {company.companyName} - {clientName}
           </h1>
-          <div className="border-b border-gray-400 my-3" />
+          <div className="border-b border-gray-400 my-2" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
             <div>
               <p><span className="font-semibold">{t('entities.statementNumber')}:</span> {statementPeriod}</p>
               <p className="mt-1"><span className="font-semibold">{t('clientTransactions.date')}:</span> {formatToday()}</p>
@@ -375,11 +388,11 @@ export default function ClientStatementModal({
             <p className="text-center text-gray-500 py-8 text-sm">{t('entities.statementNoData')}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="client-statement-table min-w-full text-sm border-collapse">
+              <table className="client-statement-table w-full text-xs border-collapse table-fixed">
                 <thead>
                   <tr>
                     {visibleColumnIds.map((id) => (
-                      <th key={id} className="px-3 py-2 text-left font-semibold uppercase text-xs tracking-wide">
+                      <th key={id} className="px-2 py-1.5 text-left font-semibold uppercase text-[10px] tracking-wide">
                         {viewMode === 'ledger' ? ledgerColumnLabel(id) : transactionColumnLabel(id)}
                       </th>
                     ))}
@@ -391,7 +404,7 @@ export default function ClientStatementModal({
                       {visibleColumnIds.map((id) => (
                         <td
                           key={id}
-                          className={`px-3 py-2 border-t border-gray-200 ${
+                          className={`px-2 py-1 border-t border-gray-200 ${
                             ['invAmount', 'payment', 'balance', 'total', 'paid', 'remaining'].includes(id)
                               ? 'text-right tabular-nums'
                               : ''
@@ -410,27 +423,27 @@ export default function ClientStatementModal({
                         const isFirstAmount = !visibleColumnIds.slice(0, index).some((c) => ['total', 'paid', 'remaining'].includes(c))
                         if (id === 'total') {
                           return (
-                            <td key={id} className="px-3 py-2 text-right tabular-nums">
+                            <td key={id} className="px-2 py-1 text-right tabular-nums">
                               {isFirstAmount ? `${t('entities.statementTotals')}: ` : ''}{formatCurrency(totals.total)}
                             </td>
                           )
                         }
                         if (id === 'paid') {
                           return (
-                            <td key={id} className="px-3 py-2 text-right tabular-nums text-green-800">
+                            <td key={id} className="px-2 py-1 text-right tabular-nums text-green-800">
                               {isFirstAmount ? `${t('entities.statementTotals')}: ` : ''}{formatCurrency(totals.paid)}
                             </td>
                           )
                         }
                         if (id === 'remaining') {
                           return (
-                            <td key={id} className="px-3 py-2 text-right tabular-nums text-red-800">
+                            <td key={id} className="px-2 py-1 text-right tabular-nums text-red-800">
                               {isFirstAmount ? `${t('entities.statementTotals')}: ` : ''}{formatCurrency(totals.remaining)}
                             </td>
                           )
                         }
                         return (
-                          <td key={id} className="px-3 py-2">
+                          <td key={id} className="px-2 py-1">
                             {index === 0 ? t('entities.statementTotals') : ''}
                           </td>
                         )
@@ -443,9 +456,9 @@ export default function ClientStatementModal({
           )}
 
           {viewMode === 'ledger' && ledgerRows.length > 0 && ledgerColumns.balance && (
-            <div className="mt-6 flex justify-end">
-              <div className="min-w-[220px] border border-gray-300 rounded-lg px-4 py-3 bg-gray-50">
-                <div className="flex justify-between gap-6 text-sm font-bold">
+            <div className="mt-4 flex justify-end">
+              <div className="min-w-[180px] border border-gray-300 rounded px-3 py-2 bg-gray-50">
+                <div className="flex justify-between gap-4 text-xs font-bold">
                   <span>{t('entities.statementClosingBalance')}</span>
                   <span className="tabular-nums">{formatCurrency(closingBalance)}</span>
                 </div>
