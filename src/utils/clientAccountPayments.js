@@ -52,3 +52,10 @@ export async function recordClientAccountPayment({
 
   return { payment, allocations, unallocatedCredit }
 }
+
+/** Delete an account-level payment; allocations cascade and invoice paid amounts resync via DB triggers. */
+export async function deleteClientAccountPayment(paymentId) {
+  if (!paymentId) throw new Error('Invalid payment')
+  const { error } = await supabase.from('payments').delete().eq('payment_id', paymentId)
+  if (error) throw error
+}

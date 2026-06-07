@@ -12,7 +12,7 @@ import { User, Truck, UserPlus, Edit, Trash2, Search, Plus, Download, Eye, Arrow
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 import ClientStatementModal from './ClientStatementModal'
-import { recordClientAccountPayment } from '../utils/clientAccountPayments'
+import { recordClientAccountPayment, deleteClientAccountPayment } from '../utils/clientAccountPayments'
 import { getClientAccountSummary } from '../utils/paymentAllocation'
 
 const matchSearch = (text, query) => {
@@ -161,6 +161,8 @@ function ClientsSuppliers() {
     payment_method: 'cash',
     reference_number: '',
   }))
+  const [accountPaymentDeleteTarget, setAccountPaymentDeleteTarget] = useState(null)
+  const [deletingAccountPayment, setDeletingAccountPayment] = useState(false)
 
   const [showClientFormModal, setShowClientFormModal] = useState(false)
   const [showSupplierFormModal, setShowSupplierFormModal] = useState(false)
@@ -619,6 +621,13 @@ function ClientsSuppliers() {
     return getClientAccountSummary(detailTransactions, detailPayments)
   }, [detailEntity, detailTransactions, detailPayments])
 
+  const detailAccountPayments = useMemo(() => {
+    if (detailEntity?.type !== 'client') return []
+    return detailPayments
+      .filter((p) => p.transaction_id == null)
+      .sort((a, b) => String(b.payment_date).localeCompare(String(a.payment_date)))
+  }, [detailEntity, detailPayments])
+
   const reloadClientDetailData = async (clientId) => {
     const { data: txs, error: txError } = await supabase
       .from('client_transactions')
@@ -679,6 +688,22 @@ function ClientsSuppliers() {
     }
   }
 
+  const handleDeleteAccountPaymentConfirm = async () => {
+    if (!accountPaymentDeleteTarget || detailEntity?.type !== 'client') return
+    try {
+      setDeletingAccountPayment(true)
+      await deleteClientAccountPayment(accountPaymentDeleteTarget.payment_id)
+      await reloadClientDetailData(detailEntity.data.client_id)
+      setAccountPaymentDeleteTarget(null)
+      success(t('paymentsBreakdown.paymentDeleted'))
+    } catch (err) {
+      console.error('Delete account payment error:', err)
+      showError(err?.message || t('entities.accountPaymentFailed'))
+    } finally {
+      setDeletingAccountPayment(false)
+    }
+  }
+
   const renderDetailModalBody = () => {
     if (!detailEntity) return null
     return (
@@ -689,17 +714,66 @@ function ClientsSuppliers() {
           <p className="text-sm text-gray-600 mt-1"><span className="font-medium">{t('entities.address')}:</span> {detailEntity.data.address || '—'}</p>
         </div>
 
-        {!detailLoading && detailTransactions.length > 0 && (
+        {!detailLoading && detailEntity.type === 'client' && (detailTransactions.length > 0 || detailAccountPayments.length > 0) && (
           <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
-            <span className="font-medium text-gray-700">{detailTransactions.length} {detailTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
-            <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
-            <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
-            <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
+            {detailTransactions.length > 0 && (
+              <>
+                <span className="font-medium text-gray-700">{detailTransactions.length} {detailTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
+                <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
+                <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
+                <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
+              </>
+            )}
             {detailAccountSummary?.creditBalance > 0 && (
               <span className="text-green-800">{t('entities.customerCredit')}: <strong>{formatCurrency(detailAccountSummary.creditBalance)}</strong></span>
             )}
           </div>
         )}
+
+        {detailEntity.type === 'client' && (
+          <>
+            <h3 className="text-sm font-semibold text-gray-800">{t('entities.accountPaymentsHistory')}</h3>
+            {detailLoading ? (
+              <div className="flex justify-center py-4"><LoadingSpinner /></div>
+            ) : detailAccountPayments.length === 0 ? (
+              <p className="text-sm text-gray-500 py-2">{t('entities.noAccountPayments')}</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="min-w-full text-xs divide-y divide-gray-200">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase">{t('paymentsBreakdown.paymentDate')}</th>
+                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase">{t('paymentsBreakdown.paymentAmount')}</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase">{t('common.paymentMethod')}</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase">{t('common.referenceNumber')}</th>
+                      <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-16">{t('clientTransactions.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {detailAccountPayments.map((payment) => (
+                      <tr key={payment.payment_id} className="hover:bg-gray-50">
+                        <td className="px-2 py-1 text-gray-700 whitespace-nowrap">{payment.payment_date}</td>
+                        <td className="px-2 py-1 text-right tabular-nums font-medium text-green-700">{formatCurrency(payment.payment_amount)}</td>
+                        <td className="px-2 py-1 text-gray-600">{payment.payment_method ? t('common.paymentMethod_' + payment.payment_method) : '—'}</td>
+                        <td className="px-2 py-1 text-gray-600">{payment.reference_number || '—'}</td>
+                        <td className="px-2 py-1 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setAccountPaymentDeleteTarget(payment)}
+                            className="text-red-600 hover:text-red-800 font-medium"
+                          >
+                            {t('paymentsBreakdown.deletePayment')}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
         <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
         {detailLoading ? <div className="flex justify-center py-6"><LoadingSpinner /></div> : detailTransactions.length === 0 ? <p className="text-sm text-gray-500 py-4">{t('entities.noTransactionsForEntity')}</p> : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -860,6 +934,20 @@ function ClientsSuppliers() {
       </Modal>
     )
   }
+
+  const renderAccountPaymentDeleteDialog = () => (
+    <ConfirmDialog
+      isOpen={!!accountPaymentDeleteTarget}
+      onClose={() => setAccountPaymentDeleteTarget(null)}
+      onConfirm={handleDeleteAccountPaymentConfirm}
+      title={t('common.deleteConfirmTitle')}
+      message={t('entities.deleteAccountPaymentConfirm')}
+      confirmText={t('entities.delete')}
+      cancelText={t('entities.cancel')}
+      type="danger"
+      loading={deletingAccountPayment}
+    />
+  )
 
   const handleExportClientsCsv = () => {
     if (!clients || clients.length === 0) {
@@ -1120,6 +1208,7 @@ function ClientsSuppliers() {
 
         {renderStatementModal()}
         {renderAccountPaymentModal()}
+        {renderAccountPaymentDeleteDialog()}
 
         <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : deleteTarget?.type === 'employee' ? t('entities.deleteEmployeeConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
 
@@ -1371,6 +1460,7 @@ function ClientsSuppliers() {
 
       {renderStatementModal()}
       {renderAccountPaymentModal()}
+      {renderAccountPaymentDeleteDialog()}
 
       <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
     </div>

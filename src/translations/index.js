@@ -91,7 +91,10 @@ export const translations = {
       statementTypeAccountPayment: 'Account Payment',
       statementCustomerCredit: 'Customer Credit',
       statementAmountDue: 'Amount Due',
-      customerCredit: 'Credit'
+      customerCredit: 'Credit',
+      accountPaymentsHistory: 'Account payments',
+      noAccountPayments: 'No account payments yet',
+      deleteAccountPaymentConfirm: 'Delete this account payment? Allocations to invoices will be reversed and balances updated.'
     },
     // Dashboard
     dashboard: {
@@ -679,7 +682,10 @@ export const translations = {
       statementTypeAccountPayment: 'دفعة على الحساب',
       statementCustomerCredit: 'رصيد دائن للعميل',
       statementAmountDue: 'المبلغ المستحق',
-      customerCredit: 'رصيد دائن'
+      customerCredit: 'رصيد دائن',
+      accountPaymentsHistory: 'دفعات على الحساب',
+      noAccountPayments: 'لا توجد دفعات على الحساب بعد',
+      deleteAccountPaymentConfirm: 'حذف هذه الدفعة على الحساب؟ سيتم عكس التخصيص على الفواتير وتحديث الأرصدة.'
     },
     // Liabilities & Expenses (الجه، البيان، القيمة، مدفوع، متبقى)
     liabilities: {
