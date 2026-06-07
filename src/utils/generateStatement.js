@@ -127,6 +127,20 @@ export function buildStatementRows(transactions = [], payments = [], options = {
 
   const events = []
 
+  payments.forEach((payment) => {
+    if (payment.transaction_id == null) {
+      if (inRange(payment.payment_date, dateFrom, dateTo)) {
+        events.push({
+          kind: 'accountPayment',
+          date: payment.payment_date,
+          payment,
+          sortOrder: 1,
+        })
+      }
+      return
+    }
+  })
+
   transactions.forEach((tx) => {
     if (inRange(tx.transaction_date, dateFrom, dateTo)) {
       events.push({
@@ -174,10 +188,11 @@ export function buildStatementRows(transactions = [], payments = [], options = {
 
     const amount = Number(event.payment.payment_amount || 0)
     balance -= amount
+    const isAccount = event.kind === 'accountPayment'
     rows.push({
       date: event.payment.payment_date,
-      type: 'payment',
-      invoiceNumber: event.tx?.invoice_number || '',
+      type: isAccount ? 'accountPayment' : 'payment',
+      invoiceNumber: isAccount ? '' : (event.tx?.invoice_number || ''),
       wht: '—',
       invAmount: '',
       payment: amount,
@@ -186,6 +201,16 @@ export function buildStatementRows(transactions = [], payments = [], options = {
   })
 
   return rows
+}
+
+/** Closing summary from ledger rows (negative balance = customer credit). */
+export function getStatementClosingSummary(rows = []) {
+  const closingBalance = rows.length > 0 ? rows[rows.length - 1].balance : 0
+  return {
+    closingBalance,
+    amountDue: Math.max(0, closingBalance),
+    creditBalance: Math.max(0, -closingBalance),
+  }
 }
 
 export function formatStatementPeriod(dateFrom, dateTo) {

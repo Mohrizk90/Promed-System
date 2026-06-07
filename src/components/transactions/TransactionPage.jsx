@@ -943,13 +943,18 @@ function TransactionPage({ config }) {
     if (entityType !== 'client' || !filterEntityId) return
 
     const clientTx = transactions.filter((tx) => String(tx[entityIdField]) === String(filterEntityId))
-    if (clientTx.length === 0) {
+    const txIds = new Set(clientTx.map((tx) => tx.transaction_id))
+    const clientPayments = payments.filter((p) => {
+      if (txIds.has(p.transaction_id)) return true
+      if (p.transaction_id == null && String(p.client_id) === String(filterEntityId)) return true
+      return false
+    })
+
+    if (clientTx.length === 0 && clientPayments.length === 0) {
       showError(t('entities.statementNoData'))
       return
     }
 
-    const txIds = new Set(clientTx.map((tx) => tx.transaction_id))
-    const clientPayments = payments.filter((p) => txIds.has(p.transaction_id))
     const client = entities.find((e) => String(e[entityIdField]) === String(filterEntityId))
 
     let dateFrom = ''

@@ -83,7 +83,15 @@ export const translations = {
       openingBalanceHint: 'Leave blank to auto-calculate from prior activity',
       generatingStatement: 'Generating…',
       statementGenerated: 'Statement downloaded',
-      statementNoData: 'No transactions to include in statement'
+      statementNoData: 'No transactions to include in statement',
+      receiveAccountPayment: 'Receive Account Payment',
+      accountPaymentRecorded: 'Account payment recorded.',
+      accountPaymentFailed: 'Failed to record account payment.',
+      accountPaymentHint: 'Payment is applied to open invoices (oldest first). Any excess becomes customer credit on the account.',
+      statementTypeAccountPayment: 'Account Payment',
+      statementCustomerCredit: 'Customer Credit',
+      statementAmountDue: 'Amount Due',
+      customerCredit: 'Credit'
     },
     // Dashboard
     dashboard: {
@@ -663,7 +671,15 @@ export const translations = {
       openingBalanceHint: 'اتركه فارغاً للحساب التلقائي من النشاط السابق',
       generatingStatement: 'جاري الإنشاء…',
       statementGenerated: 'تم تنزيل كشف الحساب',
-      statementNoData: 'لا توجد معاملات لتضمينها في الكشف'
+      statementNoData: 'لا توجد معاملات لتضمينها في الكشف',
+      receiveAccountPayment: 'استلام دفعة على الحساب',
+      accountPaymentRecorded: 'تم تسجيل الدفعة على الحساب.',
+      accountPaymentFailed: 'فشل تسجيل الدفعة على الحساب.',
+      accountPaymentHint: 'تُطبَّق الدفعة على الفواتير المفتوحة (الأقدم أولاً). أي فائض يصبح رصيداً دائناً للعميل.',
+      statementTypeAccountPayment: 'دفعة على الحساب',
+      statementCustomerCredit: 'رصيد دائن للعميل',
+      statementAmountDue: 'المبلغ المستحق',
+      customerCredit: 'رصيد دائن'
     },
     // Liabilities & Expenses (الجه، البيان، القيمة، مدفوع، متبقى)
     liabilities: {

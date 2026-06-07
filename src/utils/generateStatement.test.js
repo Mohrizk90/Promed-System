@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildStatementRows, formatStatementPeriod } from './generateStatement'
+import { buildStatementRows, formatStatementPeriod, getStatementClosingSummary } from './generateStatement'
 
 describe('buildStatementRows', () => {
   const transactions = [
@@ -67,6 +67,24 @@ describe('buildStatementRows', () => {
     expect(rows).toHaveLength(2)
     expect(rows[0].invoiceNumber).toBe('152')
     expect(rows[1].payment).toBe(72320)
+  })
+
+  it('shows customer credit when account payment exceeds invoices', () => {
+    const txs = [
+      { transaction_id: 1, transaction_date: '2026-01-01', invoice_number: '1', total_amount: 1000 },
+      { transaction_id: 2, transaction_date: '2026-02-01', invoice_number: '2', total_amount: 2000 },
+    ]
+    const accountPayment = [
+      { payment_id: 99, client_id: 1, transaction_id: null, payment_date: '2026-03-01', payment_amount: 3500 },
+    ]
+
+    const rows = buildStatementRows(txs, accountPayment)
+    const summary = getStatementClosingSummary(rows)
+
+    expect(rows.filter((r) => r.type === 'invoice')).toHaveLength(2)
+    expect(rows.find((r) => r.type === 'accountPayment')?.payment).toBe(3500)
+    expect(summary.creditBalance).toBe(500)
+    expect(summary.amountDue).toBe(0)
   })
 })
 

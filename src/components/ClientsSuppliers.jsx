@@ -12,6 +12,8 @@ import { User, Truck, UserPlus, Edit, Trash2, Search, Plus, Download, Eye, Arrow
 import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 import ClientStatementModal from './ClientStatementModal'
+import { recordClientAccountPayment } from '../utils/clientAccountPayments'
+import { getClientAccountSummary } from '../utils/paymentAllocation'
 
 const matchSearch = (text, query) => {
   if (!query.trim()) return true
@@ -151,6 +153,14 @@ function ClientsSuppliers() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [showStatementModal, setShowStatementModal] = useState(false)
   const [statementPayload, setStatementPayload] = useState(null)
+  const [showAccountPaymentModal, setShowAccountPaymentModal] = useState(false)
+  const [savingAccountPayment, setSavingAccountPayment] = useState(false)
+  const [accountPaymentForm, setAccountPaymentForm] = useState(() => ({
+    payment_amount: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    payment_method: 'cash',
+    reference_number: '',
+  }))
 
   const [showClientFormModal, setShowClientFormModal] = useState(false)
   const [showSupplierFormModal, setShowSupplierFormModal] = useState(false)
@@ -242,17 +252,38 @@ function ClientsSuppliers() {
           const txs = data || []
           setDetailTransactions(txs)
 
+          const clientId = detailEntity.data.client_id
           const txIds = txs.map((tx) => tx.transaction_id)
-          if (txIds.length === 0) {
-            setDetailPayments([])
+
+          let paymentQuery = supabase
+            .from('payments')
+            .select('*')
+            .eq('transaction_type', 'client')
+            .order('payment_date', { ascending: true })
+
+          if (txIds.length > 0) {
+            paymentQuery = paymentQuery.or(`client_id.eq.${clientId},transaction_id.in.(${txIds.join(',')})`)
           } else {
-            const { data: paymentData, error: paymentError } = await supabase
-              .from('payments')
-              .select('*')
-              .eq('transaction_type', 'client')
-              .in('transaction_id', txIds)
-              .order('payment_date', { ascending: true })
-            if (paymentError) throw paymentError
+            paymentQuery = paymentQuery.eq('client_id', clientId)
+          }
+
+          const { data: paymentData, error: paymentError } = await paymentQuery
+          if (paymentError) {
+            if (paymentError.message?.includes('client_id') && txIds.length > 0) {
+              const { data: legacyPayments, error: legacyError } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('transaction_type', 'client')
+                .in('transaction_id', txIds)
+                .order('payment_date', { ascending: true })
+              if (legacyError) throw legacyError
+              setDetailPayments(legacyPayments || [])
+            } else if (!paymentError.message?.includes('client_id')) {
+              throw paymentError
+            } else {
+              setDetailPayments([])
+            }
+          } else {
             setDetailPayments(paymentData || [])
           }
         } else {
@@ -560,7 +591,7 @@ function ClientsSuppliers() {
 
   const openStatementModal = () => {
     if (detailEntity?.type !== 'client') return
-    if (detailTransactions.length === 0) {
+    if (detailTransactions.length === 0 && detailPayments.length === 0) {
       showError(t('entities.statementNoData'))
       return
     }
@@ -583,6 +614,71 @@ function ClientsSuppliers() {
     return language === 'ar' ? str + ' ' + currency : currency + ' ' + str
   }
 
+  const detailAccountSummary = useMemo(() => {
+    if (detailEntity?.type !== 'client') return null
+    return getClientAccountSummary(detailTransactions, detailPayments)
+  }, [detailEntity, detailTransactions, detailPayments])
+
+  const reloadClientDetailData = async (clientId) => {
+    const { data: txs, error: txError } = await supabase
+      .from('client_transactions')
+      .select(`*, products:product_id (product_name, model, unit_price)`)
+      .eq('client_id', clientId)
+      .order('transaction_date', { ascending: true })
+    if (txError) throw txError
+    setDetailTransactions(txs || [])
+
+    const txIds = (txs || []).map((tx) => tx.transaction_id)
+    let paymentQuery = supabase.from('payments').select('*').eq('transaction_type', 'client').order('payment_date', { ascending: true })
+    if (txIds.length > 0) {
+      paymentQuery = paymentQuery.or(`client_id.eq.${clientId},transaction_id.in.(${txIds.join(',')})`)
+    } else {
+      paymentQuery = paymentQuery.eq('client_id', clientId)
+    }
+    const { data: paymentData, error: paymentError } = await paymentQuery
+    if (paymentError) throw paymentError
+    setDetailPayments(paymentData || [])
+  }
+
+  const handleAccountPaymentSubmit = async (e) => {
+    e.preventDefault()
+    if (detailEntity?.type !== 'client') return
+    const amount = parseFloat(accountPaymentForm.payment_amount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showError(t('paymentsBreakdown.invalidAmount') || 'Invalid amount')
+      return
+    }
+    try {
+      setSavingAccountPayment(true)
+      const { unallocatedCredit } = await recordClientAccountPayment({
+        clientId: detailEntity.data.client_id,
+        amount,
+        paymentDate: accountPaymentForm.payment_date,
+        paymentMethod: accountPaymentForm.payment_method,
+        referenceNumber: accountPaymentForm.reference_number,
+        transactions: detailTransactions,
+      })
+      await reloadClientDetailData(detailEntity.data.client_id)
+      setShowAccountPaymentModal(false)
+      setAccountPaymentForm({
+        payment_amount: '',
+        payment_date: new Date().toISOString().split('T')[0],
+        payment_method: 'cash',
+        reference_number: '',
+      })
+      if (unallocatedCredit > 0) {
+        success(`${t('entities.accountPaymentRecorded')} ${t('entities.statementCustomerCredit')}: ${formatCurrency(unallocatedCredit)}`)
+      } else {
+        success(t('entities.accountPaymentRecorded'))
+      }
+    } catch (err) {
+      console.error('Account payment error:', err)
+      showError(err?.message || t('entities.accountPaymentFailed'))
+    } finally {
+      setSavingAccountPayment(false)
+    }
+  }
+
   const renderDetailModalBody = () => {
     if (!detailEntity) return null
     return (
@@ -599,6 +695,9 @@ function ClientsSuppliers() {
             <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
             <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
             <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
+            {detailAccountSummary?.creditBalance > 0 && (
+              <span className="text-green-800">{t('entities.customerCredit')}: <strong>{formatCurrency(detailAccountSummary.creditBalance)}</strong></span>
+            )}
           </div>
         )}
         <h3 className="text-sm font-semibold text-gray-800">{t('entities.transactionHistory')}</h3>
@@ -637,15 +736,26 @@ function ClientsSuppliers() {
   const renderDetailModalFooter = () => (
     <div className="flex flex-wrap gap-2 justify-end w-full">
       {detailEntity?.type === 'client' && (
-        <button
-          type="button"
-          onClick={openStatementModal}
-          disabled={detailLoading || detailTransactions.length === 0}
-          className="btn btn-primary flex items-center gap-2"
-        >
-          <Printer size={18} />
-          {t('entities.accountStatement')}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => setShowAccountPaymentModal(true)}
+            disabled={detailLoading}
+            className="btn btn-success flex items-center gap-2"
+          >
+            <DollarSign size={18} />
+            {t('entities.receiveAccountPayment')}
+          </button>
+          <button
+            type="button"
+            onClick={openStatementModal}
+            disabled={detailLoading || (detailTransactions.length === 0 && detailPayments.length === 0)}
+            className="btn btn-primary flex items-center gap-2"
+          >
+            <Printer size={18} />
+            {t('entities.accountStatement')}
+          </button>
+        </>
       )}
       <button type="button" onClick={closeDetail} className="btn btn-secondary">{t('common.close')}</button>
     </div>
@@ -666,6 +776,88 @@ function ClientsSuppliers() {
         initialDateFrom={statementPayload.dateFrom}
         initialDateTo={statementPayload.dateTo}
       />
+    )
+  }
+
+  const paymentMethodOptions = useMemo(
+    () => [
+      { value: 'cash', label: t('common.paymentMethod_cash') },
+      { value: 'bank_transfer', label: t('common.paymentMethod_bank_transfer') },
+      { value: 'check', label: t('common.paymentMethod_check') },
+      { value: 'credit_card', label: t('common.paymentMethod_credit_card') },
+      { value: 'other', label: t('common.paymentMethod_other') },
+    ],
+    [t]
+  )
+
+  const renderAccountPaymentModal = () => {
+    if (!showAccountPaymentModal || detailEntity?.type !== 'client') return null
+    return (
+      <Modal
+        isOpen={showAccountPaymentModal}
+        onClose={() => setShowAccountPaymentModal(false)}
+        title={t('entities.receiveAccountPayment')}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setShowAccountPaymentModal(false)} className="btn btn-secondary">
+              {t('entities.cancel')}
+            </button>
+            <button type="submit" form="account-payment-form" disabled={savingAccountPayment} className="btn btn-success">
+              {savingAccountPayment ? t('paymentsBreakdown.adding') : t('entities.receiveAccountPayment')}
+            </button>
+          </div>
+        }
+      >
+        <form id="account-payment-form" onSubmit={handleAccountPaymentSubmit} className="space-y-3">
+          <p className="text-xs text-gray-600">{t('entities.accountPaymentHint')}</p>
+          <div>
+            <label className="label text-xs">{t('paymentsBreakdown.paymentAmount')} *</label>
+            <input
+              type="number"
+              required
+              step="0.01"
+              min="0.01"
+              className="input py-2 text-sm"
+              value={accountPaymentForm.payment_amount}
+              onChange={(e) => setAccountPaymentForm({ ...accountPaymentForm, payment_amount: e.target.value })}
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="label text-xs">{t('paymentsBreakdown.paymentDate')} *</label>
+            <input
+              type="date"
+              required
+              className="input py-2 text-sm"
+              value={accountPaymentForm.payment_date}
+              onChange={(e) => setAccountPaymentForm({ ...accountPaymentForm, payment_date: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label text-xs">{t('common.paymentMethod')}</label>
+            <select
+              className="input py-2 text-sm"
+              value={accountPaymentForm.payment_method}
+              onChange={(e) => setAccountPaymentForm({ ...accountPaymentForm, payment_method: e.target.value })}
+            >
+              {paymentMethodOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label text-xs">{t('common.referenceNumber')}</label>
+            <input
+              type="text"
+              className="input py-2 text-sm"
+              value={accountPaymentForm.reference_number}
+              onChange={(e) => setAccountPaymentForm({ ...accountPaymentForm, reference_number: e.target.value })}
+              placeholder={t('common.referenceNumberPlaceholder')}
+            />
+          </div>
+        </form>
+      </Modal>
     )
   }
 
@@ -927,6 +1119,7 @@ function ClientsSuppliers() {
         </Modal>
 
         {renderStatementModal()}
+        {renderAccountPaymentModal()}
 
         <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : deleteTarget?.type === 'employee' ? t('entities.deleteEmployeeConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
 
@@ -1177,6 +1370,7 @@ function ClientsSuppliers() {
       </Modal>
 
       {renderStatementModal()}
+      {renderAccountPaymentModal()}
 
       <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} title={t('common.deleteConfirmTitle')} message={deleteTarget?.type === 'client' ? t('entities.deleteClientConfirm') : t('entities.deleteSupplierConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deleting} />
     </div>

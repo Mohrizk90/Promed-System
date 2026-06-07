@@ -3,7 +3,7 @@ import Modal from './ui/Modal'
 import { Printer } from './ui/Icons'
 import { useLanguage } from '../context/LanguageContext'
 import { getCompanySettings } from '../utils/companySettings'
-import { buildStatementRows, formatStatementPeriod } from '../utils/generateStatement'
+import { buildStatementRows, formatStatementPeriod, getStatementClosingSummary } from '../utils/generateStatement'
 
 export const LEDGER_COLUMNS = [
   { id: 'date', default: true },
@@ -145,6 +145,7 @@ export default function ClientStatementModal({
   const typeLabel = (type) => {
     if (type === 'openingBalance') return t('entities.statementOpeningBalance')
     if (type === 'invoice') return t('entities.statementTypeInvoice')
+    if (type === 'accountPayment') return t('entities.statementTypeAccountPayment')
     if (type === 'payment') return t('entities.statementTypePayment')
     return type
   }
@@ -201,10 +202,10 @@ export default function ClientStatementModal({
     .map((col) => col.id)
     .filter((id) => activeColumns[id])
 
-  const closingBalance =
+  const closingSummary =
     viewMode === 'ledger' && ledgerRows.length > 0
-      ? ledgerRows[ledgerRows.length - 1].balance
-      : transactionRows.reduce((sum, tx) => sum + Number(tx.remaining_amount || 0), 0)
+      ? getStatementClosingSummary(ledgerRows)
+      : null
 
   const totals = useMemo(() => {
     const rows = transactionRows
@@ -496,14 +497,32 @@ export default function ClientStatementModal({
             </div>
           )}
 
-          {viewMode === 'ledger' && ledgerRows.length > 0 && ledgerColumns.balance && (
-            <div className="mt-4 flex justify-end">
-              <div className="min-w-[180px] border border-gray-300 rounded px-3 py-2 bg-gray-50">
-                <div className="flex justify-between gap-4 text-xs font-bold">
-                  <span>{t('entities.statementClosingBalance')}</span>
-                  <span className="tabular-nums">{formatCurrency(closingBalance)}</span>
+          {viewMode === 'ledger' && closingSummary && ledgerColumns.balance && (
+            <div className="mt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
+              {closingSummary.amountDue > 0 && (
+                <div className="min-w-[180px] border border-gray-300 rounded px-3 py-2 bg-gray-50">
+                  <div className="flex justify-between gap-4 text-xs font-bold">
+                    <span>{t('entities.statementAmountDue')}</span>
+                    <span className="tabular-nums text-red-800">{formatCurrency(closingSummary.amountDue)}</span>
+                  </div>
                 </div>
-              </div>
+              )}
+              {closingSummary.creditBalance > 0 && (
+                <div className="min-w-[180px] border border-green-300 rounded px-3 py-2 bg-green-50">
+                  <div className="flex justify-between gap-4 text-xs font-bold">
+                    <span>{t('entities.statementCustomerCredit')}</span>
+                    <span className="tabular-nums text-green-800">{formatCurrency(closingSummary.creditBalance)}</span>
+                  </div>
+                </div>
+              )}
+              {closingSummary.amountDue === 0 && closingSummary.creditBalance === 0 && (
+                <div className="min-w-[180px] border border-gray-300 rounded px-3 py-2 bg-gray-50">
+                  <div className="flex justify-between gap-4 text-xs font-bold">
+                    <span>{t('entities.statementClosingBalance')}</span>
+                    <span className="tabular-nums">{formatCurrency(0)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
