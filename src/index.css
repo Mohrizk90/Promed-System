@@ -417,6 +417,11 @@ body {
     vertical-align: top;
   }
 
+  .statement-period-summary {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   /* Print styles */
 @page {
   size: auto;
