@@ -1293,8 +1293,8 @@ function TransactionPage({ config }) {
         {selectedMonth ? (
           <div className="space-y-3">
             <div>
-              <div className="px-3 py-1.5 bg-gray-100 border border-b-0 border-gray-200 rounded-t-lg">
-                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t(`${translationKey}.summaryCurrentMonth`)}</h4>
+              <div className={`px-4 py-2.5 bg-${primaryColor}-600 border border-b-0 border-${primaryColor}-700 rounded-t-lg shadow-sm`}>
+                <h4 className="text-sm md:text-base font-bold text-white tracking-wide">{t(`${translationKey}.summaryCurrentMonth`)}</h4>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-white border border-gray-200 rounded-b-lg">
                 <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}>
@@ -1316,8 +1316,8 @@ function TransactionPage({ config }) {
             </div>
 
             <div>
-              <div className="px-3 py-1.5 bg-gray-100 border border-b-0 border-gray-200 rounded-t-lg">
-                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t(`${translationKey}.summaryPreviousTotals`)}</h4>
+              <div className="px-4 py-2.5 bg-slate-700 border border-b-0 border-slate-800 rounded-t-lg shadow-sm">
+                <h4 className="text-sm md:text-base font-bold text-white tracking-wide">{t(`${translationKey}.summaryPreviousTotals`)}</h4>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-white border border-gray-200 rounded-b-lg">
                 <div className="bg-slate-700 text-white p-2.5 rounded shadow">
