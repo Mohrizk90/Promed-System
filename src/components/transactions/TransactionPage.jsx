@@ -1293,7 +1293,7 @@ function TransactionPage({ config }) {
         {selectedMonth ? (
           <div className="space-y-3">
             <div>
-              <div className={`px-4 py-2.5 bg-${primaryColor}-600 border border-b-0 border-${primaryColor}-700 rounded-t-lg shadow-sm`}>
+              <div className={`px-4 py-2.5 bg-${primaryColor}-600 border border-b-0 border-${primaryColor}-700 rounded-t-lg shadow-sm text-center`}>
                 <h4 className="text-sm md:text-base font-bold text-white tracking-wide">{t(`${translationKey}.summaryCurrentMonth`)}</h4>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-white border border-gray-200 rounded-b-lg">
@@ -1316,7 +1316,7 @@ function TransactionPage({ config }) {
             </div>
 
             <div>
-              <div className="px-4 py-2.5 bg-slate-700 border border-b-0 border-slate-800 rounded-t-lg shadow-sm">
+              <div className="px-4 py-2.5 bg-slate-700 border border-b-0 border-slate-800 rounded-t-lg shadow-sm text-center">
                 <h4 className="text-sm md:text-base font-bold text-white tracking-wide">{t(`${translationKey}.summaryPreviousTotals`)}</h4>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-white border border-gray-200 rounded-b-lg">
