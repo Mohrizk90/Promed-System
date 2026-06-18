@@ -208,7 +208,21 @@ export const translations = {
       currentMonth: 'Current Month',
       period: 'Period',
       invoice: 'Generate Invoice',
-      generateStatement: 'Generate Statement'
+      generateStatement: 'Generate Statement',
+      summaryCurrentMonth: 'Current Month',
+      summaryPreviousTotals: 'Previous Months & Total',
+      monthTotalLabel: 'Sales This Month',
+      monthTotalHint: 'Invoices dated this month',
+      monthOutstandingLabel: 'Outstanding This Month',
+      monthOutstandingHint: 'Unpaid from this month\'s invoices',
+      monthPaidLabel: 'Collected This Month',
+      monthPaidHint: 'Payments received this month',
+      pastOutstandingLabel: 'Past Outstanding',
+      pastOutstandingHint: 'Unpaid from earlier months',
+      pastPaidLabel: 'Past Payments',
+      pastPaidHint: 'Payments on older invoices',
+      totalOutstandingLabel: 'Total Outstanding',
+      totalOutstandingHint: 'All unpaid balances'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -247,7 +261,21 @@ export const translations = {
       allMonths: 'All Months',
       currentMonth: 'Current Month',
       period: 'Period',
-      invoice: 'Generate Invoice'
+      invoice: 'Generate Invoice',
+      summaryCurrentMonth: 'Current Month',
+      summaryPreviousTotals: 'Previous Months & Total',
+      monthTotalLabel: 'Purchases This Month',
+      monthTotalHint: 'Bills dated this month',
+      monthOutstandingLabel: 'Outstanding This Month',
+      monthOutstandingHint: 'Unpaid from this month\'s bills',
+      monthPaidLabel: 'Paid This Month',
+      monthPaidHint: 'Payments made this month',
+      pastOutstandingLabel: 'Past Outstanding',
+      pastOutstandingHint: 'Unpaid from earlier months',
+      pastPaidLabel: 'Past Payments',
+      pastPaidHint: 'Payments on older bills',
+      totalOutstandingLabel: 'Total Outstanding',
+      totalOutstandingHint: 'All unpaid balances'
     },
     // Payments Breakdown
     paymentsBreakdown: {
@@ -875,7 +903,21 @@ export const translations = {
       currentMonth: 'الشهر الحالي',
       period: 'الفترة',
       invoice: 'إنشاء فاتورة',
-      generateStatement: 'إنشاء كشف حساب'
+      generateStatement: 'إنشاء كشف حساب',
+      summaryCurrentMonth: 'الشهر الحالي',
+      summaryPreviousTotals: 'الأشهر السابقة والإجمالي',
+      monthTotalLabel: 'مبيعات هذا الشهر',
+      monthTotalHint: 'فواتير بتاريخ هذا الشهر',
+      monthOutstandingLabel: 'متبقي هذا الشهر',
+      monthOutstandingHint: 'غير مدفوع من فواتير هذا الشهر',
+      monthPaidLabel: 'محصّل هذا الشهر',
+      monthPaidHint: 'مدفوعات مستلمة هذا الشهر',
+      pastOutstandingLabel: 'متبقي سابق',
+      pastOutstandingHint: 'غير مدفوع من أشهر سابقة',
+      pastPaidLabel: 'مدفوعات سابقة',
+      pastPaidHint: 'مدفوعات على فواتير أقدم',
+      totalOutstandingLabel: 'إجمالي المتبقي',
+      totalOutstandingHint: 'جميع الأرصدة غير المدفوعة'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -914,7 +956,21 @@ export const translations = {
       allMonths: 'جميع الأشهر',
       currentMonth: 'الشهر الحالي',
       period: 'الفترة',
-      invoice: 'إنشاء فاتورة'
+      invoice: 'إنشاء فاتورة',
+      summaryCurrentMonth: 'الشهر الحالي',
+      summaryPreviousTotals: 'الأشهر السابقة والإجمالي',
+      monthTotalLabel: 'مشتريات هذا الشهر',
+      monthTotalHint: 'فواتير بتاريخ هذا الشهر',
+      monthOutstandingLabel: 'متبقي هذا الشهر',
+      monthOutstandingHint: 'غير مدفوع من فواتير هذا الشهر',
+      monthPaidLabel: 'مدفوع هذا الشهر',
+      monthPaidHint: 'مدفوعات تمت هذا الشهر',
+      pastOutstandingLabel: 'متبقي سابق',
+      pastOutstandingHint: 'غير مدفوع من أشهر سابقة',
+      pastPaidLabel: 'مدفوعات سابقة',
+      pastPaidHint: 'مدفوعات على فواتير أقدم',
+      totalOutstandingLabel: 'إجمالي المتبقي',
+      totalOutstandingHint: 'جميع الأرصدة غير المدفوعة'
     },
     // Payments Breakdown
     paymentsBreakdown: {

@@ -1291,43 +1291,51 @@ function TransactionPage({ config }) {
 
         {/* Summary cards - compact */}
         {selectedMonth ? (
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
-            {/* Expected (based on transactions) */}
-            <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}>
-              <p className="text-xs font-medium">{t('common.expected')} {t('common.current')}</p>
-              <p className="text-lg font-bold">{formatCurrency(monthTotals.monthTotal)}</p>
-              <p className="text-[11px] opacity-90">{t(`${translationKey}.totalAmount`)}</p>
-            </div>
-            <div className="bg-red-600 text-white p-2.5 rounded shadow">
-              <p className="text-xs font-medium">{t('common.expected')} {t('common.current')}</p>
-              <p className="text-lg font-bold">{formatCurrency(monthTotals.monthRemaining)}</p>
-              <p className="text-[11px] opacity-90">{t(`${translationKey}.remainingAmount`)}</p>
-            </div>
-
-            {/* Actual (based on payments) */}
-            <div className="bg-green-600 text-white p-2.5 rounded shadow">
-              <p className="text-xs font-medium">{t('common.actual')} {t('common.current')}</p>
-              <p className="text-lg font-bold">{formatCurrency(calculatePaid())}</p>
-              <p className="text-[11px] opacity-90">{t(`${translationKey}.paidAmount`)}</p>
-            </div>
-
-            {/* Previous months (separated) */}
-            <div className="bg-slate-700 text-white p-2.5 rounded shadow">
-              <p className="text-xs font-medium">{t('common.expected')} {t('common.previous')}</p>
-              <p className="text-lg font-bold">{formatCurrency(includePastRemaining ? getPastRemainingTotal() : 0)}</p>
-              <p className="text-[11px] opacity-90">{t(`${translationKey}.remainingAmount`)}</p>
-            </div>
-            <div className="bg-slate-600 text-white p-2.5 rounded shadow">
-              <p className="text-xs font-medium">{t('common.actual')} {t('common.previous')}</p>
-              <p className="text-lg font-bold">{formatCurrency(previousPaidTotal)}</p>
-              <p className="text-[11px] opacity-90">{t(`${translationKey}.paidAmount`)}</p>
+          <div className="space-y-3">
+            <div>
+              <div className="px-3 py-1.5 bg-gray-100 border border-b-0 border-gray-200 rounded-t-lg">
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t(`${translationKey}.summaryCurrentMonth`)}</h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-white border border-gray-200 rounded-b-lg">
+                <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}>
+                  <p className="text-xs font-medium">{t(`${translationKey}.monthTotalLabel`)}</p>
+                  <p className="text-lg font-bold">{formatCurrency(monthTotals.monthTotal)}</p>
+                  <p className="text-[11px] opacity-90">{t(`${translationKey}.monthTotalHint`)}</p>
+                </div>
+                <div className="bg-red-600 text-white p-2.5 rounded shadow">
+                  <p className="text-xs font-medium">{t(`${translationKey}.monthOutstandingLabel`)}</p>
+                  <p className="text-lg font-bold">{formatCurrency(monthTotals.monthRemaining)}</p>
+                  <p className="text-[11px] opacity-90">{t(`${translationKey}.monthOutstandingHint`)}</p>
+                </div>
+                <div className="bg-green-600 text-white p-2.5 rounded shadow">
+                  <p className="text-xs font-medium">{t(`${translationKey}.monthPaidLabel`)}</p>
+                  <p className="text-lg font-bold">{formatCurrency(calculatePaid())}</p>
+                  <p className="text-[11px] opacity-90">{t(`${translationKey}.monthPaidHint`)}</p>
+                </div>
+              </div>
             </div>
 
-            {/* Totals (what users usually want at a glance) */}
-            <div className="bg-gray-900 text-white p-2.5 rounded shadow">
-              <p className="text-xs font-medium">{t('common.total')}</p>
-              <p className="text-lg font-bold">{formatCurrency(calculateRemaining())}</p>
-              <p className="text-[11px] opacity-90">{t(`${translationKey}.remainingAmount`)}</p>
+            <div>
+              <div className="px-3 py-1.5 bg-gray-100 border border-b-0 border-gray-200 rounded-t-lg">
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t(`${translationKey}.summaryPreviousTotals`)}</h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-white border border-gray-200 rounded-b-lg">
+                <div className="bg-slate-700 text-white p-2.5 rounded shadow">
+                  <p className="text-xs font-medium">{t(`${translationKey}.pastOutstandingLabel`)}</p>
+                  <p className="text-lg font-bold">{formatCurrency(includePastRemaining ? getPastRemainingTotal() : 0)}</p>
+                  <p className="text-[11px] opacity-90">{t(`${translationKey}.pastOutstandingHint`)}</p>
+                </div>
+                <div className="bg-slate-600 text-white p-2.5 rounded shadow">
+                  <p className="text-xs font-medium">{t(`${translationKey}.pastPaidLabel`)}</p>
+                  <p className="text-lg font-bold">{formatCurrency(previousPaidTotal)}</p>
+                  <p className="text-[11px] opacity-90">{t(`${translationKey}.pastPaidHint`)}</p>
+                </div>
+                <div className="bg-gray-900 text-white p-2.5 rounded shadow">
+                  <p className="text-xs font-medium">{t(`${translationKey}.totalOutstandingLabel`)}</p>
+                  <p className="text-lg font-bold">{formatCurrency(calculateRemaining())}</p>
+                  <p className="text-[11px] opacity-90">{t(`${translationKey}.totalOutstandingHint`)}</p>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
