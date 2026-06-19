@@ -17,7 +17,7 @@ export function LanguageProvider({ children }) {
     document.documentElement.lang = language
   }, [language])
 
-  const t = (key) => {
+  const t = (key, params) => {
     const keys = key.split('.')
     let value = translations[language]
     
@@ -25,7 +25,13 @@ export function LanguageProvider({ children }) {
       value = value?.[k]
     }
     
-    return value || key
+    if (value == null) return key
+    if (params && typeof value === 'string') {
+      return value.replace(/\{(\w+)\}/g, (match, name) =>
+        params[name] != null ? params[name] : match
+      )
+    }
+    return value
   }
 
   const toggleLanguage = () => {

@@ -239,7 +239,13 @@ export const translations = {
       invoiceLines: 'Additional line items',
       addLine: 'Add line',
       removeLine: 'Remove line',
-      lineProductPlaceholder: 'Product or service name'
+      lineProductPlaceholder: 'Product or service name',
+      subtotal: 'Subtotal',
+      vatLabel: 'VAT ({rate}%)',
+      withholdingTax: 'Withholding tax',
+      whtNone: 'None',
+      withholdingDeducted: 'Withholding ({rate}%)',
+      netTotal: 'Net total'
     },
     invoices: {
       title: 'Invoices',
@@ -277,6 +283,9 @@ export const translations = {
       doc_unitPrice: 'Unit Price',
       doc_amount: 'Amount',
       doc_subtotal: 'Subtotal',
+      doc_vat: 'VAT ({rate}%)',
+      doc_wht: 'Withholding ({rate}%)',
+      doc_netTotal: 'Net total',
       doc_paidAmount: 'Paid',
       doc_balanceDue: 'Balance Due',
       doc_paymentHistory: 'Payment History',
@@ -932,7 +941,13 @@ export const translations = {
       invoiceLines: 'بنود إضافية',
       addLine: 'إضافة بند',
       removeLine: 'حذف البند',
-      lineProductPlaceholder: 'اسم المنتج أو الخدمة'
+      lineProductPlaceholder: 'اسم المنتج أو الخدمة',
+      subtotal: 'المجموع الفرعي',
+      vatLabel: 'ضريبة القيمة المضافة ({rate}%)',
+      withholdingTax: 'ضريبة الخصم والإضافة',
+      whtNone: 'بدون',
+      withholdingDeducted: 'الخصم ({rate}%)',
+      netTotal: 'الصافي'
     },
     invoices: {
       title: 'الفواتير',
@@ -970,6 +985,9 @@ export const translations = {
       doc_unitPrice: 'سعر الوحدة',
       doc_amount: 'المبلغ',
       doc_subtotal: 'المجموع الفرعي',
+      doc_vat: 'ضريبة القيمة المضافة ({rate}%)',
+      doc_wht: 'الخصم ({rate}%)',
+      doc_netTotal: 'الإجمالي الصافي',
       doc_paidAmount: 'المدفوع',
       doc_balanceDue: 'المبلغ المتبقي',
       doc_paymentHistory: 'سجل الدفعات',

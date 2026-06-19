@@ -61,6 +61,14 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
   const totalAmount = Number(transaction.total_amount || 0)
   const paidAmount = Number(transaction.paid_amount || 0)
   const remaining = Number(transaction.remaining_amount ?? totalAmount - paidAmount)
+  const vatAmount = Number(transaction.vat_amount || 0)
+  const vatRate = Number(transaction.vat_rate || 0)
+  const whtAmount = Number(transaction.wht_amount || 0)
+  const whtRate = Number(transaction.wht_rate || 0)
+  const subtotal = transaction.subtotal_amount != null
+    ? Number(transaction.subtotal_amount)
+    : lines.reduce((sum, l) => sum + Number(l.line_total || 0), 0)
+  const hasTax = vatAmount > 0 || whtAmount > 0
   const isPaid = remaining <= 0
   const dueDate = transaction.due_date
   const isOverdue = !isPaid && dueDate && parseDate(dueDate) < new Date()
@@ -225,8 +233,26 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
           <div className="w-full sm:w-72 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 space-y-1.5 invoice-totals">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">{t('invoices.doc_subtotal')}</span>
-              <span className="tabular-nums text-gray-900">{formatCurrency(totalAmount)}</span>
+              <span className="tabular-nums text-gray-900">{formatCurrency(subtotal)}</span>
             </div>
+            {vatAmount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">{t('invoices.doc_vat', { rate: vatRate })}</span>
+                <span className="tabular-nums text-gray-900">{formatCurrency(vatAmount)}</span>
+              </div>
+            )}
+            {whtAmount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">{t('invoices.doc_wht', { rate: whtRate })}</span>
+                <span className="tabular-nums text-red-700">- {formatCurrency(whtAmount)}</span>
+              </div>
+            )}
+            {hasTax && (
+              <div className="flex justify-between text-sm font-semibold border-t border-gray-300 pt-1.5">
+                <span className="text-gray-700">{t('invoices.doc_netTotal')}</span>
+                <span className="tabular-nums text-gray-900">{formatCurrency(totalAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">{t('invoices.doc_paidAmount')}</span>
               <span className="tabular-nums text-green-700">- {formatCurrency(paidAmount)}</span>

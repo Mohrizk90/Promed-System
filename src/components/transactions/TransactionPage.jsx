@@ -24,6 +24,7 @@ import {
   emptyInvoiceLine,
   normalizeInvoiceLines,
 } from '../../utils/invoiceLines'
+import { computeInvoiceTax, WHT_RATE_OPTIONS } from '../../utils/invoiceTax'
 import ClientStatementModal from '../ClientStatementModal'
 import InvoiceModal from '../InvoiceModal'
 import CsvImportModal from '../CsvImportModal'
@@ -85,7 +86,8 @@ function TransactionPage({ config }) {
     status: 'not_started',
     invoice_number: '',
     payment_terms: defaultPaymentTerms,
-    due_date: ''
+    due_date: '',
+    wht_rate: 0
   }))
   const [entitySuggestions, setEntitySuggestions] = useState([])
   const [productSuggestions, setProductSuggestions] = useState([])
@@ -367,11 +369,8 @@ function TransactionPage({ config }) {
       product_price: product.unit_price,
     }
     if (invoiceModalMode) {
-      const { invoiceTotal } = buildLineItemsPayload(
-        { quantity: formData.quantity, unit_price: product.unit_price },
-        extraInvoiceLines
-      )
-      next.total_amount = invoiceTotal > 0 ? invoiceTotal.toFixed(2) : formData.total_amount
+      const { netTotal } = getInvoiceCalc({ unit_price: product.unit_price })
+      next.total_amount = netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount
     } else {
       next.total_amount = product.unit_price && formData.quantity
         ? (product.unit_price * formData.quantity).toFixed(2)
@@ -453,7 +452,10 @@ function TransactionPage({ config }) {
             extraInvoiceLines
           )
         : null
-      const invoiceTotalNum = linePayload?.invoiceTotal ?? totalAmountNum
+      const taxBreakdown = linePayload
+        ? computeInvoiceTax(linePayload.invoiceTotal, formData.wht_rate)
+        : null
+      const invoiceTotalNum = taxBreakdown?.netTotal ?? totalAmountNum
       const remainingAmountNum = invoiceTotalNum - paidAmountNum
 
       let invoiceNumber = formData.invoice_number || null
@@ -485,7 +487,14 @@ function TransactionPage({ config }) {
         invoice_number: invoiceNumber,
         payment_terms: formData.payment_terms || 'none',
         due_date: formData.due_date || null,
-        ...(invoicingEnabled && invoiceModalMode ? { line_items: linePayload.extras } : {}),
+        ...(invoicingEnabled && invoiceModalMode ? {
+          line_items: linePayload.extras,
+          subtotal_amount: taxBreakdown.subtotal,
+          vat_rate: taxBreakdown.vatRate,
+          vat_amount: taxBreakdown.vatAmount,
+          wht_rate: taxBreakdown.whtRate,
+          wht_amount: taxBreakdown.whtAmount,
+        } : {}),
       }
 
       let savedTransaction = null
@@ -596,7 +605,8 @@ function TransactionPage({ config }) {
         status: 'not_started',
         invoice_number: '',
         payment_terms: defaultPaymentTerms,
-        due_date: ''
+        due_date: '',
+        wht_rate: 0
       })
       await fetchData()
     } catch (err) {
@@ -626,7 +636,8 @@ function TransactionPage({ config }) {
         : (transaction.products?.unit_price !== undefined && transaction.products?.unit_price !== null ? transaction.products.unit_price.toString() : (transaction.quantity ? (parseFloat(transaction.total_amount) / transaction.quantity).toFixed(2) : '')),
       invoice_number: transaction.invoice_number || '',
       payment_terms: transaction.payment_terms || 'none',
-      due_date: transaction.due_date || ''
+      due_date: transaction.due_date || '',
+      wht_rate: Number(transaction.wht_rate) || 0
     })
     setExtraInvoiceLines(
       normalizeInvoiceLines(transaction.line_items || []).map((line) => ({
@@ -640,6 +651,18 @@ function TransactionPage({ config }) {
     setShowModal(true)
   }
 
+  // Live invoice tax breakdown (subtotal -> VAT 14% -> withholding -> net total)
+  const getInvoiceCalc = (overrides = {}) => {
+    const primary = {
+      quantity: overrides.quantity ?? formData.quantity,
+      unit_price: overrides.unit_price ?? formData.product_price,
+    }
+    const lines = overrides.lines ?? extraInvoiceLines
+    const whtRate = overrides.wht_rate ?? formData.wht_rate
+    const { invoiceTotal } = buildLineItemsPayload(primary, lines)
+    return computeInvoiceTax(invoiceTotal, whtRate)
+  }
+
   const updateExtraLine = (index, field, value) => {
     setExtraInvoiceLines((prev) => {
       const next = [...prev]
@@ -648,11 +671,8 @@ function TransactionPage({ config }) {
         line.line_total = String(calcLineTotal(line.quantity, line.unit_price))
       }
       next[index] = line
-      const { invoiceTotal } = buildLineItemsPayload(
-        { quantity: formData.quantity, unit_price: formData.product_price },
-        next
-      )
-      setFormData((f) => ({ ...f, total_amount: invoiceTotal > 0 ? invoiceTotal.toFixed(2) : f.total_amount }))
+      const { netTotal } = getInvoiceCalc({ lines: next })
+      setFormData((f) => ({ ...f, total_amount: netTotal > 0 ? netTotal.toFixed(2) : f.total_amount }))
       return next
     })
   }
@@ -664,13 +684,16 @@ function TransactionPage({ config }) {
   const removeExtraInvoiceLine = (index) => {
     setExtraInvoiceLines((prev) => {
       const next = prev.filter((_, i) => i !== index)
-      const { invoiceTotal } = buildLineItemsPayload(
-        { quantity: formData.quantity, unit_price: formData.product_price },
-        next
-      )
-      setFormData((f) => ({ ...f, total_amount: invoiceTotal > 0 ? invoiceTotal.toFixed(2) : f.total_amount }))
+      const { netTotal } = getInvoiceCalc({ lines: next })
+      setFormData((f) => ({ ...f, total_amount: netTotal > 0 ? netTotal.toFixed(2) : f.total_amount }))
       return next
     })
+  }
+
+  const handleWhtRateChange = (rate) => {
+    const whtRate = Number(rate) || 0
+    const { netTotal } = getInvoiceCalc({ wht_rate: whtRate })
+    setFormData((f) => ({ ...f, wht_rate: whtRate, total_amount: netTotal > 0 ? netTotal.toFixed(2) : f.total_amount }))
   }
 
   const openInvoiceModal = () => {
@@ -682,6 +705,7 @@ function TransactionPage({ config }) {
       paid_amount: '0',
       payment_terms: defaultPaymentTerms,
       due_date: calcDueDate(new Date().toISOString().split('T')[0], defaultPaymentTerms),
+      wht_rate: 0,
     }))
     setShowModal(true)
   }
@@ -1327,7 +1351,8 @@ function TransactionPage({ config }) {
       status: 'not_started',
       invoice_number: '',
       payment_terms: defaultPaymentTerms,
-      due_date: ''
+      due_date: '',
+      wht_rate: 0
     })
     setEntitySuggestions([])
     setProductSuggestions([])
@@ -1805,6 +1830,8 @@ function TransactionPage({ config }) {
                       </div>
                     )}
                 </div>
+                {!invoiceModalMode && (
+                <>
                 <div className="relative autocomplete-container sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t(`${translationKey}.product`)} *</label>
                   <input
@@ -1836,14 +1863,11 @@ function TransactionPage({ config }) {
                     onChange={(e) => {
                       const price = e.target.value
                       if (invoiceModalMode) {
-                        const { invoiceTotal } = buildLineItemsPayload(
-                          { quantity: formData.quantity, unit_price: price },
-                          extraInvoiceLines
-                        )
+                        const { netTotal } = getInvoiceCalc({ unit_price: price })
                         setFormData({
                           ...formData,
                           product_price: price,
-                          total_amount: invoiceTotal > 0 ? invoiceTotal.toFixed(2) : formData.total_amount,
+                          total_amount: netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount,
                         })
                       } else {
                         setFormData({
@@ -1865,14 +1889,11 @@ function TransactionPage({ config }) {
                       const quantity = e.target.value
                       const price = formData.product_price || (formData.product_id ? products.find(p => p.product_id === parseInt(formData.product_id))?.unit_price : 0)
                       if (invoiceModalMode) {
-                        const { invoiceTotal } = buildLineItemsPayload(
-                          { quantity, unit_price: price },
-                          extraInvoiceLines
-                        )
+                        const { netTotal } = getInvoiceCalc({ quantity, unit_price: price })
                         setFormData({
                           ...formData,
                           quantity,
-                          total_amount: invoiceTotal > 0 ? invoiceTotal.toFixed(2) : formData.total_amount,
+                          total_amount: netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount,
                         })
                       } else {
                         setFormData({
@@ -1885,7 +1906,9 @@ function TransactionPage({ config }) {
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                {invoiceModalMode && extraInvoiceLines.length > 0 && (
+                </>
+                )}
+                {invoiceModalMode && (
                   <div className="sm:col-span-2 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <label className="text-sm font-semibold text-gray-800">{t('clientTransactions.invoiceLines')}</label>
@@ -1898,6 +1921,75 @@ function TransactionPage({ config }) {
                         {t('clientTransactions.addLine')}
                       </button>
                     </div>
+                    {/* Row 0: primary product line (kept in sync with dedicated columns) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border border-gray-200 rounded-lg p-3 bg-gray-50">
+                      <div className="sm:col-span-5 relative autocomplete-container">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.product`)} *</label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.product_name}
+                          onChange={(e) => handleProductInput(e.target.value)}
+                          onFocus={() => formData.product_name && handleProductInput(formData.product_name)}
+                          placeholder={t(`${translationKey}.selectProduct`)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        />
+                        {showProductSuggestions && productSuggestions.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-auto">
+                            {productSuggestions.map((product) => (
+                              <div
+                                key={product.product_id}
+                                onClick={() => handleProductSelect(product)}
+                                className="px-3 py-1.5 hover:bg-blue-50 cursor-pointer text-sm"
+                              >
+                                {product.product_name} - {formatCurrency(product.unit_price)}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.quantity`)} *</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          value={formData.quantity}
+                          onChange={(e) => {
+                            const quantity = e.target.value
+                            const { netTotal } = getInvoiceCalc({ quantity })
+                            setFormData({ ...formData, quantity, total_amount: netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount })
+                          }}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.unitPrice`)} *</label>
+                        <input
+                          type="number"
+                          required
+                          step="0.01"
+                          min="0"
+                          value={formData.product_price}
+                          onChange={(e) => {
+                            const price = e.target.value
+                            const { netTotal } = getInvoiceCalc({ unit_price: price })
+                            setFormData({ ...formData, product_price: price, total_amount: netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount })
+                          }}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.total`)}</label>
+                        <input
+                          type="text"
+                          readOnly
+                          value={calcLineTotal(formData.quantity, formData.product_price).toFixed(2)}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-white text-gray-700"
+                        />
+                      </div>
+                    </div>
+                    {/* Additional lines */}
                     {extraInvoiceLines.map((line, index) => (
                       <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border border-gray-200 rounded-lg p-3 bg-gray-50">
                         <div className="sm:col-span-4">
@@ -1954,18 +2046,46 @@ function TransactionPage({ config }) {
                     ))}
                   </div>
                 )}
-                {invoiceModalMode && extraInvoiceLines.length === 0 && (
-                  <div className="sm:col-span-2">
-                    <button
-                      type="button"
-                      onClick={addExtraInvoiceLine}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
-                    >
-                      <Plus size={16} />
-                      {t('clientTransactions.addLine')}
-                    </button>
-                  </div>
-                )}
+                {invoiceModalMode && (() => {
+                  const calc = getInvoiceCalc()
+                  return (
+                    <div className="sm:col-span-2 border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
+                      <div className="flex items-center justify-between text-sm text-gray-700">
+                        <span>{t('clientTransactions.subtotal')}</span>
+                        <span className="font-medium">{formatCurrency(calc.subtotal)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-gray-700">
+                        <span>{t('clientTransactions.vatLabel', { rate: calc.vatRate })}</span>
+                        <span className="font-medium">{formatCurrency(calc.vatAmount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-sm text-gray-700">{t('clientTransactions.withholdingTax')}</label>
+                        <select
+                          value={formData.wht_rate}
+                          onChange={(e) => handleWhtRateChange(e.target.value)}
+                          className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        >
+                          {WHT_RATE_OPTIONS.map((rate) => (
+                            <option key={rate} value={rate}>
+                              {rate === 0 ? t('clientTransactions.whtNone') : `${rate}%`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {calc.whtAmount > 0 && (
+                        <div className="flex items-center justify-between text-sm text-red-700">
+                          <span>{t('clientTransactions.withholdingDeducted', { rate: calc.whtRate })}</span>
+                          <span className="font-medium">- {formatCurrency(calc.whtAmount)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-base font-bold text-gray-900 border-t border-gray-300 pt-2">
+                        <span>{t('clientTransactions.netTotal')}</span>
+                        <span>{formatCurrency(calc.netTotal)}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+                {!invoiceModalMode && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t(`${translationKey}.totalAmount`)} *</label>
                   <input
@@ -1974,13 +2094,11 @@ function TransactionPage({ config }) {
                     step="0.01"
                     min="0"
                     value={formData.total_amount}
-                    readOnly={invoiceModalMode}
                     onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      invoiceModalMode ? 'border-gray-200 bg-gray-100 text-gray-800' : 'border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t(`${translationKey}.paidAmount`)}</label>
                   <input type="number" step="0.01" min="0" value={formData.paid_amount} onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })}
