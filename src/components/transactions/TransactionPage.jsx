@@ -25,6 +25,7 @@ import {
   normalizeInvoiceLines,
 } from '../../utils/invoiceLines'
 import ClientStatementModal from '../ClientStatementModal'
+import InvoiceModal from '../InvoiceModal'
 import CsvImportModal from '../CsvImportModal'
 import { getPaginationPrefs, setPaginationPrefs } from '../../utils/paginationPrefs'
 import { nextStatusAfterPaymentChange } from '../../utils/transactionStatus'
@@ -102,6 +103,7 @@ function TransactionPage({ config }) {
   const [extraInvoiceLines, setExtraInvoiceLines] = useState([])
   const [showStatementModal, setShowStatementModal] = useState(false)
   const [statementModalData, setStatementModalData] = useState(null)
+  const [invoicePreview, setInvoicePreview] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const paymentDetailsRefs = React.useRef(new Map())
   const paymentModalContentRef = React.useRef(null)
@@ -562,8 +564,8 @@ function TransactionPage({ config }) {
       if (invoicingEnabled && saveMode === 'issue' && savedTransaction) {
         const txPayments = getTransactionPayments(savedTransaction.transaction_id)
         const selectedProduct = products.find((p) => p.product_id === parseInt(savedTransaction.product_id, 10))
-        await generateInvoice(
-          {
+        setInvoicePreview({
+          transaction: {
             ...savedTransaction,
             line_items: linePayload?.extras || savedTransaction.line_items || [],
             [entityRelationName]: { [entityNameField]: formData[entityNameField] },
@@ -573,8 +575,8 @@ function TransactionPage({ config }) {
               unit_price: parseFloat(formData.product_price) || selectedProduct?.unit_price,
             },
           },
-          { ...buildInvoicePdfOptions(language, currency), payments: txPayments }
-        )
+          payments: txPayments,
+        })
         success(t('clientTransactions.invoiceIssuedSuccess'))
       }
 
@@ -684,17 +686,9 @@ function TransactionPage({ config }) {
     setShowModal(true)
   }
 
-  const handlePrintInvoice = async (transaction) => {
-    try {
-      const transactionPayments = getTransactionPayments(transaction.transaction_id)
-      await generateInvoice(transaction, {
-        ...buildInvoicePdfOptions(language, currency),
-        payments: transactionPayments,
-      })
-      success(t('clientTransactions.printInvoice'))
-    } catch (err) {
-      showError(err?.message || 'Failed to generate invoice')
-    }
+  const handlePrintInvoice = (transaction) => {
+    const transactionPayments = getTransactionPayments(transaction.transaction_id)
+    setInvoicePreview({ transaction, payments: transactionPayments })
   }
 
   const handleIssueInvoice = async (transaction) => {
@@ -720,10 +714,7 @@ function TransactionPage({ config }) {
         .single()
       if (error) throw error
       const transactionPayments = getTransactionPayments(transaction.transaction_id)
-      await generateInvoice(data, {
-        ...buildInvoicePdfOptions(language, currency),
-        payments: transactionPayments,
-      })
+      setInvoicePreview({ transaction: data, payments: transactionPayments })
       success(t('clientTransactions.invoiceIssuedSuccess'))
       await fetchData()
     } catch (err) {
@@ -2185,6 +2176,15 @@ function TransactionPage({ config }) {
           payments={statementModalData.payments}
           initialDateFrom={statementModalData.dateFrom}
           initialDateTo={statementModalData.dateTo}
+        />
+      )}
+
+      {invoicePreview && (
+        <InvoiceModal
+          isOpen={!!invoicePreview}
+          onClose={() => setInvoicePreview(null)}
+          transaction={invoicePreview.transaction}
+          payments={invoicePreview.payments}
         />
       )}
     </>

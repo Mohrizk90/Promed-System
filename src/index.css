@@ -422,6 +422,29 @@ body {
     page-break-inside: avoid;
   }
 
+  /* Client invoice table (screen + print) */
+  .client-invoice-table thead tr {
+    background: #1d4ed8;
+    color: white;
+  }
+
+  .client-invoice-table thead th {
+    color: white;
+  }
+
+  .client-invoice-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+  }
+
+  .client-invoice-document {
+    max-width: 48rem;
+  }
+
+  .invoice-totals {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   /* Print styles */
 @page {
   size: auto;
@@ -545,6 +568,61 @@ body {
     background: #f9fafb;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* Client invoice print – only the invoice document */
+  body.printing-invoice * {
+    visibility: hidden;
+  }
+
+  body.printing-invoice .client-invoice-document,
+  body.printing-invoice .client-invoice-document * {
+    visibility: visible;
+  }
+
+  body.printing-invoice .client-invoice-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  body.printing-invoice .invoice-header {
+    background: #1d4ed8 !important;
+    color: white !important;
+    border-radius: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.printing-invoice .invoice-header * {
+    color: inherit !important;
+  }
+
+  body.printing-invoice .client-invoice-table thead tr {
+    background: #1d4ed8 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.printing-invoice .client-invoice-table thead th {
+    color: white !important;
+  }
+
+  body.printing-invoice .client-invoice-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.printing-invoice .invoice-controls {
+    display: none !important;
   }
 }
 

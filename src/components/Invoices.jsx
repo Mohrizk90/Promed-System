@@ -6,8 +6,8 @@ import { useToast } from '../context/ToastContext'
 import LoadingSpinner from './LoadingSpinner'
 import Dropdown from './ui/Dropdown'
 import { FileText, MoreVertical, Plus } from './ui/Icons'
-import { generateInvoice } from '../utils/generateInvoice'
-import { buildInvoicePdfOptions, isDraftInvoice, isIssuedInvoice } from '../utils/invoiceService'
+import InvoiceModal from './InvoiceModal'
+import { isDraftInvoice, isIssuedInvoice } from '../utils/invoiceService'
 import { allocateNextInvoiceNumber } from '../utils/invoiceSettings'
 import { nextStatusAfterPaymentChange } from '../utils/transactionStatus'
 import {
@@ -27,6 +27,7 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [invoicePreview, setInvoicePreview] = useState(null)
 
   const formatCurrency = (n) => {
     const str = (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -75,16 +76,8 @@ export default function Invoices() {
   const getPayments = (transactionId) =>
     payments.filter((p) => p.transaction_id === transactionId)
 
-  const handlePrint = async (tx) => {
-    try {
-      await generateInvoice(tx, {
-        ...buildInvoicePdfOptions(language, currency),
-        payments: getPayments(tx.transaction_id),
-      })
-      success(t('invoices.printed'))
-    } catch (err) {
-      showError(err?.message || 'Print failed')
-    }
+  const handlePrint = (tx) => {
+    setInvoicePreview({ transaction: tx, payments: getPayments(tx.transaction_id) })
   }
 
   const handleIssue = async (tx) => {
@@ -100,10 +93,7 @@ export default function Invoices() {
         .select(`*, clients:client_id (client_name), products:product_id (product_name, model)`)
         .single()
       if (error) throw error
-      await generateInvoice(data, {
-        ...buildInvoicePdfOptions(language, currency),
-        payments: getPayments(tx.transaction_id),
-      })
+      setInvoicePreview({ transaction: data, payments: getPayments(tx.transaction_id) })
       success(t('clientTransactions.invoiceIssuedSuccess'))
       fetchData()
     } catch (err) {
@@ -238,6 +228,15 @@ export default function Invoices() {
           </tbody>
         </table>
       </div>
+
+      {invoicePreview && (
+        <InvoiceModal
+          isOpen={!!invoicePreview}
+          onClose={() => setInvoicePreview(null)}
+          transaction={invoicePreview.transaction}
+          payments={invoicePreview.payments}
+        />
+      )}
     </div>
   )
 }
