@@ -7,6 +7,7 @@ import {
   Users,
   CreditCard,
   FileText,
+  Package,
   X,
   HelpCircle,
   Settings,
@@ -39,6 +40,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/invoices', label: t('nav.invoices'), icon: FileText, shortcut: null, color: 'sky' },
     { path: '/suppliers', label: t('nav.supplierTransactions'), icon: Truck, shortcut: 's', color: 'violet' },
     { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e', color: 'emerald' },
+    { path: '/products', label: t('nav.inventory'), icon: Package, shortcut: 'i', color: 'teal' },
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
   ]
 
@@ -48,6 +50,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     sky: { inactive: 'bg-sky-500/90 text-white', active: 'bg-sky-100 text-sky-600' },
     violet: { inactive: 'bg-violet-500/90 text-white', active: 'bg-violet-100 text-violet-600' },
     emerald: { inactive: 'bg-emerald-500/90 text-white', active: 'bg-emerald-100 text-emerald-600' },
+    teal: { inactive: 'bg-teal-500/90 text-white', active: 'bg-teal-100 text-teal-600' },
     amber: { inactive: 'bg-amber-500/90 text-white', active: 'bg-amber-100 text-amber-700' },
   }
 
