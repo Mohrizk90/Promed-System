@@ -11,7 +11,8 @@ const config = {
   translationKey: 'clientTransactions',
   filterByLabelKey: 'common.filterByClient',
   primaryColor: 'blue',
-  csvFilename: 'client-transactions.csv'
+  csvFilename: 'client-transactions.csv',
+  invoicingEnabled: true,
 }
 
 export default function ClientTransactions() {

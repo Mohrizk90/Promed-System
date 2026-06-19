@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext'
 import { supabase } from '../lib/supabase'
 import { downloadCsv } from '../utils/exportCsv'
 import { getCompanySettingsForm, saveCompanySettings } from '../utils/companySettings'
+import { getInvoiceSettings, saveInvoiceSettings, peekNextInvoiceNumber } from '../utils/invoiceSettings'
 import {
   User as UserIcon,
   Globe,
@@ -36,6 +37,14 @@ export default function Settings() {
     () => localStorage.getItem('defaultPaymentTerms') || 'none'
   )
   const [companyForm, setCompanyForm] = useState(() => getCompanySettingsForm())
+  const [invoiceForm, setInvoiceForm] = useState(() => {
+    const s = getInvoiceSettings()
+    return {
+      invoicePrefix: s.invoicePrefix,
+      nextNumber: String(s.nextNumber),
+      padWidth: String(s.padWidth),
+    }
+  })
   const [exporting, setExporting] = useState(false)
 
   const handlePaymentTermsChange = (value) => {
@@ -49,6 +58,18 @@ export default function Settings() {
     saveCompanySettings(companyForm)
     success(t('settings.saved'))
   }
+
+  const handleInvoiceNumberingSave = (e) => {
+    e.preventDefault()
+    saveInvoiceSettings({
+      invoicePrefix: invoiceForm.invoicePrefix,
+      nextNumber: parseInt(invoiceForm.nextNumber, 10),
+      padWidth: parseInt(invoiceForm.padWidth, 10),
+    })
+    success(t('settings.saved'))
+  }
+
+  const invoicePreview = peekNextInvoiceNumber()
 
   const handleExportAll = async () => {
     setExporting(true)
@@ -223,6 +244,60 @@ export default function Settings() {
           </div>
           <button type="submit" className="btn btn-primary">
             {t('settings.saveCompanyInfo')}
+          </button>
+        </div>
+      </form>
+
+      {/* Invoice numbering */}
+      <form onSubmit={handleInvoiceNumberingSave} className="card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <FileText size={20} className="text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">{t('settings.invoiceNumbering')}</h2>
+            <p className="text-sm text-gray-500">{t('settings.invoiceNumberingDesc')}</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="label">{t('settings.invoicePrefix')}</label>
+              <input
+                type="text"
+                className="input"
+                value={invoiceForm.invoicePrefix}
+                onChange={(e) => setInvoiceForm({ ...invoiceForm, invoicePrefix: e.target.value })}
+                placeholder="INV"
+              />
+            </div>
+            <div>
+              <label className="label">{t('settings.invoiceNextNumber')}</label>
+              <input
+                type="number"
+                min="1"
+                className="input"
+                value={invoiceForm.nextNumber}
+                onChange={(e) => setInvoiceForm({ ...invoiceForm, nextNumber: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">{t('settings.invoicePadWidth')}</label>
+              <input
+                type="number"
+                min="3"
+                max="8"
+                className="input"
+                value={invoiceForm.padWidth}
+                onChange={(e) => setInvoiceForm({ ...invoiceForm, padWidth: e.target.value })}
+              />
+            </div>
+          </div>
+          <p className="text-sm text-gray-600">
+            {t('settings.invoiceNextPreview')}: <span className="font-semibold text-gray-900">{invoicePreview}</span>
+          </p>
+          <button type="submit" className="btn btn-primary">
+            {t('settings.saveInvoiceNumbering')}
           </button>
         </div>
       </form>

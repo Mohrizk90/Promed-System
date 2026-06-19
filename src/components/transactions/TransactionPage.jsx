@@ -11,6 +11,13 @@ import Dropdown from '../ui/Dropdown'
 import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical, Filter, Upload, FileText } from '../ui/Icons'
 import { downloadCsv } from '../../utils/exportCsv'
 import { generateInvoice } from '../../utils/generateInvoice'
+import {
+  isDraftInvoice,
+  isIssuedInvoice,
+  resolveInvoiceFields,
+  buildInvoicePdfOptions,
+} from '../../utils/invoiceService'
+import { peekNextInvoiceNumber, syncInvoiceCounterFromNumbers } from '../../utils/invoiceSettings'
 import ClientStatementModal from '../ClientStatementModal'
 import CsvImportModal from '../CsvImportModal'
 import { getPaginationPrefs, setPaginationPrefs } from '../../utils/paginationPrefs'
@@ -45,7 +52,8 @@ function TransactionPage({ config }) {
     translationKey,
     filterByLabelKey,
     primaryColor,
-    csvFilename
+    csvFilename,
+    invoicingEnabled = false,
   } = config
 
   const entityLabelKey = translationKey === 'clientTransactions' ? 'client' : 'supplier'
@@ -99,6 +107,7 @@ function TransactionPage({ config }) {
     reference_number: ''
   })
   const [showCsvImportModal, setShowCsvImportModal] = useState(false)
+  const [invoiceModalMode, setInvoiceModalMode] = useState(false)
   const [showStatementModal, setShowStatementModal] = useState(false)
   const [statementModalData, setStatementModalData] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -224,6 +233,12 @@ function TransactionPage({ config }) {
       setProducts(productsResult.data || [])
       setTransactions(transactionsResult.data || [])
       setPayments(paymentsResult.data || [])
+
+      if (invoicingEnabled && transactionsResult.data?.length) {
+        syncInvoiceCounterFromNumbers(
+          transactionsResult.data.map((tx) => tx.invoice_number).filter(Boolean)
+        )
+      }
     } catch (err) {
       console.error('Error fetching data:', err)
       showError('Error loading data: ' + err.message)
@@ -361,8 +376,12 @@ function TransactionPage({ config }) {
     setShowProductSuggestions(false)
   }
 
+  const getTransactionPayments = (transactionId) =>
+    payments.filter((p) => p.transaction_id === transactionId)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const saveMode = e.nativeEvent?.submitter?.getAttribute('data-save-mode') || 'save'
     setSubmitting(true)
     
     try {
@@ -423,7 +442,22 @@ function TransactionPage({ config }) {
       const totalAmountNum = parseFloat(formData.total_amount)
       const paidAmountNum = parseFloat(formData.paid_amount) || 0
       const remainingAmountNum = totalAmountNum - paidAmountNum
-      const computedStatus = nextStatusAfterPaymentChange(formData.status, remainingAmountNum)
+
+      let invoiceNumber = formData.invoice_number || null
+      let workflowStatus = formData.status
+
+      if (invoicingEnabled && invoiceModalMode) {
+        const resolved = resolveInvoiceFields({
+          mode: saveMode === 'issue' ? 'issue' : saveMode === 'draft' ? 'draft' : 'save',
+          formStatus: formData.status,
+          invoiceNumber: formData.invoice_number,
+          remainingAmount: remainingAmountNum,
+        })
+        invoiceNumber = resolved.invoice_number
+        workflowStatus = resolved.status
+      }
+
+      const computedStatus = nextStatusAfterPaymentChange(workflowStatus, remainingAmountNum)
 
       const transactionData = {
         [entityIdField]: parseInt(entityId),
@@ -435,10 +469,12 @@ function TransactionPage({ config }) {
         remaining_amount: remainingAmountNum,
         transaction_date: formData.transaction_date,
         status: computedStatus,
-        invoice_number: formData.invoice_number || null,
+        invoice_number: invoiceNumber,
         payment_terms: formData.payment_terms || 'none',
         due_date: formData.due_date || null
       }
+
+      let savedTransaction = null
 
       if (editingTransaction) {
         const transactionId = editingTransaction.transaction_id
@@ -450,6 +486,8 @@ function TransactionPage({ config }) {
           .eq('transaction_id', transactionId)
         
         if (error) throw error
+        
+        savedTransaction = { ...editingTransaction, ...transactionData, transaction_id: transactionId }
         
         const { data: existingPayments } = await supabase
           .from('payments')
@@ -475,7 +513,9 @@ function TransactionPage({ config }) {
           }
         }
         
-        success(t(`${translationKey}.transactionUpdated`))
+        if (!(invoicingEnabled && saveMode === 'issue')) {
+          success(t(`${translationKey}.transactionUpdated`))
+        }
       } else {
         const { data: newTransaction, error } = await supabase
           .from(transactionTable)
@@ -484,6 +524,7 @@ function TransactionPage({ config }) {
           .single()
         
         if (error) throw error
+        savedTransaction = newTransaction
         
         const paidAmount = parseFloat(formData.paid_amount) || 0
         if (paidAmount > 0 && newTransaction) {
@@ -501,10 +542,31 @@ function TransactionPage({ config }) {
           }
         }
         
-        success(t(`${translationKey}.transactionCreated`))
+        if (!(invoicingEnabled && saveMode === 'issue')) {
+          success(t(`${translationKey}.transactionCreated`))
+        }
+      }
+
+      if (invoicingEnabled && saveMode === 'issue' && savedTransaction) {
+        const txPayments = getTransactionPayments(savedTransaction.transaction_id)
+        const selectedProduct = products.find((p) => p.product_id === parseInt(savedTransaction.product_id, 10))
+        await generateInvoice(
+          {
+            ...savedTransaction,
+            [entityRelationName]: { [entityNameField]: formData[entityNameField] },
+            products: {
+              product_name: formData.product_name || selectedProduct?.product_name,
+              model: selectedProduct?.model,
+              unit_price: parseFloat(formData.product_price) || selectedProduct?.unit_price,
+            },
+          },
+          { ...buildInvoicePdfOptions(language, currency), payments: txPayments }
+        )
+        success(t('clientTransactions.invoiceIssuedSuccess'))
       }
 
       setShowModal(false)
+      setInvoiceModalMode(false)
       setEditingTransaction(null)
       setFormData({
         [entityIdField]: '',
@@ -530,8 +592,9 @@ function TransactionPage({ config }) {
     }
   }
 
-  const handleEdit = (transaction) => {
+  const handleEdit = (transaction, asInvoice = false) => {
     setEditingTransaction(transaction)
+    setInvoiceModalMode(invoicingEnabled && asInvoice)
     const relation = transaction[entityRelationName]
     setFormData({
       [entityIdField]: transaction[entityIdField] ? transaction[entityIdField].toString() : '',
@@ -551,6 +614,68 @@ function TransactionPage({ config }) {
       due_date: transaction.due_date || ''
     })
     setShowModal(true)
+  }
+
+  const openInvoiceModal = () => {
+    resetForm()
+    setInvoiceModalMode(true)
+    setFormData((prev) => ({
+      ...prev,
+      status: 'not_started',
+      paid_amount: '0',
+      payment_terms: defaultPaymentTerms,
+      due_date: calcDueDate(new Date().toISOString().split('T')[0], defaultPaymentTerms),
+    }))
+    setShowModal(true)
+  }
+
+  const handlePrintInvoice = async (transaction) => {
+    try {
+      const transactionPayments = getTransactionPayments(transaction.transaction_id)
+      await generateInvoice(transaction, {
+        ...buildInvoicePdfOptions(language, currency),
+        payments: transactionPayments,
+      })
+      success(t('clientTransactions.printInvoice'))
+    } catch (err) {
+      showError(err?.message || 'Failed to generate invoice')
+    }
+  }
+
+  const handleIssueInvoice = async (transaction) => {
+    if (!isDraftInvoice(transaction)) return
+    setSubmitting(true)
+    try {
+      const remaining = parseFloat(transaction.remaining_amount || 0)
+      const resolved = resolveInvoiceFields({
+        mode: 'issue',
+        formStatus: transaction.status,
+        invoiceNumber: '',
+        remainingAmount: remaining,
+      })
+      const newStatus = nextStatusAfterPaymentChange(resolved.status, remaining)
+      const { data, error } = await supabase
+        .from(transactionTable)
+        .update({
+          invoice_number: resolved.invoice_number,
+          status: newStatus,
+        })
+        .eq('transaction_id', transaction.transaction_id)
+        .select(`*, ${entityRelationName}:${entityIdField} (${entityNameField}), products:product_id (product_name, model, unit_price)`)
+        .single()
+      if (error) throw error
+      const transactionPayments = getTransactionPayments(transaction.transaction_id)
+      await generateInvoice(data, {
+        ...buildInvoicePdfOptions(language, currency),
+        payments: transactionPayments,
+      })
+      success(t('clientTransactions.invoiceIssuedSuccess'))
+      await fetchData()
+    } catch (err) {
+      showError(err?.message || 'Failed to issue invoice')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleDelete = async (transactionId) => {
@@ -1141,6 +1266,7 @@ function TransactionPage({ config }) {
 
   const resetForm = () => {
     setEditingTransaction(null)
+    setInvoiceModalMode(false)
     setFormData({
       [entityIdField]: '',
       [entityNameField]: '',
@@ -1213,8 +1339,12 @@ function TransactionPage({ config }) {
                 {t('entities.accountStatement')}
               </button>
             )}
-            <button onClick={() => { resetForm(); setShowModal(true) }} className={`bg-${primaryColor}-600 hover:bg-${primaryColor}-700 text-white font-semibold py-2 px-4 rounded text-sm`}>
-              {t(`${translationKey}.addTransaction`)}
+            <button
+              type="button"
+              onClick={() => (invoicingEnabled ? openInvoiceModal() : (resetForm(), setShowModal(true)))}
+              className={`bg-${primaryColor}-600 hover:bg-${primaryColor}-700 text-white font-semibold py-2 px-4 rounded text-sm`}
+            >
+              {invoicingEnabled ? t('clientTransactions.createInvoice') : t(`${translationKey}.addTransaction`)}
             </button>
           </div>
         </div>
@@ -1382,7 +1512,17 @@ function TransactionPage({ config }) {
                   <React.Fragment key={transaction.transaction_id}>
                     <tr className="hover:bg-gray-50 transition-colors">
                       <td className="px-2 py-1 whitespace-nowrap text-gray-900">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
-                      <td className="px-2 py-1 whitespace-nowrap text-gray-600 text-xs">{transaction.invoice_number || '—'}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-gray-600 text-xs">
+                        {transaction.invoice_number ? (
+                          <span className="font-medium text-gray-800">{transaction.invoice_number}</span>
+                        ) : invoicingEnabled && isDraftInvoice(transaction) ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">
+                            {t('clientTransactions.invoiceDraft')}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td className="table-cell-wrap px-2 py-1 font-medium max-w-[100px] truncate" title={transaction[entityRelationName]?.[entityNameField] || 'N/A'}>{transaction[entityRelationName]?.[entityNameField] || 'N/A'}</td>
                       <td className="table-cell-wrap px-2 py-1 max-w-[100px] truncate" title={`${transaction.products?.product_name || 'N/A'}${transaction.products?.model ? ` (${transaction.products.model})` : ''}`}>{transaction.products?.product_name || 'N/A'}{transaction.products?.model && <span className="text-gray-500 ml-0.5">({transaction.products.model})</span>}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-gray-900">{transaction.quantity}</td>
@@ -1425,9 +1565,29 @@ function TransactionPage({ config }) {
                           className="inline-block"
                           items={[
                             { label: t('paymentsBreakdown.payments') + ` (${transactionPayments.length})`, icon: Wallet, onClick: () => toggleRowExpansion(transaction.transaction_id) },
-                            { label: (translationKey === 'clientTransactions' ? (t('clientTransactions.invoice') || 'Generate Invoice') : (t('supplierTransactions.invoice') || 'Generate Invoice')) + ` (${t('common.beta')})`, icon: FileText, onClick: async () => { try { await generateInvoice(transaction, { currency, language, payments: transactionPayments }); success(t('common.saved') || 'Invoice generated') } catch (e) { showError(e?.message || 'Failed to generate invoice') } } },
+                            ...(invoicingEnabled
+                              ? [
+                                  ...(isDraftInvoice(transaction)
+                                    ? [{ label: t('clientTransactions.issueInvoice'), icon: FileText, onClick: () => handleIssueInvoice(transaction) }]
+                                    : []),
+                                  ...(isIssuedInvoice(transaction)
+                                    ? [{ label: t('clientTransactions.printInvoice'), icon: FileText, onClick: () => handlePrintInvoice(transaction) }]
+                                    : []),
+                                ]
+                              : [{
+                                  label: (translationKey === 'clientTransactions' ? t('clientTransactions.invoice') : t('supplierTransactions.invoice')) + ` (${t('common.beta')})`,
+                                  icon: FileText,
+                                  onClick: async () => {
+                                    try {
+                                      await generateInvoice(transaction, { ...buildInvoicePdfOptions(language, currency), payments: transactionPayments })
+                                      success(t('common.saved') || 'Invoice generated')
+                                    } catch (e) {
+                                      showError(e?.message || 'Failed to generate invoice')
+                                    }
+                                  },
+                                }]),
                             { divider: true },
-                            { label: t(`${translationKey}.edit`), icon: EditIcon, onClick: () => handleEdit(transaction) },
+                            { label: t(`${translationKey}.edit`), icon: EditIcon, onClick: () => handleEdit(transaction, invoicingEnabled) },
                             { label: t(`${translationKey}.delete`), icon: Trash2, danger: true, onClick: () => handleDelete(transaction.transaction_id) }
                           ]}
                         />
@@ -1561,11 +1721,18 @@ function TransactionPage({ config }) {
           <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] flex flex-col my-auto">
             <div className={`bg-${primaryColor}-600 px-4 py-2 flex-shrink-0`}>
               <h3 className="text-lg font-bold text-white">
-                {editingTransaction ? t(`${translationKey}.editTransaction`) : t(`${translationKey}.addTransaction`)}
+                {invoiceModalMode
+                  ? (editingTransaction ? t('clientTransactions.editInvoice') : t('clientTransactions.createInvoice'))
+                  : (editingTransaction ? t(`${translationKey}.editTransaction`) : t(`${translationKey}.addTransaction`))}
               </h3>
             </div>
             <form onSubmit={handleSubmit} className="flex flex-col min-h-0">
               <div className="bg-white px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto">
+                {invoiceModalMode && editingTransaction && isIssuedInvoice(editingTransaction) && (
+                  <div className="sm:col-span-2 p-2.5 bg-amber-50 border border-amber-200 rounded text-sm text-amber-900">
+                    {t('clientTransactions.invoiceIssuedEditWarning')}
+                  </div>
+                )}
                 <div className="relative autocomplete-container sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t(`${translationKey}.${entityLabelKey}`)} *</label>
                   <input
@@ -1661,10 +1828,29 @@ function TransactionPage({ config }) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.invoiceNumber')}</label>
-                  <input type="text" value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                    placeholder={t('common.invoiceNumberPlaceholder')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  {invoiceModalMode ? (
+                    formData.invoice_number ? (
+                      <input
+                        type="text"
+                        readOnly
+                        value={formData.invoice_number}
+                        className="w-full px-3 py-2 border border-gray-200 rounded text-sm bg-gray-100 text-gray-800"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-600 px-1 py-2">
+                        {t('clientTransactions.invoiceAutoNumberHint')}:{' '}
+                        <span className="font-semibold text-gray-900">{peekNextInvoiceNumber()}</span>
+                      </p>
+                    )
+                  ) : (
+                    <input
+                      type="text"
+                      value={formData.invoice_number}
+                      onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                      placeholder={t('common.invoiceNumberPlaceholder')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.paymentTerms')}</label>
@@ -1684,24 +1870,65 @@ function TransactionPage({ config }) {
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.status')}</label>
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {TRANSACTION_STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>{t('common.status_' + s.replace(/-/g, '_'))}</option>
-                    ))}
-                  </select>
-                </div>
+                {!invoiceModalMode && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.status')}</label>
+                    <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {TRANSACTION_STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>{t('common.status_' + s.replace(/-/g, '_'))}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="bg-gray-50 px-4 py-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 flex-shrink-0 border-t">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded text-gray-700 text-sm font-medium hover:bg-gray-100">
+                <button
+                  type="button"
+                  onClick={() => { setShowModal(false); setInvoiceModalMode(false) }}
+                  className="px-4 py-2 border border-gray-300 rounded text-gray-700 text-sm font-medium hover:bg-gray-100"
+                >
                   {t(`${translationKey}.cancel`)}
                 </button>
-                <button type="submit" disabled={submitting} className={`px-4 py-2 bg-${primaryColor}-600 text-white text-sm font-medium rounded hover:bg-${primaryColor}-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}>
+                {invoiceModalMode ? (
+                  <>
+                    {(!editingTransaction || isDraftInvoice(editingTransaction)) && (
+                      <button
+                        type="submit"
+                        data-save-mode="draft"
+                        disabled={submitting}
+                        className="px-4 py-2 border border-blue-300 bg-white text-blue-700 text-sm font-medium rounded hover:bg-blue-50 disabled:opacity-50"
+                      >
+                        {t('clientTransactions.saveAsDraft')}
+                      </button>
+                    )}
+                    {(!editingTransaction || isDraftInvoice(editingTransaction)) && (
+                      <button
+                        type="submit"
+                        data-save-mode="issue"
+                        disabled={submitting}
+                        className={`px-4 py-2 bg-${primaryColor}-600 text-white text-sm font-medium rounded hover:bg-${primaryColor}-700 disabled:opacity-50 flex items-center justify-center gap-2`}
+                      >
+                        {submitting ? <><LoadingSpinner size="sm" /><span>{t(`${translationKey}.saving`)}</span></> : <span>{t('clientTransactions.issueAndPrint')}</span>}
+                      </button>
+                    )}
+                    {editingTransaction && isIssuedInvoice(editingTransaction) && (
+                      <button
+                        type="submit"
+                        data-save-mode="save"
+                        disabled={submitting}
+                        className={`px-4 py-2 bg-${primaryColor}-600 text-white text-sm font-medium rounded hover:bg-${primaryColor}-700 disabled:opacity-50 flex items-center justify-center gap-2`}
+                      >
+                        {submitting ? <><LoadingSpinner size="sm" /><span>{t(`${translationKey}.saving`)}</span></> : <span>{t(`${translationKey}.updateTransaction`)}</span>}
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <button type="submit" data-save-mode="save" disabled={submitting} className={`px-4 py-2 bg-${primaryColor}-600 text-white text-sm font-medium rounded hover:bg-${primaryColor}-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}>
                     {submitting ? <><LoadingSpinner size="sm" /><span>{t(`${translationKey}.saving`)}</span></> : <span>{editingTransaction ? t(`${translationKey}.updateTransaction`) : t(`${translationKey}.createTransaction`)}</span>}
-                </button>
+                  </button>
+                )}
               </div>
             </form>
           </div>

@@ -222,7 +222,19 @@ export const translations = {
       pastPaidLabel: 'Past Payments',
       pastPaidHint: 'Payments on older invoices',
       totalOutstandingLabel: 'Total Outstanding',
-      totalOutstandingHint: 'All unpaid balances'
+      totalOutstandingHint: 'All unpaid balances',
+      createInvoice: 'Create Invoice',
+      saveAsDraft: 'Save as Draft',
+      issueAndPrint: 'Issue & Print',
+      issueInvoice: 'Issue Invoice',
+      printInvoice: 'Print Invoice',
+      invoiceDraft: 'Draft',
+      invoiceIssued: 'Issued',
+      invoiceAutoNumberHint: 'Assigned automatically when you issue',
+      invoiceIssuedEditWarning: 'This invoice is already issued. Changing amounts may affect your records.',
+      invoiceIssuedSuccess: 'Invoice issued successfully',
+      addInvoice: 'New Invoice',
+      editInvoice: 'Edit Invoice'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -435,7 +447,14 @@ export const translations = {
       saveCompanyInfo: 'Save company info',
       companyAddressPlaceholder: 'Street, city',
       companyPhonePlaceholder: 'Phone number',
-      companyEmailPlaceholder: 'Email address'
+      companyEmailPlaceholder: 'Email address',
+      invoiceNumbering: 'Invoice Numbering',
+      invoiceNumberingDesc: 'Auto-number issued client invoices',
+      invoicePrefix: 'Invoice prefix',
+      invoiceNextNumber: 'Next invoice number',
+      invoicePadWidth: 'Number padding (digits)',
+      saveInvoiceNumbering: 'Save invoice numbering',
+      invoiceNextPreview: 'Next invoice will be'
     },
     // Aging Report
     aging: {
@@ -917,7 +936,19 @@ export const translations = {
       pastPaidLabel: 'مدفوعات سابقة',
       pastPaidHint: 'مدفوعات على فواتير أقدم',
       totalOutstandingLabel: 'إجمالي المتبقي',
-      totalOutstandingHint: 'جميع الأرصدة غير المدفوعة'
+      totalOutstandingHint: 'جميع الأرصدة غير المدفوعة',
+      createInvoice: 'إنشاء فاتورة',
+      saveAsDraft: 'حفظ كمسودة',
+      issueAndPrint: 'إصدار وطباعة',
+      issueInvoice: 'إصدار الفاتورة',
+      printInvoice: 'طباعة الفاتورة',
+      invoiceDraft: 'مسودة',
+      invoiceIssued: 'صادرة',
+      invoiceAutoNumberHint: 'يُعيَّن تلقائياً عند الإصدار',
+      invoiceIssuedEditWarning: 'هذه الفاتورة صادرة بالفعل. تعديل المبالغ قد يؤثر على السجلات.',
+      invoiceIssuedSuccess: 'تم إصدار الفاتورة بنجاح',
+      addInvoice: 'فاتورة جديدة',
+      editInvoice: 'تعديل الفاتورة'
     },
     // Supplier Transactions
     supplierTransactions: {
@@ -1130,7 +1161,14 @@ export const translations = {
       saveCompanyInfo: 'حفظ معلومات الشركة',
       companyAddressPlaceholder: 'الشارع، المدينة',
       companyPhonePlaceholder: 'رقم الهاتف',
-      companyEmailPlaceholder: 'البريد الإلكتروني'
+      companyEmailPlaceholder: 'البريد الإلكتروني',
+      invoiceNumbering: 'ترقيم الفواتير',
+      invoiceNumberingDesc: 'ترقيم تلقائي لفواتير العملاء الصادرة',
+      invoicePrefix: 'بادئة الفاتورة',
+      invoiceNextNumber: 'رقم الفاتورة التالي',
+      invoicePadWidth: 'عدد خانات الرقم',
+      saveInvoiceNumbering: 'حفظ ترقيم الفواتير',
+      invoiceNextPreview: 'الفاتورة التالية ستكون'
     },
     // Aging Report
     aging: {
