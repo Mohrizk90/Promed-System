@@ -12,6 +12,7 @@ const SettingsPage = lazy(() => import('./components/Settings'))
 const AgingReport = lazy(() => import('./components/AgingReport'))
 const ProfitLossReport = lazy(() => import('./components/ProfitLossReport'))
 const ProductInventory = lazy(() => import('./components/ProductInventory'))
+const Invoices = lazy(() => import('./components/Invoices'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
@@ -112,6 +113,7 @@ function AppContent() {
               {/* Protected: must be signed in to access */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/" element={<ProtectedRoute><ClientTransactions /></ProtectedRoute>} />
+              <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
               <Route path="/suppliers" element={<ProtectedRoute><SupplierTransactions /></ProtectedRoute>} />
               <Route path="/entities" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
               <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />

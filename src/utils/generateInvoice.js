@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import { getInvoiceLinesFromTransaction } from './invoiceLines'
 
 /* ───── Font cache (loaded once, reused) ───── */
 let _fontCache = null
@@ -324,10 +325,7 @@ export async function generateInvoice(transaction, options = {}) {
   doc.line(marginL, y, pw - marginR, y)
   y += 5
 
-  const productName = transaction.products?.product_name || 'Product / Service'
-  const modelName = transaction.products?.model || ''
-  const qty = transaction.quantity || 1
-  const unitPrice = parseFloat(transaction.unit_price || 0)
+  const invoiceLines = getInvoiceLinesFromTransaction(transaction)
   const totalAmount = parseFloat(transaction.total_amount || 0)
 
   const fmtCur = (n) => {
@@ -339,14 +337,33 @@ export async function generateInvoice(transaction, options = {}) {
     ? [[L.amount, L.unitPrice, L.qty, L.model, L.description]]
     : [[L.description, L.model, L.qty, L.unitPrice, L.amount]]
 
-  const tableRow = isAr
-    ? [fmtCur(totalAmount), fmtCur(unitPrice), String(qty), modelName, productName]
-    : [productName, modelName, String(qty), fmtCur(unitPrice), fmtCur(totalAmount)]
+  const tableBody = invoiceLines.map((line) => {
+    const productName = line.product_name || 'Product / Service'
+    const modelName = line.model || ''
+    const qty = line.quantity || 1
+    const unitPrice = parseFloat(line.unit_price || 0)
+    const lineTotal = parseFloat(line.line_total || 0)
+    return isAr
+      ? [fmtCur(lineTotal), fmtCur(unitPrice), String(qty), modelName, productName]
+      : [productName, modelName, String(qty), fmtCur(unitPrice), fmtCur(lineTotal)]
+  })
+
+  if (tableBody.length === 0) {
+    const productName = transaction.products?.product_name || 'Product / Service'
+    const modelName = transaction.products?.model || ''
+    const qty = transaction.quantity || 1
+    const unitPrice = parseFloat(transaction.unit_price || 0)
+    tableBody.push(
+      isAr
+        ? [fmtCur(totalAmount), fmtCur(unitPrice), String(qty), modelName, productName]
+        : [productName, modelName, String(qty), fmtCur(unitPrice), fmtCur(totalAmount)]
+    )
+  }
 
   doc.autoTable({
     startY: y,
     head: tableHead,
-    body: [tableRow],
+    body: tableBody,
     theme: 'plain',
     headStyles: {
       fillColor: COLORS.primary,

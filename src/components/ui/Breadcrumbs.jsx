@@ -6,6 +6,7 @@ const routeNames = {
   en: {
     dashboard: 'Dashboard',
     '': 'Client Transactions',
+    invoices: 'Invoices',
     suppliers: 'Supplier Transactions',
     entities: 'Clients & Suppliers',
     liabilities: 'Liabilities & Expenses',
@@ -20,6 +21,7 @@ const routeNames = {
   ar: {
     dashboard: 'لوحة عامة',
     '': 'معاملات العملاء',
+    invoices: 'الفواتير',
     suppliers: 'معاملات الموردين',
     entities: 'العملاء والموردون',
     liabilities: 'الالتزامات والمصروفات',

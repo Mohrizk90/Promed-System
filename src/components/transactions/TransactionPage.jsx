@@ -8,7 +8,7 @@ import LoadingSpinner from '../LoadingSpinner'
 import TableSkeleton from '../TableSkeleton'
 import Pagination from '../ui/Pagination'
 import Dropdown from '../ui/Dropdown'
-import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical, Filter, Upload, FileText } from '../ui/Icons'
+import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical, Filter, Upload, FileText, Plus } from '../ui/Icons'
 import { downloadCsv } from '../../utils/exportCsv'
 import { generateInvoice } from '../../utils/generateInvoice'
 import {
@@ -18,27 +18,18 @@ import {
   buildInvoicePdfOptions,
 } from '../../utils/invoiceService'
 import { peekNextInvoiceNumber, syncInvoiceCounterFromNumbers } from '../../utils/invoiceSettings'
+import {
+  buildLineItemsPayload,
+  calcLineTotal,
+  emptyInvoiceLine,
+  normalizeInvoiceLines,
+} from '../../utils/invoiceLines'
 import ClientStatementModal from '../ClientStatementModal'
 import CsvImportModal from '../CsvImportModal'
 import { getPaginationPrefs, setPaginationPrefs } from '../../utils/paginationPrefs'
+import { nextStatusAfterPaymentChange } from '../../utils/transactionStatus'
 
 const TRANSACTION_STATUS_OPTIONS = ['not_started', 'in_progress', 'invoice', 'paused', 'paid', 'done']
-
-/**
- * Decide the next status for a transaction after a payment is added or deleted.
- * - When fully paid (newRemaining <= 0): keep 'done' if the user had marked it
- *   'done', otherwise set to 'paid'.
- * - When no longer fully paid: downgrade 'paid' and 'done' to 'in_progress';
- *   other statuses (not_started, in_progress, invoice, paused) are preserved.
- */
-export function nextStatusAfterPaymentChange(prevStatus, newRemainingAmount) {
-  const prev = prevStatus || 'not_started'
-  if (newRemainingAmount <= 0) {
-    return prev === 'done' ? 'done' : 'paid'
-  }
-  if (prev === 'paid' || prev === 'done') return 'in_progress'
-  return prev
-}
 
 function TransactionPage({ config }) {
   const {
@@ -108,6 +99,7 @@ function TransactionPage({ config }) {
   })
   const [showCsvImportModal, setShowCsvImportModal] = useState(false)
   const [invoiceModalMode, setInvoiceModalMode] = useState(false)
+  const [extraInvoiceLines, setExtraInvoiceLines] = useState([])
   const [showStatementModal, setShowStatementModal] = useState(false)
   const [statementModalData, setStatementModalData] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -366,13 +358,24 @@ function TransactionPage({ config }) {
   }
 
   const handleProductSelect = (product) => {
-    setFormData({ 
-      ...formData, 
-      product_id: product.product_id, 
+    const next = {
+      ...formData,
+      product_id: product.product_id,
       product_name: product.product_name,
       product_price: product.unit_price,
-      total_amount: product.unit_price && formData.quantity ? (product.unit_price * formData.quantity).toFixed(2) : formData.total_amount
-    })
+    }
+    if (invoiceModalMode) {
+      const { invoiceTotal } = buildLineItemsPayload(
+        { quantity: formData.quantity, unit_price: product.unit_price },
+        extraInvoiceLines
+      )
+      next.total_amount = invoiceTotal > 0 ? invoiceTotal.toFixed(2) : formData.total_amount
+    } else {
+      next.total_amount = product.unit_price && formData.quantity
+        ? (product.unit_price * formData.quantity).toFixed(2)
+        : formData.total_amount
+    }
+    setFormData(next)
     setShowProductSuggestions(false)
   }
 
@@ -441,7 +444,15 @@ function TransactionPage({ config }) {
 
       const totalAmountNum = parseFloat(formData.total_amount)
       const paidAmountNum = parseFloat(formData.paid_amount) || 0
-      const remainingAmountNum = totalAmountNum - paidAmountNum
+
+      const linePayload = invoicingEnabled && invoiceModalMode
+        ? buildLineItemsPayload(
+            { quantity: formData.quantity, unit_price: formData.product_price },
+            extraInvoiceLines
+          )
+        : null
+      const invoiceTotalNum = linePayload?.invoiceTotal ?? totalAmountNum
+      const remainingAmountNum = invoiceTotalNum - paidAmountNum
 
       let invoiceNumber = formData.invoice_number || null
       let workflowStatus = formData.status
@@ -464,14 +475,15 @@ function TransactionPage({ config }) {
         product_id: parseInt(productId),
         quantity: parseInt(formData.quantity),
         unit_price: unitPrice,
-        total_amount: totalAmountNum,
+        total_amount: invoiceTotalNum,
         paid_amount: paidAmountNum,
         remaining_amount: remainingAmountNum,
         transaction_date: formData.transaction_date,
         status: computedStatus,
         invoice_number: invoiceNumber,
         payment_terms: formData.payment_terms || 'none',
-        due_date: formData.due_date || null
+        due_date: formData.due_date || null,
+        ...(invoicingEnabled && invoiceModalMode ? { line_items: linePayload.extras } : {}),
       }
 
       let savedTransaction = null
@@ -553,6 +565,7 @@ function TransactionPage({ config }) {
         await generateInvoice(
           {
             ...savedTransaction,
+            line_items: linePayload?.extras || savedTransaction.line_items || [],
             [entityRelationName]: { [entityNameField]: formData[entityNameField] },
             products: {
               product_name: formData.product_name || selectedProduct?.product_name,
@@ -613,7 +626,49 @@ function TransactionPage({ config }) {
       payment_terms: transaction.payment_terms || 'none',
       due_date: transaction.due_date || ''
     })
+    setExtraInvoiceLines(
+      normalizeInvoiceLines(transaction.line_items || []).map((line) => ({
+        product_id: line.product_id ? String(line.product_id) : '',
+        product_name: line.product_name,
+        quantity: String(line.quantity),
+        unit_price: String(line.unit_price),
+        line_total: String(line.line_total),
+      }))
+    )
     setShowModal(true)
+  }
+
+  const updateExtraLine = (index, field, value) => {
+    setExtraInvoiceLines((prev) => {
+      const next = [...prev]
+      const line = { ...next[index], [field]: value }
+      if (field === 'quantity' || field === 'unit_price') {
+        line.line_total = String(calcLineTotal(line.quantity, line.unit_price))
+      }
+      next[index] = line
+      const { invoiceTotal } = buildLineItemsPayload(
+        { quantity: formData.quantity, unit_price: formData.product_price },
+        next
+      )
+      setFormData((f) => ({ ...f, total_amount: invoiceTotal > 0 ? invoiceTotal.toFixed(2) : f.total_amount }))
+      return next
+    })
+  }
+
+  const addExtraInvoiceLine = () => {
+    setExtraInvoiceLines((prev) => [...prev, emptyInvoiceLine()])
+  }
+
+  const removeExtraInvoiceLine = (index) => {
+    setExtraInvoiceLines((prev) => {
+      const next = prev.filter((_, i) => i !== index)
+      const { invoiceTotal } = buildLineItemsPayload(
+        { quantity: formData.quantity, unit_price: formData.product_price },
+        next
+      )
+      setFormData((f) => ({ ...f, total_amount: invoiceTotal > 0 ? invoiceTotal.toFixed(2) : f.total_amount }))
+      return next
+    })
   }
 
   const openInvoiceModal = () => {
@@ -1267,6 +1322,7 @@ function TransactionPage({ config }) {
   const resetForm = () => {
     setEditingTransaction(null)
     setInvoiceModalMode(false)
+    setExtraInvoiceLines([])
     setFormData({
       [entityIdField]: '',
       [entityNameField]: '',
@@ -1788,7 +1844,25 @@ function TransactionPage({ config }) {
                   <input type="number" required step="0.01" min="0" value={formData.product_price}
                     onChange={(e) => {
                       const price = e.target.value
-                      setFormData({ ...formData, product_price: price, total_amount: price && formData.quantity ? (parseFloat(price) * formData.quantity).toFixed(2) : formData.total_amount })
+                      if (invoiceModalMode) {
+                        const { invoiceTotal } = buildLineItemsPayload(
+                          { quantity: formData.quantity, unit_price: price },
+                          extraInvoiceLines
+                        )
+                        setFormData({
+                          ...formData,
+                          product_price: price,
+                          total_amount: invoiceTotal > 0 ? invoiceTotal.toFixed(2) : formData.total_amount,
+                        })
+                      } else {
+                        setFormData({
+                          ...formData,
+                          product_price: price,
+                          total_amount: price && formData.quantity
+                            ? (parseFloat(price) * formData.quantity).toFixed(2)
+                            : formData.total_amount,
+                        })
+                      }
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -1799,15 +1873,121 @@ function TransactionPage({ config }) {
                     onChange={(e) => {
                       const quantity = e.target.value
                       const price = formData.product_price || (formData.product_id ? products.find(p => p.product_id === parseInt(formData.product_id))?.unit_price : 0)
-                      setFormData({ ...formData, quantity, total_amount: price ? (parseFloat(price) * quantity).toFixed(2) : formData.total_amount })
+                      if (invoiceModalMode) {
+                        const { invoiceTotal } = buildLineItemsPayload(
+                          { quantity, unit_price: price },
+                          extraInvoiceLines
+                        )
+                        setFormData({
+                          ...formData,
+                          quantity,
+                          total_amount: invoiceTotal > 0 ? invoiceTotal.toFixed(2) : formData.total_amount,
+                        })
+                      } else {
+                        setFormData({
+                          ...formData,
+                          quantity,
+                          total_amount: price ? (parseFloat(price) * quantity).toFixed(2) : formData.total_amount,
+                        })
+                      }
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                {invoiceModalMode && extraInvoiceLines.length > 0 && (
+                  <div className="sm:col-span-2 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-sm font-semibold text-gray-800">{t('clientTransactions.invoiceLines')}</label>
+                      <button
+                        type="button"
+                        onClick={addExtraInvoiceLine}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
+                      >
+                        <Plus size={16} />
+                        {t('clientTransactions.addLine')}
+                      </button>
+                    </div>
+                    {extraInvoiceLines.map((line, index) => (
+                      <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        <div className="sm:col-span-4">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.product`)}</label>
+                          <input
+                            type="text"
+                            value={line.product_name}
+                            onChange={(e) => updateExtraLine(index, 'product_name', e.target.value)}
+                            placeholder={t('clientTransactions.lineProductPlaceholder')}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.quantity`)}</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.quantity}
+                            onChange={(e) => updateExtraLine(index, 'quantity', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.unitPrice`)}</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={line.unit_price}
+                            onChange={(e) => updateExtraLine(index, 'unit_price', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.total`)}</label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={line.line_total || calcLineTotal(line.quantity, line.unit_price).toFixed(2)}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-white text-gray-700"
+                          />
+                        </div>
+                        <div className="sm:col-span-2 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => removeExtraInvoiceLine(index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            aria-label={t('clientTransactions.removeLine')}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {invoiceModalMode && extraInvoiceLines.length === 0 && (
+                  <div className="sm:col-span-2">
+                    <button
+                      type="button"
+                      onClick={addExtraInvoiceLine}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      <Plus size={16} />
+                      {t('clientTransactions.addLine')}
+                    </button>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t(`${translationKey}.totalAmount`)} *</label>
-                  <input type="number" required step="0.01" min="0" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  <input
+                    type="number"
+                    required
+                    step="0.01"
+                    min="0"
+                    value={formData.total_amount}
+                    readOnly={invoiceModalMode}
+                    onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
+                    className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      invoiceModalMode ? 'border-gray-200 bg-gray-100 text-gray-800' : 'border-gray-300'
+                    }`}
                   />
                 </div>
                 <div>
