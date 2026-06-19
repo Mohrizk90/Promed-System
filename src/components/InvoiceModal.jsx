@@ -201,6 +201,7 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
           <table className="client-invoice-table w-full text-sm border-collapse">
             <thead>
               <tr>
+                <th className="px-3 py-2 text-start font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_codeName')}</th>
                 <th className="px-3 py-2 text-start font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_itemCode')}</th>
                 <th className="px-3 py-2 text-start font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_description')}</th>
                 <th className="px-3 py-2 text-center font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_qtyUnit')}</th>
@@ -211,11 +212,12 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
             <tbody>
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-gray-500">—</td>
+                  <td colSpan={6} className="px-3 py-6 text-center text-gray-500">—</td>
                 </tr>
               ) : (
                 lines.map((line, index) => (
                   <tr key={index}>
+                    <td className="px-3 py-2 border-t border-gray-200 text-gray-900">{line.item_name || '—'}</td>
                     <td className="px-3 py-2 border-t border-gray-200 text-gray-700 tabular-nums">{line.item_code || '—'}</td>
                     <td className="px-3 py-2 border-t border-gray-200 text-gray-900">
                       {line.product_name || '—'}

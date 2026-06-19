@@ -90,6 +90,7 @@ function TransactionPage({ config }) {
     due_date: '',
     wht_rate: 0,
     eta_item_code: '',
+    eta_item_name: '',
     eta_unit_type: 'EA'
   }))
   const [entitySuggestions, setEntitySuggestions] = useState([])
@@ -219,6 +220,7 @@ function TransactionPage({ config }) {
               model,
               unit_price,
               eta_item_code,
+              eta_item_name,
               eta_unit_type
             )
           `)
@@ -268,6 +270,7 @@ function TransactionPage({ config }) {
       model,
       unit_price,
       eta_item_code,
+      eta_item_name,
       eta_unit_type
     )
   `
@@ -384,6 +387,7 @@ function TransactionPage({ config }) {
       product_name: product.product_name,
       product_price: product.unit_price,
       eta_item_code: product.eta_item_code || formData.eta_item_code || '',
+      eta_item_name: product.eta_item_name || formData.eta_item_name || '',
       eta_unit_type: product.eta_unit_type || formData.eta_unit_type || 'EA',
     }
     if (invoiceModalMode) {
@@ -513,6 +517,7 @@ function TransactionPage({ config }) {
           wht_rate: taxBreakdown.whtRate,
           wht_amount: taxBreakdown.whtAmount,
           eta_item_code: formData.eta_item_code?.trim() || null,
+          eta_item_name: formData.eta_item_name?.trim() || null,
           eta_unit_type: formData.eta_unit_type?.trim() || null,
         } : {}),
       }
@@ -628,6 +633,7 @@ function TransactionPage({ config }) {
         due_date: '',
         wht_rate: 0,
         eta_item_code: '',
+        eta_item_name: '',
         eta_unit_type: 'EA'
       })
       await fetchData()
@@ -661,12 +667,16 @@ function TransactionPage({ config }) {
       due_date: transaction.due_date || '',
       wht_rate: Number(transaction.wht_rate) || 0,
       eta_item_code: transaction.eta_item_code || transaction.products?.eta_item_code || '',
+      eta_item_name: transaction.eta_item_name || transaction.products?.eta_item_name || '',
       eta_unit_type: transaction.eta_unit_type || transaction.products?.eta_unit_type || 'EA'
     })
     setExtraInvoiceLines(
       normalizeInvoiceLines(transaction.line_items || []).map((line) => ({
         product_id: line.product_id ? String(line.product_id) : '',
         product_name: line.product_name,
+        item_name: line.item_name || '',
+        item_code: line.item_code || '',
+        unit_type: line.unit_type || 'EA',
         quantity: String(line.quantity),
         unit_price: String(line.unit_price),
         line_total: String(line.line_total),
@@ -758,7 +768,7 @@ function TransactionPage({ config }) {
           status: newStatus,
         })
         .eq('transaction_id', transaction.transaction_id)
-        .select(`*, ${entityRelationName}:${entityIdField} (${entityNameField}), products:product_id (product_name, model, unit_price, eta_item_code, eta_unit_type)`)
+        .select(`*, ${entityRelationName}:${entityIdField} (${entityNameField}), products:product_id (product_name, model, unit_price, eta_item_code, eta_item_name, eta_unit_type)`)
         .single()
       if (error) throw error
       const transactionPayments = getTransactionPayments(transaction.transaction_id)
@@ -1378,6 +1388,7 @@ function TransactionPage({ config }) {
       due_date: '',
       wht_rate: 0,
       eta_item_code: '',
+      eta_item_name: '',
       eta_unit_type: 'EA'
     })
     setEntitySuggestions([])
@@ -1951,14 +1962,14 @@ function TransactionPage({ config }) {
                     <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
                         <div className="sm:col-span-5 relative autocomplete-container">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.product`)} *</label>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.lineDescription')} *</label>
                           <input
                             type="text"
                             required
                             value={formData.product_name}
                             onChange={(e) => handleProductInput(e.target.value)}
                             onFocus={() => formData.product_name && handleProductInput(formData.product_name)}
-                            placeholder={t(`${translationKey}.selectProduct`)}
+                            placeholder={t('clientTransactions.lineDescriptionPlaceholder')}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                           />
                           {showProductSuggestions && productSuggestions.length > 0 && (
@@ -2017,7 +2028,17 @@ function TransactionPage({ config }) {
                         </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                        <div className="sm:col-span-8">
+                        <div className="sm:col-span-4">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaCodeName')}</label>
+                          <input
+                            type="text"
+                            value={formData.eta_item_name}
+                            onChange={(e) => setFormData({ ...formData, eta_item_name: e.target.value })}
+                            placeholder={t('clientTransactions.etaCodeNamePlaceholder')}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                          />
+                        </div>
+                        <div className="sm:col-span-4">
                           <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaItemCode')}</label>
                           <EtaCodeInput
                             value={formData.eta_item_code}
@@ -2026,8 +2047,8 @@ function TransactionPage({ config }) {
                             onSelect={(code) => setFormData((f) => ({
                               ...f,
                               eta_item_code: code.item_code,
+                              eta_item_name: code.item_name || f.eta_item_name || '',
                               eta_unit_type: code.unit_type || f.eta_unit_type || 'EA',
-                              product_name: f.product_name || code.item_name || '',
                             }))}
                             placeholder={t('clientTransactions.etaItemCodePlaceholder')}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
@@ -2051,12 +2072,12 @@ function TransactionPage({ config }) {
                       <div key={index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
                           <div className="sm:col-span-4">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.product`)}</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.lineDescription')}</label>
                             <input
                               type="text"
                               value={line.product_name}
                               onChange={(e) => updateExtraLine(index, 'product_name', e.target.value)}
-                              placeholder={t('clientTransactions.lineProductPlaceholder')}
+                              placeholder={t('clientTransactions.lineDescriptionPlaceholder')}
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                             />
                           </div>
@@ -2102,16 +2123,33 @@ function TransactionPage({ config }) {
                           </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                          <div className="sm:col-span-8">
+                          <div className="sm:col-span-4">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaCodeName')}</label>
+                            <input
+                              type="text"
+                              value={line.item_name || ''}
+                              onChange={(e) => updateExtraLine(index, 'item_name', e.target.value)}
+                              placeholder={t('clientTransactions.etaCodeNamePlaceholder')}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div className="sm:col-span-4">
                             <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaItemCode')}</label>
                             <EtaCodeInput
                               value={line.item_code || ''}
                               codes={etaCodes}
                               onChange={(text) => updateExtraLine(index, 'item_code', text)}
                               onSelect={(code) => {
-                                updateExtraLine(index, 'item_code', code.item_code)
-                                if (code.unit_type) updateExtraLine(index, 'unit_type', code.unit_type)
-                                if (!line.product_name && code.item_name) updateExtraLine(index, 'product_name', code.item_name)
+                                setExtraInvoiceLines((prev) => {
+                                  const next = [...prev]
+                                  next[index] = {
+                                    ...next[index],
+                                    item_code: code.item_code,
+                                    item_name: code.item_name || next[index].item_name || '',
+                                    unit_type: code.unit_type || next[index].unit_type || 'EA',
+                                  }
+                                  return next
+                                })
                               }}
                               placeholder={t('clientTransactions.etaItemCodePlaceholder')}
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
