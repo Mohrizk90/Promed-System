@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner'
 import Pagination from './ui/Pagination'
 import Modal from './ui/Modal'
 import ConfirmDialog from './ui/ConfirmDialog'
+import EtaCodeInput from './EtaCodeInput'
 import { downloadCsv } from '../utils/exportCsv'
 import { Printer, Download, Package, AlertTriangle, Plus, Edit, Trash2, Box } from './ui/Icons'
 
@@ -35,6 +36,12 @@ export default function ProductInventory() {
   const [showItemModal, setShowItemModal] = useState(false)
   const [deleteItemTarget, setDeleteItemTarget] = useState(null)
   const [deletingItem, setDeletingItem] = useState(false)
+  const [etaCodes, setEtaCodes] = useState([])
+  const [showEtaModal, setShowEtaModal] = useState(false)
+  const [editingEtaCode, setEditingEtaCode] = useState(null)
+  const [etaForm, setEtaForm] = useState({ code_type: 'EGS', item_code: '', item_name: '', category: '', unit_type: 'EA' })
+  const [savingEtaCode, setSavingEtaCode] = useState(false)
+  const [deleteEtaTarget, setDeleteEtaTarget] = useState(null)
   const { success, error: showError } = useToast()
   const { t, language } = useLanguage()
 
@@ -58,6 +65,9 @@ export default function ProductInventory() {
       setClientTx(cRes.data || [])
       setSupplierTx(sRes.data || [])
       setItems(itemsRes.error ? [] : (itemsRes.data || []))
+
+      const codesRes = await supabase.from('eta_item_codes').select('*').order('item_code')
+      setEtaCodes(codesRes.error ? [] : (codesRes.data || []))
     } catch (err) {
       showError('Error loading inventory: ' + err.message)
       setItems([])
@@ -211,6 +221,71 @@ export default function ProductInventory() {
     }
   }
 
+  const openEtaManager = () => {
+    setEditingEtaCode(null)
+    setEtaForm({ code_type: 'EGS', item_code: '', item_name: '', category: '', unit_type: 'EA' })
+    setShowEtaModal(true)
+  }
+
+  const startEditEtaCode = (code) => {
+    setEditingEtaCode(code)
+    setEtaForm({
+      code_type: code.code_type || 'EGS',
+      item_code: code.item_code || '',
+      item_name: code.item_name || '',
+      category: code.category || '',
+      unit_type: code.unit_type || 'EA',
+    })
+  }
+
+  const resetEtaForm = () => {
+    setEditingEtaCode(null)
+    setEtaForm({ code_type: 'EGS', item_code: '', item_name: '', category: '', unit_type: 'EA' })
+  }
+
+  const handleEtaCodeSubmit = async (e) => {
+    e.preventDefault()
+    if (!etaForm.item_code.trim()) return
+    const payload = {
+      code_type: etaForm.code_type.trim() || 'EGS',
+      item_code: etaForm.item_code.trim(),
+      item_name: etaForm.item_name.trim() || null,
+      category: etaForm.category.trim() || null,
+      unit_type: etaForm.unit_type.trim() || 'EA',
+    }
+    try {
+      setSavingEtaCode(true)
+      let error
+      if (editingEtaCode) {
+        ({ error } = await supabase.from('eta_item_codes').update(payload).eq('id', editingEtaCode.id))
+      } else {
+        ({ error } = await supabase.from('eta_item_codes').insert([payload]))
+      }
+      if (error) throw error
+      success(t('entities.save'))
+      resetEtaForm()
+      const codesRes = await supabase.from('eta_item_codes').select('*').order('item_code')
+      setEtaCodes(codesRes.error ? [] : (codesRes.data || []))
+    } catch (err) {
+      showError('Error saving ETA code: ' + err.message)
+    } finally {
+      setSavingEtaCode(false)
+    }
+  }
+
+  const handleDeleteEtaCode = async () => {
+    if (!deleteEtaTarget) return
+    try {
+      const { error } = await supabase.from('eta_item_codes').delete().eq('id', deleteEtaTarget.id)
+      if (error) throw error
+      setDeleteEtaTarget(null)
+      const codesRes = await supabase.from('eta_item_codes').select('*').order('item_code')
+      setEtaCodes(codesRes.error ? [] : (codesRes.data || []))
+    } catch (err) {
+      showError('Error deleting ETA code: ' + err.message)
+    }
+  }
+
   const openAddItem = () => {
     setEditingItem(null)
     setItemForm({ name: '', quantity: '0', unit_cost: '', notes: '' })
@@ -292,6 +367,7 @@ export default function ProductInventory() {
         <div className="flex gap-2">
           <button onClick={() => window.print()} className="btn btn-secondary py-1.5 px-3 text-sm"><Printer size={16} /> {t('common.print')}</button>
           {activeTab === TAB_PRODUCTS && <button onClick={handleExport} className="btn btn-secondary py-1.5 px-3 text-sm"><Download size={16} /> {t('common.exportCsv')}</button>}
+          <button onClick={openEtaManager} className="btn btn-secondary py-1.5 px-3 text-sm"><Box size={16} /> {t('inventory.etaCodes')}</button>
         </div>
       </div>
 
@@ -502,7 +578,18 @@ export default function ProductInventory() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label text-xs">{t('inventory.etaItemCode')}</label>
-              <input type="text" className="input py-2 text-sm" value={productForm.eta_item_code} onChange={(e) => setProductForm({ ...productForm, eta_item_code: e.target.value })} placeholder="EG-XXXXXXXXX-X" />
+              <EtaCodeInput
+                value={productForm.eta_item_code}
+                codes={etaCodes}
+                onChange={(text) => setProductForm({ ...productForm, eta_item_code: text })}
+                onSelect={(code) => setProductForm((f) => ({
+                  ...f,
+                  eta_item_code: code.item_code,
+                  eta_unit_type: code.unit_type || f.eta_unit_type || 'EA',
+                }))}
+                placeholder="EG-XXXXXXXXX-X"
+                className="input py-2 text-sm w-full"
+              />
             </div>
             <div>
               <label className="label text-xs">{t('inventory.etaUnitType')}</label>
@@ -548,6 +635,72 @@ export default function ProductInventory() {
           </div>
         </form>
       </Modal>
+
+      {/* ETA codes catalog manager */}
+      <Modal isOpen={showEtaModal} onClose={() => { setShowEtaModal(false); resetEtaForm() }} title={t('inventory.etaCodesTitle')} size="lg" footer={
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={() => { setShowEtaModal(false); resetEtaForm() }} className="btn btn-secondary">{t('entities.close')}</button>
+        </div>
+      }>
+        <div className="space-y-4">
+          <form onSubmit={handleEtaCodeSubmit} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border border-gray-200 rounded-lg p-3 bg-gray-50">
+            <div className="sm:col-span-3">
+              <label className="label text-xs">{t('inventory.etaCodeColCode')} *</label>
+              <input type="text" className="input py-2 text-sm" value={etaForm.item_code} onChange={(e) => setEtaForm({ ...etaForm, item_code: e.target.value })} placeholder="EG-XXXXXXXXX-X" required />
+            </div>
+            <div className="sm:col-span-4">
+              <label className="label text-xs">{t('inventory.etaCodeColName')}</label>
+              <input type="text" className="input py-2 text-sm" value={etaForm.item_name} onChange={(e) => setEtaForm({ ...etaForm, item_name: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label text-xs">{t('inventory.etaCodeColCategory')}</label>
+              <input type="text" className="input py-2 text-sm" value={etaForm.category} onChange={(e) => setEtaForm({ ...etaForm, category: e.target.value })} />
+            </div>
+            <div className="sm:col-span-1">
+              <label className="label text-xs">{t('inventory.etaCodeColUnit')}</label>
+              <input type="text" className="input py-2 text-sm" value={etaForm.unit_type} onChange={(e) => setEtaForm({ ...etaForm, unit_type: e.target.value })} placeholder="EA" />
+            </div>
+            <div className="sm:col-span-2 flex gap-1">
+              <button type="submit" disabled={savingEtaCode} className="btn btn-primary py-2 px-3 text-sm flex-1">{editingEtaCode ? t('entities.save') : t('entities.add')}</button>
+              {editingEtaCode && <button type="button" onClick={resetEtaForm} className="btn btn-secondary py-2 px-2 text-sm">{t('entities.cancel')}</button>}
+            </div>
+          </form>
+
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-start font-semibold text-xs text-gray-600">{t('inventory.etaCodeColCode')}</th>
+                  <th className="px-3 py-2 text-start font-semibold text-xs text-gray-600">{t('inventory.etaCodeColName')}</th>
+                  <th className="px-3 py-2 text-start font-semibold text-xs text-gray-600">{t('inventory.etaCodeColCategory')}</th>
+                  <th className="px-3 py-2 text-center font-semibold text-xs text-gray-600">{t('inventory.etaCodeColUnit')}</th>
+                  <th className="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {etaCodes.length === 0 ? (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-500">{t('inventory.etaCodesEmpty')}</td></tr>
+                ) : etaCodes.map((c) => (
+                  <tr key={c.id} className="border-t border-gray-100">
+                    <td className="px-3 py-2 font-medium text-gray-900 tabular-nums">{c.item_code}</td>
+                    <td className="px-3 py-2 text-gray-700">{c.item_name || '—'}</td>
+                    <td className="px-3 py-2 text-gray-600">{c.category || '—'}</td>
+                    <td className="px-3 py-2 text-center text-gray-600">{c.unit_type || 'EA'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-1">
+                        <button type="button" onClick={() => startEditEtaCode(c)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" aria-label={t('entities.edit')}><Edit size={16} /></button>
+                        <button type="button" onClick={() => setDeleteEtaTarget(c)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" aria-label={t('entities.delete')}><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmDialog isOpen={!!deleteEtaTarget} onClose={() => setDeleteEtaTarget(null)} onConfirm={handleDeleteEtaCode} title={t('common.deleteConfirmTitle')} message={t('inventory.etaCodeDeleteConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" />
 
       <ConfirmDialog isOpen={!!deleteItemTarget} onClose={() => setDeleteItemTarget(null)} onConfirm={handleDeleteItemConfirm} title={t('common.deleteConfirmTitle')} message={t('inventory.deleteItemConfirm')} confirmText={t('entities.delete')} cancelText={t('entities.cancel')} type="danger" loading={deletingItem} />
     </div>

@@ -25,6 +25,7 @@ import {
   normalizeInvoiceLines,
 } from '../../utils/invoiceLines'
 import { computeInvoiceTax, WHT_RATE_OPTIONS } from '../../utils/invoiceTax'
+import EtaCodeInput from '../EtaCodeInput'
 import ClientStatementModal from '../ClientStatementModal'
 import InvoiceModal from '../InvoiceModal'
 import CsvImportModal from '../CsvImportModal'
@@ -105,6 +106,7 @@ function TransactionPage({ config }) {
   const [showCsvImportModal, setShowCsvImportModal] = useState(false)
   const [invoiceModalMode, setInvoiceModalMode] = useState(false)
   const [extraInvoiceLines, setExtraInvoiceLines] = useState([])
+  const [etaCodes, setEtaCodes] = useState([])
   const [showStatementModal, setShowStatementModal] = useState(false)
   const [statementModalData, setStatementModalData] = useState(null)
   const [invoicePreview, setInvoicePreview] = useState(null)
@@ -215,7 +217,9 @@ function TransactionPage({ config }) {
             products:product_id (
               product_name,
               model,
-              unit_price
+              unit_price,
+              eta_item_code,
+              eta_unit_type
             )
           `)
           .order('transaction_date', { ascending: false }),
@@ -236,6 +240,14 @@ function TransactionPage({ config }) {
         syncInvoiceCounterFromNumbers(
           transactionsResult.data.map((tx) => tx.invoice_number).filter(Boolean)
         )
+      }
+
+      if (invoicingEnabled) {
+        const { data: codesData, error: codesError } = await supabase
+          .from('eta_item_codes')
+          .select('*')
+          .order('item_code')
+        if (!codesError) setEtaCodes(codesData || [])
       }
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -2007,10 +2019,16 @@ function TransactionPage({ config }) {
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
                         <div className="sm:col-span-8">
                           <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaItemCode')}</label>
-                          <input
-                            type="text"
+                          <EtaCodeInput
                             value={formData.eta_item_code}
-                            onChange={(e) => setFormData({ ...formData, eta_item_code: e.target.value })}
+                            codes={etaCodes}
+                            onChange={(text) => setFormData({ ...formData, eta_item_code: text })}
+                            onSelect={(code) => setFormData((f) => ({
+                              ...f,
+                              eta_item_code: code.item_code,
+                              eta_unit_type: code.unit_type || f.eta_unit_type || 'EA',
+                              product_name: f.product_name || code.item_name || '',
+                            }))}
                             placeholder={t('clientTransactions.etaItemCodePlaceholder')}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                           />
@@ -2086,10 +2104,15 @@ function TransactionPage({ config }) {
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
                           <div className="sm:col-span-8">
                             <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaItemCode')}</label>
-                            <input
-                              type="text"
+                            <EtaCodeInput
                               value={line.item_code || ''}
-                              onChange={(e) => updateExtraLine(index, 'item_code', e.target.value)}
+                              codes={etaCodes}
+                              onChange={(text) => updateExtraLine(index, 'item_code', text)}
+                              onSelect={(code) => {
+                                updateExtraLine(index, 'item_code', code.item_code)
+                                if (code.unit_type) updateExtraLine(index, 'unit_type', code.unit_type)
+                                if (!line.product_name && code.item_name) updateExtraLine(index, 'product_name', code.item_name)
+                              }}
                               placeholder={t('clientTransactions.etaItemCodePlaceholder')}
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                             />
