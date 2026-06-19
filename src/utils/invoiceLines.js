@@ -4,6 +4,8 @@ export function emptyInvoiceLine() {
   return {
     product_id: '',
     product_name: '',
+    item_code: '',
+    unit_type: 'EA',
     quantity: '1',
     unit_price: '',
     line_total: '',
@@ -24,6 +26,8 @@ export function normalizeInvoiceLines(raw = []) {
     .map((line) => ({
       product_id: line.product_id ?? '',
       product_name: String(line.product_name || '').trim(),
+      item_code: String(line.item_code || '').trim(),
+      unit_type: String(line.unit_type || '').trim() || 'EA',
       quantity: Number(line.quantity) || 0,
       unit_price: Number(line.unit_price) || 0,
       line_total: Number(line.line_total) || calcLineTotal(line.quantity, line.unit_price),
@@ -40,6 +44,8 @@ export function getInvoiceLinesFromTransaction(transaction) {
     product_id: transaction.product_id,
     product_name: transaction.products?.product_name || 'Product / Service',
     model: transaction.products?.model || '',
+    item_code: transaction.eta_item_code || transaction.products?.eta_item_code || '',
+    unit_type: transaction.eta_unit_type || transaction.products?.eta_unit_type || 'EA',
     quantity: Number(transaction.quantity) || 0,
     unit_price: Number(transaction.unit_price ?? 0),
     line_total: Number(transaction.total_amount) || 0,
@@ -73,6 +79,8 @@ export function buildLineItemsPayload(primaryLine, extraLines = []) {
     .map((line) => ({
       product_id: line.product_id ? Number(line.product_id) : null,
       product_name: line.product_name.trim(),
+      item_code: String(line.item_code || '').trim(),
+      unit_type: String(line.unit_type || '').trim() || 'EA',
       quantity: Number(line.quantity) || 0,
       unit_price: Number(line.unit_price) || 0,
       line_total: calcLineTotal(line.quantity, line.unit_price),

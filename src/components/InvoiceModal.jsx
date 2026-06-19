@@ -201,9 +201,9 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
           <table className="client-invoice-table w-full text-sm border-collapse">
             <thead>
               <tr>
+                <th className="px-3 py-2 text-start font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_itemCode')}</th>
                 <th className="px-3 py-2 text-start font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_description')}</th>
-                <th className="px-3 py-2 text-start font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_model')}</th>
-                <th className="px-3 py-2 text-center font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_qty')}</th>
+                <th className="px-3 py-2 text-center font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_qtyUnit')}</th>
                 <th className="px-3 py-2 text-end font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_unitPrice')}</th>
                 <th className="px-3 py-2 text-end font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_amount')}</th>
               </tr>
@@ -216,9 +216,12 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
               ) : (
                 lines.map((line, index) => (
                   <tr key={index}>
-                    <td className="px-3 py-2 border-t border-gray-200 text-gray-900">{line.product_name || '—'}</td>
-                    <td className="px-3 py-2 border-t border-gray-200 text-gray-600">{line.model || '—'}</td>
-                    <td className="px-3 py-2 border-t border-gray-200 text-center tabular-nums">{line.quantity}</td>
+                    <td className="px-3 py-2 border-t border-gray-200 text-gray-700 tabular-nums">{line.item_code || '—'}</td>
+                    <td className="px-3 py-2 border-t border-gray-200 text-gray-900">
+                      {line.product_name || '—'}
+                      {line.model ? <span className="block text-[11px] text-gray-500">{line.model}</span> : null}
+                    </td>
+                    <td className="px-3 py-2 border-t border-gray-200 text-center tabular-nums">{line.quantity}{line.unit_type ? ` / ${line.unit_type}` : ''}</td>
                     <td className="px-3 py-2 border-t border-gray-200 text-end tabular-nums">{formatCurrency(line.unit_price)}</td>
                     <td className="px-3 py-2 border-t border-gray-200 text-end tabular-nums font-medium">{formatCurrency(line.line_total)}</td>
                   </tr>

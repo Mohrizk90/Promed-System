@@ -87,7 +87,9 @@ function TransactionPage({ config }) {
     invoice_number: '',
     payment_terms: defaultPaymentTerms,
     due_date: '',
-    wht_rate: 0
+    wht_rate: 0,
+    eta_item_code: '',
+    eta_unit_type: 'EA'
   }))
   const [entitySuggestions, setEntitySuggestions] = useState([])
   const [productSuggestions, setProductSuggestions] = useState([])
@@ -252,7 +254,9 @@ function TransactionPage({ config }) {
     products:product_id (
       product_name,
       model,
-      unit_price
+      unit_price,
+      eta_item_code,
+      eta_unit_type
     )
   `
 
@@ -367,6 +371,8 @@ function TransactionPage({ config }) {
       product_id: product.product_id,
       product_name: product.product_name,
       product_price: product.unit_price,
+      eta_item_code: product.eta_item_code || formData.eta_item_code || '',
+      eta_unit_type: product.eta_unit_type || formData.eta_unit_type || 'EA',
     }
     if (invoiceModalMode) {
       const { netTotal } = getInvoiceCalc({ unit_price: product.unit_price })
@@ -494,6 +500,8 @@ function TransactionPage({ config }) {
           vat_amount: taxBreakdown.vatAmount,
           wht_rate: taxBreakdown.whtRate,
           wht_amount: taxBreakdown.whtAmount,
+          eta_item_code: formData.eta_item_code?.trim() || null,
+          eta_unit_type: formData.eta_unit_type?.trim() || null,
         } : {}),
       }
 
@@ -606,7 +614,9 @@ function TransactionPage({ config }) {
         invoice_number: '',
         payment_terms: defaultPaymentTerms,
         due_date: '',
-        wht_rate: 0
+        wht_rate: 0,
+        eta_item_code: '',
+        eta_unit_type: 'EA'
       })
       await fetchData()
     } catch (err) {
@@ -637,7 +647,9 @@ function TransactionPage({ config }) {
       invoice_number: transaction.invoice_number || '',
       payment_terms: transaction.payment_terms || 'none',
       due_date: transaction.due_date || '',
-      wht_rate: Number(transaction.wht_rate) || 0
+      wht_rate: Number(transaction.wht_rate) || 0,
+      eta_item_code: transaction.eta_item_code || transaction.products?.eta_item_code || '',
+      eta_unit_type: transaction.eta_unit_type || transaction.products?.eta_unit_type || 'EA'
     })
     setExtraInvoiceLines(
       normalizeInvoiceLines(transaction.line_items || []).map((line) => ({
@@ -734,7 +746,7 @@ function TransactionPage({ config }) {
           status: newStatus,
         })
         .eq('transaction_id', transaction.transaction_id)
-        .select(`*, ${entityRelationName}:${entityIdField} (${entityNameField}), products:product_id (product_name, model, unit_price)`)
+        .select(`*, ${entityRelationName}:${entityIdField} (${entityNameField}), products:product_id (product_name, model, unit_price, eta_item_code, eta_unit_type)`)
         .single()
       if (error) throw error
       const transactionPayments = getTransactionPayments(transaction.transaction_id)
@@ -1352,7 +1364,9 @@ function TransactionPage({ config }) {
       invoice_number: '',
       payment_terms: defaultPaymentTerms,
       due_date: '',
-      wht_rate: 0
+      wht_rate: 0,
+      eta_item_code: '',
+      eta_unit_type: 'EA'
     })
     setEntitySuggestions([])
     setProductSuggestions([])
@@ -1922,128 +1936,188 @@ function TransactionPage({ config }) {
                       </button>
                     </div>
                     {/* Row 0: primary product line (kept in sync with dedicated columns) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border border-gray-200 rounded-lg p-3 bg-gray-50">
-                      <div className="sm:col-span-5 relative autocomplete-container">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.product`)} *</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.product_name}
-                          onChange={(e) => handleProductInput(e.target.value)}
-                          onFocus={() => formData.product_name && handleProductInput(formData.product_name)}
-                          placeholder={t(`${translationKey}.selectProduct`)}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                        />
-                        {showProductSuggestions && productSuggestions.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-auto">
-                            {productSuggestions.map((product) => (
-                              <div
-                                key={product.product_id}
-                                onClick={() => handleProductSelect(product)}
-                                className="px-3 py-1.5 hover:bg-blue-50 cursor-pointer text-sm"
-                              >
-                                {product.product_name} - {formatCurrency(product.unit_price)}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.quantity`)} *</label>
-                        <input
-                          type="number"
-                          required
-                          min="1"
-                          value={formData.quantity}
-                          onChange={(e) => {
-                            const quantity = e.target.value
-                            const { netTotal } = getInvoiceCalc({ quantity })
-                            setFormData({ ...formData, quantity, total_amount: netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount })
-                          }}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.unitPrice`)} *</label>
-                        <input
-                          type="number"
-                          required
-                          step="0.01"
-                          min="0"
-                          value={formData.product_price}
-                          onChange={(e) => {
-                            const price = e.target.value
-                            const { netTotal } = getInvoiceCalc({ unit_price: price })
-                            setFormData({ ...formData, product_price: price, total_amount: netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount })
-                          }}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                        />
-                      </div>
-                      <div className="sm:col-span-3">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.total`)}</label>
-                        <input
-                          type="text"
-                          readOnly
-                          value={calcLineTotal(formData.quantity, formData.product_price).toFixed(2)}
-                          className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-white text-gray-700"
-                        />
-                      </div>
-                    </div>
-                    {/* Additional lines */}
-                    {extraInvoiceLines.map((line, index) => (
-                      <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border border-gray-200 rounded-lg p-3 bg-gray-50">
-                        <div className="sm:col-span-4">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.product`)}</label>
+                    <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                        <div className="sm:col-span-5 relative autocomplete-container">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.product`)} *</label>
                           <input
                             type="text"
-                            value={line.product_name}
-                            onChange={(e) => updateExtraLine(index, 'product_name', e.target.value)}
-                            placeholder={t('clientTransactions.lineProductPlaceholder')}
+                            required
+                            value={formData.product_name}
+                            onChange={(e) => handleProductInput(e.target.value)}
+                            onFocus={() => formData.product_name && handleProductInput(formData.product_name)}
+                            placeholder={t(`${translationKey}.selectProduct`)}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                           />
+                          {showProductSuggestions && productSuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-auto">
+                              {productSuggestions.map((product) => (
+                                <div
+                                  key={product.product_id}
+                                  onClick={() => handleProductSelect(product)}
+                                  className="px-3 py-1.5 hover:bg-blue-50 cursor-pointer text-sm"
+                                >
+                                  {product.product_name} - {formatCurrency(product.unit_price)}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="sm:col-span-2">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.quantity`)}</label>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.quantity`)} *</label>
                           <input
                             type="number"
+                            required
                             min="1"
-                            value={line.quantity}
-                            onChange={(e) => updateExtraLine(index, 'quantity', e.target.value)}
+                            value={formData.quantity}
+                            onChange={(e) => {
+                              const quantity = e.target.value
+                              const { netTotal } = getInvoiceCalc({ quantity })
+                              setFormData({ ...formData, quantity, total_amount: netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount })
+                            }}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                           />
                         </div>
                         <div className="sm:col-span-2">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.unitPrice`)}</label>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.unitPrice`)} *</label>
                           <input
                             type="number"
+                            required
                             step="0.01"
                             min="0"
-                            value={line.unit_price}
-                            onChange={(e) => updateExtraLine(index, 'unit_price', e.target.value)}
+                            value={formData.product_price}
+                            onChange={(e) => {
+                              const price = e.target.value
+                              const { netTotal } = getInvoiceCalc({ unit_price: price })
+                              setFormData({ ...formData, product_price: price, total_amount: netTotal > 0 ? netTotal.toFixed(2) : formData.total_amount })
+                            }}
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                           />
                         </div>
-                        <div className="sm:col-span-2">
+                        <div className="sm:col-span-3">
                           <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.total`)}</label>
                           <input
                             type="text"
                             readOnly
-                            value={line.line_total || calcLineTotal(line.quantity, line.unit_price).toFixed(2)}
+                            value={calcLineTotal(formData.quantity, formData.product_price).toFixed(2)}
                             className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-white text-gray-700"
                           />
                         </div>
-                        <div className="sm:col-span-2 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => removeExtraInvoiceLine(index)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            aria-label={t('clientTransactions.removeLine')}
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                        <div className="sm:col-span-8">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaItemCode')}</label>
+                          <input
+                            type="text"
+                            value={formData.eta_item_code}
+                            onChange={(e) => setFormData({ ...formData, eta_item_code: e.target.value })}
+                            placeholder={t('clientTransactions.etaItemCodePlaceholder')}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                          />
+                        </div>
+                        <div className="sm:col-span-4">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaUnitType')}</label>
+                          <input
+                            type="text"
+                            value={formData.eta_unit_type}
+                            onChange={(e) => setFormData({ ...formData, eta_unit_type: e.target.value })}
+                            placeholder="EA"
+                            list="eta-unit-types-line"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Additional lines */}
+                    {extraInvoiceLines.map((line, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                          <div className="sm:col-span-4">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.product`)}</label>
+                            <input
+                              type="text"
+                              value={line.product_name}
+                              onChange={(e) => updateExtraLine(index, 'product_name', e.target.value)}
+                              placeholder={t('clientTransactions.lineProductPlaceholder')}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.quantity`)}</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={line.quantity}
+                              onChange={(e) => updateExtraLine(index, 'quantity', e.target.value)}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.unitPrice`)}</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={line.unit_price}
+                              onChange={(e) => updateExtraLine(index, 'unit_price', e.target.value)}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t(`${translationKey}.total`)}</label>
+                            <input
+                              type="text"
+                              readOnly
+                              value={line.line_total || calcLineTotal(line.quantity, line.unit_price).toFixed(2)}
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-white text-gray-700"
+                            />
+                          </div>
+                          <div className="sm:col-span-2 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => removeExtraInvoiceLine(index)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              aria-label={t('clientTransactions.removeLine')}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                          <div className="sm:col-span-8">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaItemCode')}</label>
+                            <input
+                              type="text"
+                              value={line.item_code || ''}
+                              onChange={(e) => updateExtraLine(index, 'item_code', e.target.value)}
+                              placeholder={t('clientTransactions.etaItemCodePlaceholder')}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+                          <div className="sm:col-span-4">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('clientTransactions.etaUnitType')}</label>
+                            <input
+                              type="text"
+                              value={line.unit_type || ''}
+                              onChange={(e) => updateExtraLine(index, 'unit_type', e.target.value)}
+                              placeholder="EA"
+                              list="eta-unit-types-line"
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
+                    <datalist id="eta-unit-types-line">
+                      <option value="EA" />
+                      <option value="KGM" />
+                      <option value="GM" />
+                      <option value="LTR" />
+                      <option value="MTR" />
+                      <option value="BX" />
+                      <option value="PK" />
+                      <option value="SET" />
+                    </datalist>
                   </div>
                 )}
                 {invoiceModalMode && (() => {

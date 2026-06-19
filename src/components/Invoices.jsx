@@ -40,7 +40,7 @@ export default function Invoices() {
       const [txRes, payRes] = await Promise.all([
         supabase
           .from('client_transactions')
-          .select(`*, clients:client_id (client_name), products:product_id (product_name, model)`)
+          .select(`*, clients:client_id (client_name), products:product_id (product_name, model, eta_item_code, eta_unit_type)`)
           .order('transaction_date', { ascending: false }),
         supabase.from('payments').select('*').eq('transaction_type', 'client'),
       ])
@@ -90,7 +90,7 @@ export default function Invoices() {
         .from('client_transactions')
         .update({ invoice_number: invoiceNumber, status: newStatus })
         .eq('transaction_id', tx.transaction_id)
-        .select(`*, clients:client_id (client_name), products:product_id (product_name, model)`)
+        .select(`*, clients:client_id (client_name), products:product_id (product_name, model, eta_item_code, eta_unit_type)`)
         .single()
       if (error) throw error
       setInvoicePreview({ transaction: data, payments: getPayments(tx.transaction_id) })

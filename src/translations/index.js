@@ -245,7 +245,10 @@ export const translations = {
       withholdingTax: 'Withholding tax',
       whtNone: 'None',
       withholdingDeducted: 'Withholding ({rate}%)',
-      netTotal: 'Net total'
+      netTotal: 'Net total',
+      etaItemCode: 'ETA item code',
+      etaItemCodePlaceholder: 'e.g. EG-614087716-1',
+      etaUnitType: 'Unit type'
     },
     invoices: {
       title: 'Invoices',
@@ -280,6 +283,8 @@ export const translations = {
       doc_description: 'Description',
       doc_model: 'Model',
       doc_qty: 'Qty',
+      doc_itemCode: 'Item Code',
+      doc_qtyUnit: 'Qty / Unit',
       doc_unitPrice: 'Unit Price',
       doc_amount: 'Amount',
       doc_subtotal: 'Subtotal',
@@ -569,6 +574,8 @@ export const translations = {
       model: 'Model',
       productCost: 'Product cost',
       productCostPlaceholder: 'Optional cost per unit',
+      etaItemCode: 'ETA item code',
+      etaUnitType: 'ETA unit type',
       unitPrice: 'Unit price (sell)',
       avgBuyPrice: 'Avg Buy',
       avgSellPrice: 'Avg Sell',
@@ -947,7 +954,10 @@ export const translations = {
       withholdingTax: 'ضريبة الخصم والإضافة',
       whtNone: 'بدون',
       withholdingDeducted: 'الخصم ({rate}%)',
-      netTotal: 'الصافي'
+      netTotal: 'الصافي',
+      etaItemCode: 'كود الصنف الضريبي',
+      etaItemCodePlaceholder: 'مثال: EG-614087716-1',
+      etaUnitType: 'نوع الوحدة'
     },
     invoices: {
       title: 'الفواتير',
@@ -982,6 +992,8 @@ export const translations = {
       doc_description: 'الوصف',
       doc_model: 'الموديل',
       doc_qty: 'الكمية',
+      doc_itemCode: 'كود الصنف',
+      doc_qtyUnit: 'الكمية / الوحدة',
       doc_unitPrice: 'سعر الوحدة',
       doc_amount: 'المبلغ',
       doc_subtotal: 'المجموع الفرعي',
@@ -1271,6 +1283,8 @@ export const translations = {
       model: 'الموديل',
       productCost: 'تكلفة المنتج',
       productCostPlaceholder: 'اختياري لكل وحدة',
+      etaItemCode: 'كود الصنف الضريبي',
+      etaUnitType: 'نوع الوحدة الضريبي',
       unitPrice: 'سعر الوحدة (بيع)',
       avgBuyPrice: 'متوسط الشراء',
       avgSellPrice: 'متوسط البيع',

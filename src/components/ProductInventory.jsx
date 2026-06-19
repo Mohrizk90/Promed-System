@@ -26,7 +26,7 @@ export default function ProductInventory() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [editingProduct, setEditingProduct] = useState(null)
-  const [productForm, setProductForm] = useState({ product_name: '', model: '', unit_price: '', unit_cost: '' })
+  const [productForm, setProductForm] = useState({ product_name: '', model: '', unit_price: '', unit_cost: '', eta_item_code: '', eta_unit_type: 'EA' })
   const [savingProduct, setSavingProduct] = useState(false)
   const [showProductModal, setShowProductModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
@@ -174,6 +174,8 @@ export default function ProductInventory() {
       model: p.model || '',
       unit_price: p.unit_price != null ? String(p.unit_price) : '',
       unit_cost: p.unit_cost != null ? String(p.unit_cost) : '',
+      eta_item_code: p.eta_item_code || '',
+      eta_unit_type: p.eta_unit_type || 'EA',
     })
     setShowProductModal(true)
   }
@@ -193,6 +195,8 @@ export default function ProductInventory() {
           model: productForm.model.trim() || null,
           unit_price,
           unit_cost: unit_costVal,
+          eta_item_code: productForm.eta_item_code.trim() || null,
+          eta_unit_type: productForm.eta_unit_type.trim() || null,
         })
         .eq('product_id', editingProduct.product_id)
       if (error) throw error
@@ -494,6 +498,26 @@ export default function ProductInventory() {
           <div>
             <label className="label text-xs">{t('inventory.productCost')}</label>
             <input type="number" min="0" step="0.01" className="input py-2 text-sm" value={productForm.unit_cost} onChange={(e) => setProductForm({ ...productForm, unit_cost: e.target.value })} placeholder={t('inventory.productCostPlaceholder')} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label text-xs">{t('inventory.etaItemCode')}</label>
+              <input type="text" className="input py-2 text-sm" value={productForm.eta_item_code} onChange={(e) => setProductForm({ ...productForm, eta_item_code: e.target.value })} placeholder="EG-XXXXXXXXX-X" />
+            </div>
+            <div>
+              <label className="label text-xs">{t('inventory.etaUnitType')}</label>
+              <input type="text" className="input py-2 text-sm" value={productForm.eta_unit_type} onChange={(e) => setProductForm({ ...productForm, eta_unit_type: e.target.value })} placeholder="EA" list="eta-unit-types" />
+              <datalist id="eta-unit-types">
+                <option value="EA" />
+                <option value="KGM" />
+                <option value="GM" />
+                <option value="LTR" />
+                <option value="MTR" />
+                <option value="BX" />
+                <option value="PK" />
+                <option value="SET" />
+              </datalist>
+            </div>
           </div>
         </form>
       </Modal>
