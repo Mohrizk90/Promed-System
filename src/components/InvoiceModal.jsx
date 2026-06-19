@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
 import Modal from './ui/Modal'
-import { Printer, Download } from './ui/Icons'
+import { Printer } from './ui/Icons'
 import { useLanguage } from '../context/LanguageContext'
 import { getCompanySettings } from '../utils/companySettings'
 import { getInvoiceSettings } from '../utils/invoiceSettings'
 import { getInvoiceLinesFromTransaction } from '../utils/invoiceLines'
-import { generateInvoice } from '../utils/generateInvoice'
 
 function parseDate(value) {
   if (!value) return null
@@ -110,22 +109,7 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
 
   const handlePrint = () => window.print()
 
-  const handleDownload = async () => {
-    try {
-      await generateInvoice(transaction, {
-        companyName: company.companyName,
-        companyAddress: company.companyAddress,
-        companyPhone: company.companyPhone,
-        companyEmail: company.companyEmail,
-        invoicePrefix: invoiceSettings.invoicePrefix,
-        currency,
-        language,
-        payments,
-      })
-    } catch {
-      /* download is best-effort; on-screen print is the primary path */
-    }
-  }
+  const isAr = language === 'ar'
 
   return (
     <Modal
@@ -140,14 +124,6 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
           </button>
           <button
             type="button"
-            onClick={handleDownload}
-            className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm"
-          >
-            <Download size={16} />
-            {t('invoices.doc_downloadPdf')}
-          </button>
-          <button
-            type="button"
             onClick={handlePrint}
             className="btn btn-primary flex items-center gap-2 py-1.5 px-3 text-sm"
           >
@@ -157,7 +133,7 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
         </div>
       }
     >
-      <div className="client-invoice-document mx-auto bg-white">
+      <div className="client-invoice-document mx-auto bg-white" dir={isAr ? 'rtl' : 'ltr'}>
         {/* Header */}
         <div className="invoice-header flex items-start justify-between gap-4 bg-blue-700 text-white rounded-t-lg px-6 py-5">
           <div>
@@ -167,7 +143,7 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
               <p className="text-[11px] text-blue-200 mt-0.5">{company.companyTagline}</p>
             )}
           </div>
-          <div className="text-right">
+          <div className="text-end">
             <p className="text-lg font-bold uppercase tracking-widest">{t('invoices.doc_invoice')}</p>
             <p className="text-sm text-blue-100 mt-1">{invoiceNumber}</p>
           </div>
@@ -203,7 +179,7 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
             {entityAddress && <p className="text-xs text-gray-600">{entityAddress}</p>}
             {entityContact && <p className="text-xs text-gray-600">{entityContact}</p>}
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 sm:text-right">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 sm:text-end">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">{t('invoices.doc_from')}</p>
             <p className="text-sm font-bold text-gray-900 mt-1">{company.companyName}</p>
             {company.companyAddress && <p className="text-xs text-gray-600">{company.companyAddress}</p>}
@@ -217,11 +193,11 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
           <table className="client-invoice-table w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="px-3 py-2 text-left font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_description')}</th>
-                <th className="px-3 py-2 text-left font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_model')}</th>
+                <th className="px-3 py-2 text-start font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_description')}</th>
+                <th className="px-3 py-2 text-start font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_model')}</th>
                 <th className="px-3 py-2 text-center font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_qty')}</th>
-                <th className="px-3 py-2 text-right font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_unitPrice')}</th>
-                <th className="px-3 py-2 text-right font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_amount')}</th>
+                <th className="px-3 py-2 text-end font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_unitPrice')}</th>
+                <th className="px-3 py-2 text-end font-semibold text-[11px] uppercase tracking-wide">{t('invoices.doc_amount')}</th>
               </tr>
             </thead>
             <tbody>
@@ -235,8 +211,8 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
                     <td className="px-3 py-2 border-t border-gray-200 text-gray-900">{line.product_name || '—'}</td>
                     <td className="px-3 py-2 border-t border-gray-200 text-gray-600">{line.model || '—'}</td>
                     <td className="px-3 py-2 border-t border-gray-200 text-center tabular-nums">{line.quantity}</td>
-                    <td className="px-3 py-2 border-t border-gray-200 text-right tabular-nums">{formatCurrency(line.unit_price)}</td>
-                    <td className="px-3 py-2 border-t border-gray-200 text-right tabular-nums font-medium">{formatCurrency(line.line_total)}</td>
+                    <td className="px-3 py-2 border-t border-gray-200 text-end tabular-nums">{formatCurrency(line.unit_price)}</td>
+                    <td className="px-3 py-2 border-t border-gray-200 text-end tabular-nums font-medium">{formatCurrency(line.line_total)}</td>
                   </tr>
                 ))
               )}
@@ -270,17 +246,17 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
             <table className="client-invoice-table w-full text-xs border-collapse">
               <thead>
                 <tr>
-                  <th className="px-3 py-1.5 text-left font-semibold uppercase tracking-wide">{t('invoices.doc_date')}</th>
-                  <th className="px-3 py-1.5 text-right font-semibold uppercase tracking-wide">{t('invoices.doc_amount')}</th>
-                  <th className="px-3 py-1.5 text-left font-semibold uppercase tracking-wide">{t('invoices.doc_method')}</th>
-                  <th className="px-3 py-1.5 text-left font-semibold uppercase tracking-wide">{t('invoices.doc_reference')}</th>
+                  <th className="px-3 py-1.5 text-start font-semibold uppercase tracking-wide">{t('invoices.doc_date')}</th>
+                  <th className="px-3 py-1.5 text-end font-semibold uppercase tracking-wide">{t('invoices.doc_amount')}</th>
+                  <th className="px-3 py-1.5 text-start font-semibold uppercase tracking-wide">{t('invoices.doc_method')}</th>
+                  <th className="px-3 py-1.5 text-start font-semibold uppercase tracking-wide">{t('invoices.doc_reference')}</th>
                 </tr>
               </thead>
               <tbody>
                 {payments.map((p, index) => (
                   <tr key={index}>
                     <td className="px-3 py-1.5 border-t border-gray-200">{formatDate(p.payment_date)}</td>
-                    <td className="px-3 py-1.5 border-t border-gray-200 text-right tabular-nums">{formatCurrency(p.payment_amount ?? p.amount)}</td>
+                    <td className="px-3 py-1.5 border-t border-gray-200 text-end tabular-nums">{formatCurrency(p.payment_amount ?? p.amount)}</td>
                     <td className="px-3 py-1.5 border-t border-gray-200">{methodLabel(p.payment_method)}</td>
                     <td className="px-3 py-1.5 border-t border-gray-200">{p.reference_number || '—'}</td>
                   </tr>

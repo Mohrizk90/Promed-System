@@ -654,6 +654,29 @@ body {
   }
 }
 
+/* Arabic invoice print: keep the invoice document right-to-left */
+@media print {
+  [dir="rtl"] body.printing-invoice .client-invoice-document,
+  [dir="rtl"] body.printing-invoice .client-invoice-document * {
+    direction: rtl !important;
+  }
+  [dir="rtl"] body.printing-invoice .client-invoice-document,
+  [dir="rtl"] body.printing-invoice .client-invoice-document div,
+  [dir="rtl"] body.printing-invoice .client-invoice-document p,
+  [dir="rtl"] body.printing-invoice .client-invoice-document h2,
+  [dir="rtl"] body.printing-invoice .client-invoice-document .text-start {
+    text-align: right !important;
+  }
+  [dir="rtl"] body.printing-invoice .client-invoice-document .text-end {
+    text-align: left !important;
+  }
+  [dir="rtl"] body.printing-invoice .client-invoice-document .text-center,
+  [dir="rtl"] body.printing-invoice .client-invoice-document th.text-center,
+  [dir="rtl"] body.printing-invoice .client-invoice-document td.text-center {
+    text-align: center !important;
+  }
+}
+
 /* Safe area utilities (for BottomNav and main content on mobile) */
 .pb-safe {
   padding-bottom: max(0.5rem, var(--safe-area-inset-bottom));
