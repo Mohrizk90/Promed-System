@@ -24,7 +24,7 @@ import {
   emptyInvoiceLine,
   normalizeInvoiceLines,
 } from '../../utils/invoiceLines'
-import { computeInvoiceTax, WHT_RATE_OPTIONS } from '../../utils/invoiceTax'
+import { computeInvoiceTax, WHT_RATE_OPTIONS, VAT_RATE } from '../../utils/invoiceTax'
 import EtaCodeInput from '../EtaCodeInput'
 import ClientStatementModal from '../ClientStatementModal'
 import InvoiceModal from '../InvoiceModal'
@@ -89,6 +89,7 @@ function TransactionPage({ config }) {
     payment_terms: defaultPaymentTerms,
     due_date: '',
     wht_rate: 0,
+    vat_rate: VAT_RATE,
     eta_item_code: '',
     eta_item_name: '',
     eta_unit_type: 'EA'
@@ -475,7 +476,7 @@ function TransactionPage({ config }) {
           )
         : null
       const taxBreakdown = linePayload
-        ? computeInvoiceTax(linePayload.invoiceTotal, formData.wht_rate)
+        ? computeInvoiceTax(linePayload.invoiceTotal, formData.wht_rate, formData.vat_rate)
         : null
       const invoiceTotalNum = taxBreakdown?.netTotal ?? totalAmountNum
       const remainingAmountNum = invoiceTotalNum - paidAmountNum
@@ -632,6 +633,7 @@ function TransactionPage({ config }) {
         payment_terms: defaultPaymentTerms,
         due_date: '',
         wht_rate: 0,
+        vat_rate: VAT_RATE,
         eta_item_code: '',
         eta_item_name: '',
         eta_unit_type: 'EA'
@@ -666,6 +668,7 @@ function TransactionPage({ config }) {
       payment_terms: transaction.payment_terms || 'none',
       due_date: transaction.due_date || '',
       wht_rate: Number(transaction.wht_rate) || 0,
+      vat_rate: transaction.vat_rate != null ? Number(transaction.vat_rate) : VAT_RATE,
       eta_item_code: transaction.eta_item_code || transaction.products?.eta_item_code || '',
       eta_item_name: transaction.eta_item_name || transaction.products?.eta_item_name || '',
       eta_unit_type: transaction.eta_unit_type || transaction.products?.eta_unit_type || 'EA'
@@ -693,8 +696,9 @@ function TransactionPage({ config }) {
     }
     const lines = overrides.lines ?? extraInvoiceLines
     const whtRate = overrides.wht_rate ?? formData.wht_rate
+    const vatRate = overrides.vat_rate ?? formData.vat_rate
     const { invoiceTotal } = buildLineItemsPayload(primary, lines)
-    return computeInvoiceTax(invoiceTotal, whtRate)
+    return computeInvoiceTax(invoiceTotal, whtRate, vatRate)
   }
 
   const updateExtraLine = (index, field, value) => {
@@ -730,6 +734,12 @@ function TransactionPage({ config }) {
     setFormData((f) => ({ ...f, wht_rate: whtRate, total_amount: netTotal > 0 ? netTotal.toFixed(2) : f.total_amount }))
   }
 
+  const handleVatToggle = (apply) => {
+    const vatRate = apply ? VAT_RATE : 0
+    const { netTotal } = getInvoiceCalc({ vat_rate: vatRate })
+    setFormData((f) => ({ ...f, vat_rate: vatRate, total_amount: netTotal > 0 ? netTotal.toFixed(2) : f.total_amount }))
+  }
+
   const openInvoiceModal = () => {
     resetForm()
     setInvoiceModalMode(true)
@@ -740,6 +750,7 @@ function TransactionPage({ config }) {
       payment_terms: defaultPaymentTerms,
       due_date: calcDueDate(new Date().toISOString().split('T')[0], defaultPaymentTerms),
       wht_rate: 0,
+      vat_rate: VAT_RATE,
     }))
     setShowModal(true)
   }
@@ -1387,6 +1398,7 @@ function TransactionPage({ config }) {
       payment_terms: defaultPaymentTerms,
       due_date: '',
       wht_rate: 0,
+      vat_rate: VAT_RATE,
       eta_item_code: '',
       eta_item_name: '',
       eta_unit_type: 'EA'
@@ -2189,9 +2201,17 @@ function TransactionPage({ config }) {
                         <span>{t('clientTransactions.subtotal')}</span>
                         <span className="font-medium">{formatCurrency(calc.subtotal)}</span>
                       </div>
-                      <div className="flex items-center justify-between text-sm text-gray-700">
-                        <span>{t('clientTransactions.vatLabel', { rate: calc.vatRate })}</span>
-                        <span className="font-medium">{formatCurrency(calc.vatAmount)}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={Number(formData.vat_rate) > 0}
+                            onChange={(e) => handleVatToggle(e.target.checked)}
+                            className="rounded border-gray-400 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span>{t('clientTransactions.applyVat', { rate: VAT_RATE })}</span>
+                        </label>
+                        <span className="font-medium">{Number(formData.vat_rate) > 0 ? formatCurrency(calc.vatAmount) : formatCurrency(0)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <label className="text-sm text-gray-700">{t('clientTransactions.withholdingTax')}</label>
