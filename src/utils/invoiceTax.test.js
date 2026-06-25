@@ -36,6 +36,20 @@ describe('computeInvoiceTax', () => {
     expect(r.netTotal).toBe(0)
   })
 
+  it('omits VAT when the rate is 0 (optional VAT)', () => {
+    const r = computeInvoiceTax(1000, 0, 0)
+    expect(r.vatRate).toBe(0)
+    expect(r.vatAmount).toBe(0)
+    expect(r.netTotal).toBe(1000)
+  })
+
+  it('still deducts withholding when VAT is turned off', () => {
+    const r = computeInvoiceTax(1000, 3, 0)
+    expect(r.vatAmount).toBe(0)
+    expect(r.whtAmount).toBe(30)
+    expect(r.netTotal).toBe(970)
+  })
+
   it('exposes constants', () => {
     expect(VAT_RATE).toBe(14)
     expect(WHT_RATE_OPTIONS).toEqual([0, 1, 3])
