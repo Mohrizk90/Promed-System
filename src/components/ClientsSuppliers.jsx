@@ -13,7 +13,7 @@ import { downloadCsv } from '../utils/exportCsv'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
 import ClientStatementModal from './ClientStatementModal'
 import { recordClientAccountPayment, deleteClientAccountPayment } from '../utils/clientAccountPayments'
-import { getClientAccountSummary } from '../utils/paymentAllocation'
+import { getClientAccountSummary, allocateEntityInvoices } from '../utils/paymentAllocation'
 
 const matchSearch = (text, query) => {
   if (!query.trim()) return true
@@ -614,6 +614,19 @@ function ClientsSuppliers() {
     return getClientAccountSummary(detailTransactions, detailPayments)
   }, [detailEntity, detailTransactions, detailPayments])
 
+  // FIFO display allocation: spread account-level payments across this client's
+  // invoices (oldest first) so each invoice's paid/remaining reflects account
+  // payments, consistent with the statement — computed in-app, no DB allocation.
+  const detailInvoiceAllocation = useMemo(
+    () => allocateEntityInvoices(detailTransactions, detailPayments),
+    [detailTransactions, detailPayments]
+  )
+
+  const effectivePaid = (tx) =>
+    detailInvoiceAllocation.byTransactionId.get(tx.transaction_id)?.paid ?? Number(tx.paid_amount || 0)
+  const effectiveRemaining = (tx) =>
+    detailInvoiceAllocation.byTransactionId.get(tx.transaction_id)?.remaining ?? Number(tx.remaining_amount || 0)
+
   const detailAccountPayments = useMemo(() => {
     if (detailEntity?.type !== 'client') return []
     return detailPayments
@@ -728,8 +741,8 @@ function ClientsSuppliers() {
               <>
                 <span className="font-medium text-gray-700">{detailTransactions.length} {detailTransactions.length === 1 ? 'transaction' : 'transactions'}</span>
                 <span className="text-gray-600">Total: <strong className="text-gray-900">{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.total_amount || 0), 0))}</strong></span>
-                <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.paid_amount || 0), 0))}</strong></span>
-                <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + Number(tx.remaining_amount || 0), 0))}</strong></span>
+                <span className="text-green-700">Paid: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + effectivePaid(tx), 0))}</strong></span>
+                <span className="text-red-700">Remaining: <strong>{formatCurrency(detailTransactions.reduce((s, tx) => s + effectiveRemaining(tx), 0))}</strong></span>
               </>
             )}
             {detailAccountSummary?.creditBalance > 0 && (
@@ -803,8 +816,8 @@ function ClientsSuppliers() {
                     <td className="px-2 py-1 text-gray-600 whitespace-nowrap">{tx.invoice_number || '—'}</td>
                     <td className="px-2 py-1 text-gray-800 max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
                     <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
-                    <td className="px-2 py-1 text-right tabular-nums text-green-700">{formatCurrency(tx.paid_amount)}</td>
-                    <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700">{formatCurrency(tx.remaining_amount)}</td>
+                    <td className="px-2 py-1 text-right tabular-nums text-green-700">{formatCurrency(effectivePaid(tx))}</td>
+                    <td className="px-2 py-1 text-right tabular-nums font-medium text-red-700">{formatCurrency(effectiveRemaining(tx))}</td>
                   </tr>
                 ))}
               </tbody>

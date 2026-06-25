@@ -79,7 +79,6 @@ export default function ClientStatementModal({
   payments = [],
   initialDateFrom = '',
   initialDateTo = '',
-  initialOpeningBalance = '',
 }) {
   const { t, language } = useLanguage()
   const currency = t('common.currency')
@@ -87,16 +86,14 @@ export default function ClientStatementModal({
 
   const [dateFrom, setDateFrom] = useState(initialDateFrom)
   const [dateTo, setDateTo] = useState(initialDateTo)
-  const [openingBalance, setOpeningBalance] = useState(initialOpeningBalance)
   const [ledgerColumns, setLedgerColumns] = useState(() => defaultColumnVisibility(LEDGER_COLUMNS))
 
   useEffect(() => {
     if (!isOpen) return
     setDateFrom(initialDateFrom)
     setDateTo(initialDateTo)
-    setOpeningBalance(initialOpeningBalance)
     setLedgerColumns(defaultColumnVisibility(LEDGER_COLUMNS))
-  }, [isOpen, initialDateFrom, initialDateTo, initialOpeningBalance])
+  }, [isOpen, initialDateFrom, initialDateTo])
 
   useEffect(() => {
     if (!isOpen) return
@@ -147,16 +144,13 @@ export default function ClientStatementModal({
     return map[id] || id
   }
 
-  const openingBalanceValue = openingBalance.trim() === '' ? undefined : Number(openingBalance)
-
   const ledgerRows = useMemo(
     () =>
       buildStatementRows(transactions, payments, {
-        openingBalance: openingBalanceValue,
         dateFrom: dateFrom || null,
         dateTo: dateTo || null,
       }),
-    [transactions, payments, openingBalanceValue, dateFrom, dateTo]
+    [transactions, payments, dateFrom, dateTo]
   )
 
   const visibleColumnIds = LEDGER_COLUMNS
@@ -234,7 +228,7 @@ export default function ClientStatementModal({
         <div className="statement-controls grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-blue-50/60 border border-blue-200 text-sm">
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-800">{t('entities.statementPeriod')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="label text-xs">{t('entities.statementFrom')}</label>
                 <input type="date" className="input py-2 text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
@@ -243,20 +237,8 @@ export default function ClientStatementModal({
                 <label className="label text-xs">{t('entities.statementTo')}</label>
                 <input type="date" className="input py-2 text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
               </div>
-              <div>
-                <label className="label text-xs">{t('entities.openingBalance')}</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input py-2 text-sm"
-                  value={openingBalance}
-                  onChange={(e) => setOpeningBalance(e.target.value)}
-                  placeholder="Auto"
-                  title={t('entities.openingBalanceHint')}
-                />
-              </div>
             </div>
-            <p className="text-xs text-gray-500">{t('entities.openingBalanceHint')}</p>
+            <p className="text-xs text-gray-500">{t('entities.openingBalanceAutoHint')}</p>
           </div>
 
           <div className="space-y-3">

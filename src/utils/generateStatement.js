@@ -81,10 +81,11 @@ function sumPayments(payments) {
   return payments.reduce((sum, p) => sum + Number(p.payment_amount || 0), 0)
 }
 
-function computeOpeningBalance(transactions, payments, dateFrom, explicitOpening) {
-  if (explicitOpening != null && explicitOpening !== '') {
-    return Number(explicitOpening) || 0
-  }
+// Opening balance is always derived from real activity before the start date
+// (sum of prior invoices minus all prior payments, including account-level ones).
+// With no start date there is nothing to carry forward, so it's 0. There is no
+// manual override — that produced a confusing balance that didn't reconcile.
+function computeOpeningBalance(transactions, payments, dateFrom) {
   if (!dateFrom) return 0
   const priorTx = transactions.filter((tx) => isBefore(tx.transaction_date, dateFrom))
   const priorPayments = payments.filter((p) => isBefore(p.payment_date, dateFrom))
@@ -96,7 +97,7 @@ function computeOpeningBalance(transactions, payments, dateFrom, explicitOpening
  * @returns {Array<{date, type, invoiceNumber, wht, invAmount, payment, balance}>}
  */
 export function buildStatementRows(transactions = [], payments = [], options = {}) {
-  const { openingBalance, dateFrom = null, dateTo = null } = options
+  const { dateFrom = null, dateTo = null } = options
 
   const paymentsByTx = payments.reduce((map, payment) => {
     const id = payment.transaction_id
@@ -109,7 +110,7 @@ export function buildStatementRows(transactions = [], payments = [], options = {
     list.sort((a, b) => compareDates(a.payment_date, b.payment_date))
   })
 
-  const startBalance = computeOpeningBalance(transactions, payments, dateFrom, openingBalance)
+  const startBalance = computeOpeningBalance(transactions, payments, dateFrom)
   const rows = []
   let balance = startBalance
 
@@ -314,7 +315,6 @@ export async function generateStatement({ client, transactions = [], payments = 
     language = 'en',
     dateFrom = null,
     dateTo = null,
-    openingBalance,
   } = options
 
   const isAr = language === 'ar'
@@ -343,7 +343,7 @@ export async function generateStatement({ client, transactions = [], payments = 
   }
 
   const clientName = client?.client_name || '—'
-  const statementRows = buildStatementRows(transactions, payments, { openingBalance, dateFrom, dateTo })
+  const statementRows = buildStatementRows(transactions, payments, { dateFrom, dateTo })
   const statementPeriod = formatStatementPeriod(dateFrom, dateTo)
   const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -484,7 +484,7 @@ export async function generateStatement({ client, transactions = [], payments = 
 
   const closingBalance = statementRows.length > 0
     ? statementRows[statementRows.length - 1].balance
-    : computeOpeningBalance(transactions, payments, dateFrom, openingBalance)
+    : computeOpeningBalance(transactions, payments, dateFrom)
 
   if (y > ph - 40) {
     doc.addPage()

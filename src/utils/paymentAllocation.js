@@ -36,6 +36,58 @@ export function allocatePaymentFifo(paymentAmount, transactions = []) {
   }
 }
 
+/**
+ * FIFO display allocation for one client/entity, computed entirely in-app
+ * (no dependency on the database payment_allocations table).
+ *
+ * For each invoice it returns the effective paid/remaining by:
+ *   1. crediting payments tied directly to that invoice (transaction_id match),
+ *   2. then spreading account-level payments (transaction_id == null) across the
+ *      still-open invoices oldest-first.
+ * Money left over after every invoice is covered becomes customer credit.
+ *
+ * @returns {{ byTransactionId: Map<number, {paid:number, remaining:number, total:number}>, accountCredit: number }}
+ */
+export function allocateEntityInvoices(transactions = [], payments = []) {
+  const directPaid = new Map()
+  let pool = 0
+  for (const p of payments) {
+    const amt = Number(p.payment_amount || 0) || 0
+    if (amt <= 0) continue
+    if (p.transaction_id == null) {
+      pool += amt
+    } else {
+      directPaid.set(p.transaction_id, (directPaid.get(p.transaction_id) || 0) + amt)
+    }
+  }
+
+  const sorted = [...transactions].sort((a, b) => {
+    const byDate = String(a.transaction_date || '').localeCompare(String(b.transaction_date || ''))
+    if (byDate !== 0) return byDate
+    return (a.transaction_id || 0) - (b.transaction_id || 0)
+  })
+
+  const byTransactionId = new Map()
+  for (const tx of sorted) {
+    const total = Number(tx.total_amount || 0)
+    const direct = directPaid.get(tx.transaction_id) || 0
+    // Direct overpayment on a single invoice spills back into the account pool.
+    const directApplied = Math.min(total, direct)
+    pool += Math.max(0, direct - total)
+    const dueAfterDirect = Math.max(0, total - directApplied)
+    const fromPool = Math.min(dueAfterDirect, pool)
+    pool -= fromPool
+    const paid = directApplied + fromPool
+    byTransactionId.set(tx.transaction_id, {
+      paid,
+      remaining: Math.max(0, total - paid),
+      total,
+    })
+  }
+
+  return { byTransactionId, accountCredit: Math.max(0, pool) }
+}
+
 export function sumPaymentAmounts(payments = []) {
   return payments.reduce((sum, p) => sum + Number(p.payment_amount || 0), 0)
 }

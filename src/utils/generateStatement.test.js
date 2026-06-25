@@ -48,20 +48,10 @@ describe('buildStatementRows', () => {
     expect(rows.filter((r) => r.type === 'payment')).toHaveLength(0)
   })
 
-  it('respects explicit opening balance', () => {
-    const rows = buildStatementRows([], [], { openingBalance: 1002 })
-
-    expect(rows).toHaveLength(1)
-    expect(rows[0].type).toBe('openingBalance')
-    expect(rows[0].invAmount).toBe(1002)
-    expect(rows[0].balance).toBe(1002)
-  })
-
   it('filters rows to the selected date range', () => {
     const rows = buildStatementRows(transactions, payments, {
       dateFrom: '2026-01-01',
       dateTo: '2026-01-31',
-      openingBalance: 0,
     })
 
     expect(rows).toHaveLength(2)
