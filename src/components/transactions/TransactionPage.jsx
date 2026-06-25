@@ -31,6 +31,7 @@ import InvoiceModal from '../InvoiceModal'
 import CsvImportModal from '../CsvImportModal'
 import { getPaginationPrefs, setPaginationPrefs } from '../../utils/paginationPrefs'
 import { nextStatusAfterPaymentChange } from '../../utils/transactionStatus'
+import { allocateEntityInvoices } from '../../utils/paymentAllocation'
 
 const TRANSACTION_STATUS_OPTIONS = ['not_started', 'in_progress', 'invoice', 'paused', 'paid', 'done']
 
@@ -993,6 +994,39 @@ function TransactionPage({ config }) {
     }
   }
 
+  // Effective per-invoice paid/remaining including account-level payments, via
+  // FIFO per entity (oldest invoice first) — computed in-app so the global
+  // transactions page agrees with the client detail view and the statement.
+  // When an entity has no account/orphan payments this equals the stored
+  // paid_amount/remaining_amount, so it's a no-op for the common case.
+  const entityPaymentField = entityType === 'client' ? 'client_id' : 'supplier_id'
+  const effectiveAllocation = useMemo(() => {
+    const txByEntity = new Map()
+    for (const tx of transactions) {
+      const eid = tx[entityIdField]
+      if (!txByEntity.has(eid)) txByEntity.set(eid, [])
+      txByEntity.get(eid).push(tx)
+    }
+    const txEntityById = new Map(transactions.map((tx) => [tx.transaction_id, tx[entityIdField]]))
+    const payByEntity = new Map()
+    for (const p of payments) {
+      let eid = p[entityPaymentField]
+      if (eid == null && p.transaction_id != null) eid = txEntityById.get(p.transaction_id)
+      if (eid == null) continue
+      if (!payByEntity.has(eid)) payByEntity.set(eid, [])
+      payByEntity.get(eid).push(p)
+    }
+    const byId = new Map()
+    for (const [eid, txs] of txByEntity) {
+      const { byTransactionId } = allocateEntityInvoices(txs, payByEntity.get(eid) || [])
+      for (const [tid, v] of byTransactionId) byId.set(tid, v)
+    }
+    return byId
+  }, [transactions, payments, entityIdField, entityPaymentField])
+
+  const effPaid = (tx) => effectiveAllocation.get(tx.transaction_id)?.paid ?? Number(tx.paid_amount || 0)
+  const effRemaining = (tx) => effectiveAllocation.get(tx.transaction_id)?.remaining ?? Number(tx.remaining_amount || 0)
+
   const getFilteredTransactions = () => {
     let result = transactions
 
@@ -1005,7 +1039,7 @@ function TransactionPage({ config }) {
         const transactionDate = new Date(t.transaction_date)
         if (includePastRemaining) {
           return (transactionDate >= selectedDate && transactionDate < nextMonth) ||
-                 (transactionDate < selectedDate && parseFloat(t.remaining_amount || 0) > 0)
+                 (transactionDate < selectedDate && effRemaining(t) > 0)
         }
         return transactionDate >= selectedDate && transactionDate < nextMonth
       })
@@ -1021,11 +1055,11 @@ function TransactionPage({ config }) {
       result = result.filter(t => t.product_id === parseInt(filterProductId))
     }
 
-    // Payment status filter
+    // Payment status filter (uses effective remaining incl. account payments)
     if (filterPaymentStatus === 'outstanding') {
-      result = result.filter(t => parseFloat(t.remaining_amount || 0) > 0)
+      result = result.filter(t => effRemaining(t) > 0)
     } else if (filterPaymentStatus === 'paid') {
-      result = result.filter(t => parseFloat(t.remaining_amount || 0) === 0)
+      result = result.filter(t => effRemaining(t) <= 0)
     }
 
     // Status filter
@@ -1087,9 +1121,9 @@ function TransactionPage({ config }) {
     return transactions
       .filter(t => {
         const transactionDate = new Date(t.transaction_date)
-        return transactionDate < selectedDate && parseFloat(t.remaining_amount || 0) > 0
+        return transactionDate < selectedDate && effRemaining(t) > 0
       })
-      .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
+      .reduce((sum, t) => sum + effRemaining(t), 0)
   }
 
   // Transaction IDs that match current filters (entity, product, status, search) — used for payment-date-based paid
@@ -1097,8 +1131,8 @@ function TransactionPage({ config }) {
     let result = transactions
     if (filterEntityId) result = result.filter(t => t[entityIdField] === parseInt(filterEntityId))
     if (filterProductId) result = result.filter(t => t.product_id === parseInt(filterProductId))
-    if (filterPaymentStatus === 'outstanding') result = result.filter(t => parseFloat(t.remaining_amount || 0) > 0)
-    else if (filterPaymentStatus === 'paid') result = result.filter(t => parseFloat(t.remaining_amount || 0) === 0)
+    if (filterPaymentStatus === 'outstanding') result = result.filter(t => effRemaining(t) > 0)
+    else if (filterPaymentStatus === 'paid') result = result.filter(t => effRemaining(t) <= 0)
     if (filterStatus && filterStatus !== 'all') result = result.filter(t => (t.status || 'not_started') === filterStatus)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
@@ -1111,7 +1145,7 @@ function TransactionPage({ config }) {
       })
     }
     return new Set(result.map(t => t.transaction_id))
-  }, [transactions, filterEntityId, filterProductId, filterPaymentStatus, filterStatus, searchQuery, entityIdField, entityRelationName, entityNameField])
+  }, [transactions, effectiveAllocation, filterEntityId, filterProductId, filterPaymentStatus, filterStatus, searchQuery, entityIdField, entityRelationName, entityNameField])
 
   const monthBounds = useMemo(() => {
     if (!selectedMonth) return null
@@ -1149,12 +1183,9 @@ function TransactionPage({ config }) {
     const monthStart = monthBounds?.start
     const monthEndExclusive = monthBounds?.end
     if (!selectedMonth) {
-      // All Months: sum the payments table (source of truth) filtered by the
-      // current entity/product/status/search filters, so the All-Months total
-      // matches the sum of the per-month breakdowns.
-      return payments
-        .filter(p => filteredTransactionIds.has(p.transaction_id))
-        .reduce((sum, p) => sum + parseFloat(p.payment_amount || 0), 0)
+      // All Months: paid applied to invoices = sum of effective paid (includes
+      // account-level payments via FIFO), so total = paid + remaining holds.
+      return filteredTransactions.reduce((sum, t) => sum + effPaid(t), 0)
     }
     if (!monthStart || !monthEndExclusive) return 0
     return payments
@@ -1271,8 +1302,8 @@ function TransactionPage({ config }) {
         const nextMonth = new Date(parseInt(year), parseInt(month), 1)
         return transactionDate >= selectedDate && transactionDate < nextMonth
       })
-      .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
-    
+      .reduce((sum, t) => sum + effRemaining(t), 0)
+
     return monthRemaining + (includePastRemaining ? getPastRemainingTotal() : 0)
   }
 
@@ -1295,10 +1326,10 @@ function TransactionPage({ config }) {
         const d = new Date(t.transaction_date)
         return d >= selectedDate && d < nextMonth
       })
-      .reduce((sum, t) => sum + parseFloat(t.remaining_amount || 0), 0)
+      .reduce((sum, t) => sum + effRemaining(t), 0)
 
     return { monthTotal, monthRemaining }
-  }, [selectedMonth, filteredTransactions])
+  }, [selectedMonth, filteredTransactions, effectiveAllocation])
 
   const handleCsvImport = async (rows) => {
     try {
@@ -1669,15 +1700,15 @@ function TransactionPage({ config }) {
                             )}
                           </div>
                         ) : (
-                          formatCurrency(transaction.paid_amount)
+                          formatCurrency(effPaid(transaction))
                         )}
                       </td>
-                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700">{formatCurrency(transaction.remaining_amount)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap text-right tabular-nums font-medium text-red-700">{formatCurrency(effRemaining(transaction))}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-gray-600">
                         {transaction.due_date ? (
                           <>
                             <span>{new Date(transaction.due_date).toLocaleDateString()}</span>
-                            {parseFloat(transaction.remaining_amount || 0) > 0 && new Date(transaction.due_date) < new Date() && (
+                            {effRemaining(transaction) > 0 && new Date(transaction.due_date) < new Date() && (
                               <span className="ml-1 inline-flex items-center px-1 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-semibold">{t('common.overdue')}</span>
                             )}
                           </>
@@ -1753,9 +1784,9 @@ function TransactionPage({ config }) {
                                       )}
                                     </>
                                   ) : (
-                                    <span className="text-green-700 font-medium">{t('dashboard.paid')}: {formatCurrency(transaction.paid_amount)}</span>
+                                    <span className="text-green-700 font-medium">{t('dashboard.paid')}: {formatCurrency(effPaid(transaction))}</span>
                                   )}
-                                  <span className="text-red-600 font-medium">{t('dashboard.remaining')}: {formatCurrency(transaction.remaining_amount)}</span>
+                                  <span className="text-red-600 font-medium">{t('dashboard.remaining')}: {formatCurrency(effRemaining(transaction))}</span>
                                 </div>
                               </div>
                               <button

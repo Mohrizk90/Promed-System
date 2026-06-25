@@ -4,6 +4,7 @@ import { Printer } from './ui/Icons'
 import { useLanguage } from '../context/LanguageContext'
 import { getCompanySettings } from '../utils/companySettings'
 import { buildStatementRows, formatStatementPeriod } from '../utils/generateStatement'
+import { getClientAccountSummary } from '../utils/paymentAllocation'
 
 export const LEDGER_COLUMNS = [
   { id: 'date', default: true },
@@ -45,22 +46,16 @@ const COLUMN_META = {
   balance: { align: 'right', width: '14%' },
 }
 
-function computeStatementSummary(ledgerRows = []) {
-  let totalInvoiced = 0
-  let totalPaid = 0
-  for (const row of ledgerRows) {
-    if (row.type === 'invoice' && row.invAmount !== '' && row.invAmount != null) {
-      totalInvoiced += Number(row.invAmount)
-    }
-    if ((row.type === 'payment' || row.type === 'accountPayment') && row.payment !== '' && row.payment != null) {
-      totalPaid += Number(row.payment)
-    }
-  }
-  const closingBalance = ledgerRows.length > 0 ? Number(ledgerRows[ledgerRows.length - 1].balance || 0) : 0
+// The headline totals are the client's whole-account position (all invoices
+// minus every payment), the same number the system shows everywhere else, so
+// the statement's "Remaining" can never drift from the rest of the app. The
+// date range only controls which ledger rows are listed, not this balance.
+function computeStatementSummary(transactions = [], payments = []) {
+  const { totalInvoiced, totalPaid, balance } = getClientAccountSummary(transactions, payments)
   return {
     total: totalInvoiced,
     paid: totalPaid,
-    remaining: closingBalance,
+    remaining: balance,
   }
 }
 
@@ -158,8 +153,8 @@ export default function ClientStatementModal({
     .filter((id) => ledgerColumns[id])
 
   const statementSummary = useMemo(
-    () => computeStatementSummary(ledgerRows),
-    [ledgerRows]
+    () => computeStatementSummary(transactions, payments),
+    [transactions, payments]
   )
 
   const toggleColumn = (id) => {
