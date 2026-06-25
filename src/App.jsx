@@ -94,17 +94,26 @@ function AppContent() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
   const isSignUpPage = location.pathname === '/signup'
-  // Wait for Supabase to hydrate the session from localStorage before deciding to
-  // redirect to /login — otherwise refresh always boots the user out.
-  const showAppShell = !loading && user && !isLoginPage && !isSignUpPage
+  const isPublicPage = isLoginPage || isSignUpPage
+
+  // While Supabase is still hydrating the session from localStorage, render ONLY
+  // the spinner and do NOT mount the route tree. Otherwise the catch-all
+  // <Navigate to="/login"> in the else-branch fires during loading and rewrites
+  // the URL to /login; once hydration finishes the user is stranded on the login
+  // page even though a valid session exists. (This is the "sign in on every
+  // refresh" bug.) On the public pages we let the form render immediately.
+  if (loading && !isPublicPage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  const showAppShell = user && !isLoginPage && !isSignUpPage
 
   return (
     <>
-      {loading && !isLoginPage && !isSignUpPage && (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <LoadingSpinner size="lg" />
-        </div>
-      )}
       <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell ? 'pb-0' : ''}`}>
         {showAppShell ? (
           <AppShell>
