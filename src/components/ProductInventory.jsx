@@ -290,7 +290,7 @@ export default function ProductInventory() {
 
   const openAddItem = () => {
     setEditingItem(null)
-    setItemForm({ name: '', quantity: '0', unit_cost: '', notes: '' })
+    setItemForm({ name: '', quantity: '', unit_cost: '', notes: '' })
     setShowItemModal(true)
   }
 
@@ -298,7 +298,7 @@ export default function ProductInventory() {
     setEditingItem(item)
     setItemForm({
       name: item.name || '',
-      quantity: item.quantity != null ? String(item.quantity) : '0',
+      quantity: item.quantity != null ? String(item.quantity) : '',
       unit_cost: item.unit_cost != null ? String(item.unit_cost) : '',
       notes: item.notes || '',
     })
