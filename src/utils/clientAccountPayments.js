@@ -38,6 +38,13 @@ export async function recordClientAccountPayment({
 
   if (paymentError) throw paymentError
 
+  // The payment row above is the authoritative receipt and is already committed.
+  // Allocations are a derived optimization (FIFO -> open invoices) consumed by
+  // statements. If writing them fails (e.g. the payment_allocations migration
+  // hasn't been applied, or an RLS policy rejects the row), do NOT fail the whole
+  // receipt — that would surface an error toast for a payment that actually
+  // succeeded and leave it "only visible after refresh". Record it best-effort.
+  let allocationError = null
   if (allocations.length > 0) {
     const { error: allocError } = await supabase.from('payment_allocations').insert(
       allocations.map((row) => ({
@@ -47,10 +54,13 @@ export async function recordClientAccountPayment({
         allocated_amount: row.allocated_amount,
       }))
     )
-    if (allocError) throw allocError
+    if (allocError) {
+      allocationError = allocError
+      console.warn('Account payment recorded but allocation failed:', allocError)
+    }
   }
 
-  return { payment, allocations, unallocatedCredit }
+  return { payment, allocations, unallocatedCredit, allocationError }
 }
 
 /** Delete an account-level payment; allocations cascade and invoice paid amounts resync via DB triggers. */
