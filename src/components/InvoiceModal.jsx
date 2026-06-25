@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Modal from './ui/Modal'
 import { Printer } from './ui/Icons'
 import { useLanguage } from '../context/LanguageContext'
@@ -119,28 +120,7 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
 
   const isAr = language === 'ar'
 
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={t('invoices.doc_title')}
-      size="xl"
-      footer={
-        <div className="flex flex-wrap gap-2 justify-end w-full invoice-controls">
-          <button type="button" onClick={onClose} className="btn btn-secondary py-1.5 px-3 text-sm">
-            {t('common.close')}
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="btn btn-primary flex items-center gap-2 py-1.5 px-3 text-sm"
-          >
-            <Printer size={16} />
-            {t('invoices.doc_print')}
-          </button>
-        </div>
-      }
-    >
+  const invoiceDocument = (
       <div className="client-invoice-document mx-auto bg-white" dir={isAr ? 'rtl' : 'ltr'}>
         {/* Header */}
         <div className="invoice-header flex items-start justify-between gap-4 bg-blue-700 text-white rounded-t-lg px-6 py-5">
@@ -309,6 +289,42 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
           <p className="text-[10px] text-gray-400 mt-1">{t('invoices.doc_generatedBy')}</p>
         </div>
       </div>
-    </Modal>
+  )
+
+  return (
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={t('invoices.doc_title')}
+        size="xl"
+        footer={
+          <div className="flex flex-wrap gap-2 justify-end w-full invoice-controls">
+            <button type="button" onClick={onClose} className="btn btn-secondary py-1.5 px-3 text-sm">
+              {t('common.close')}
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="btn btn-primary flex items-center gap-2 py-1.5 px-3 text-sm"
+            >
+              <Printer size={16} />
+              {t('invoices.doc_print')}
+            </button>
+          </div>
+        }
+      >
+        {invoiceDocument}
+      </Modal>
+      {/* Print-only copy rendered at <body> root, OUTSIDE the fixed modal. The
+          modal's invoice sits inside a position:fixed overlay, which makes the
+          browser repeat it on every printed page (the "duplicate"). Printing
+          this body-level copy (with #root hidden) avoids the fixed ancestor, so
+          it prints once and paginates normally. */}
+      {isOpen && createPortal(
+        <div className="invoice-print-only" aria-hidden="true">{invoiceDocument}</div>,
+        document.body
+      )}
+    </>
   )
 }

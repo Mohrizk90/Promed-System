@@ -446,6 +446,11 @@ body {
   }
 
   /* Print styles */
+/* Body-level print copy of the invoice — hidden on screen, shown only in print */
+.invoice-print-only {
+  display: none;
+}
+
 @page {
   size: auto;
   margin: 10mm;
@@ -570,24 +575,20 @@ body {
     print-color-adjust: exact;
   }
 
-  /* Client invoice print – only the invoice document */
-  body.printing-invoice * {
-    visibility: hidden;
+  /* Client invoice print – print the <body>-level copy and hide the app + modal.
+     The on-screen invoice lives inside a position:fixed modal overlay, which the
+     browser repeats on every printed page (the "duplicate"). Hiding #root and
+     printing the portal copy (a direct child of <body>) prints it exactly once. */
+  body.printing-invoice #root {
+    display: none !important;
   }
 
-  body.printing-invoice .client-invoice-document,
-  body.printing-invoice .client-invoice-document * {
-    visibility: visible;
+  body.printing-invoice .invoice-print-only {
+    display: block !important;
   }
 
-  /* Mirror the (working) statement print rule exactly. The previous version
-     added overflow:hidden on this absolutely-positioned, taller-than-one-page
-     element, which made it clip and repeat onto a second page ("duplicate").
-     Width 100% + no overflow lets it paginate normally as a single document. */
-  body.printing-invoice .client-invoice-document {
-    position: absolute;
-    left: 0;
-    top: 0;
+  body.printing-invoice .invoice-print-only .client-invoice-document {
+    position: static;
     width: 100%;
     max-width: none !important;
     margin: 0 !important;
