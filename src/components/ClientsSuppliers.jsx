@@ -257,37 +257,30 @@ function ClientsSuppliers() {
           const clientId = detailEntity.data.client_id
           const txIds = txs.map((tx) => tx.transaction_id)
 
-          let paymentQuery = supabase
+          // Account-level payments (transaction_id IS NULL) — separate query to avoid
+          // the .or() quirk that drops newly inserted rows on in-session refetch.
+          const { data: accountPayments, error: accountPaymentsError } = await supabase
             .from('payments')
             .select('*')
+            .eq('client_id', clientId)
             .eq('transaction_type', 'client')
+            .is('transaction_id', null)
             .order('payment_date', { ascending: true })
+          if (accountPaymentsError) throw accountPaymentsError
 
+          let txPayments = []
           if (txIds.length > 0) {
-            paymentQuery = paymentQuery.or(`client_id.eq.${clientId},transaction_id.in.(${txIds.join(',')})`)
-          } else {
-            paymentQuery = paymentQuery.eq('client_id', clientId)
+            const { data, error } = await supabase
+              .from('payments')
+              .select('*')
+              .eq('transaction_type', 'client')
+              .in('transaction_id', txIds)
+              .order('payment_date', { ascending: true })
+            if (error) throw error
+            txPayments = data || []
           }
 
-          const { data: paymentData, error: paymentError } = await paymentQuery
-          if (paymentError) {
-            if (paymentError.message?.includes('client_id') && txIds.length > 0) {
-              const { data: legacyPayments, error: legacyError } = await supabase
-                .from('payments')
-                .select('*')
-                .eq('transaction_type', 'client')
-                .in('transaction_id', txIds)
-                .order('payment_date', { ascending: true })
-              if (legacyError) throw legacyError
-              setDetailPayments(legacyPayments || [])
-            } else if (!paymentError.message?.includes('client_id')) {
-              throw paymentError
-            } else {
-              setDetailPayments([])
-            }
-          } else {
-            setDetailPayments(paymentData || [])
-          }
+          setDetailPayments([...(accountPayments || []), ...txPayments])
         } else {
           const { data, error } = await supabase
             .from('supplier_transactions')
@@ -637,16 +630,31 @@ function ClientsSuppliers() {
     if (txError) throw txError
     setDetailTransactions(txs || [])
 
+    // Two separate queries avoid a Supabase .or() quirk that drops newly inserted
+    // account-level payments (client_id = X, transaction_id = NULL) on in-session refetch.
+    const { data: accountPayments, error: accountPaymentsError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('transaction_type', 'client')
+      .is('transaction_id', null)
+      .order('payment_date', { ascending: true })
+    if (accountPaymentsError) throw accountPaymentsError
+
+    let txPayments = []
     const txIds = (txs || []).map((tx) => tx.transaction_id)
-    let paymentQuery = supabase.from('payments').select('*').eq('transaction_type', 'client').order('payment_date', { ascending: true })
     if (txIds.length > 0) {
-      paymentQuery = paymentQuery.or(`client_id.eq.${clientId},transaction_id.in.(${txIds.join(',')})`)
-    } else {
-      paymentQuery = paymentQuery.eq('client_id', clientId)
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('transaction_type', 'client')
+        .in('transaction_id', txIds)
+        .order('payment_date', { ascending: true })
+      if (error) throw error
+      txPayments = data || []
     }
-    const { data: paymentData, error: paymentError } = await paymentQuery
-    if (paymentError) throw paymentError
-    setDetailPayments(paymentData || [])
+
+    setDetailPayments([...(accountPayments || []), ...txPayments])
   }
 
   const handleAccountPaymentSubmit = async (e) => {

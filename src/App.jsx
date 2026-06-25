@@ -90,14 +90,21 @@ function NotFound() {
 
 function AppContent() {
   const { toasts, removeToast } = useToast()
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
   const isSignUpPage = location.pathname === '/signup'
-  const showAppShell = user && !isLoginPage && !isSignUpPage
+  // Wait for Supabase to hydrate the session from localStorage before deciding to
+  // redirect to /login — otherwise refresh always boots the user out.
+  const showAppShell = !loading && user && !isLoginPage && !isSignUpPage
 
   return (
     <>
+      {loading && !isLoginPage && !isSignUpPage && (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <LoadingSpinner size="lg" />
+        </div>
+      )}
       <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell ? 'pb-0' : ''}`}>
         {showAppShell ? (
           <AppShell>
