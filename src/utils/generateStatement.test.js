@@ -59,6 +59,17 @@ describe('buildStatementRows', () => {
     expect(rows[1].payment).toBe(72320)
   })
 
+  it('carries a per-client opening balance into the period', () => {
+    const txs = [
+      { transaction_id: 1, transaction_date: '2026-01-01', invoice_number: '1', total_amount: 1000 },
+    ]
+    // opening credit of 300 (client was ahead): closing = -300 + 1000 = 700
+    const rows = buildStatementRows(txs, [], { openingBalance: -300 })
+    expect(rows[0].type).toBe('openingBalance')
+    expect(rows[0].balance).toBe(-300)
+    expect(getStatementClosingSummary(rows).closingBalance).toBe(700)
+  })
+
   it('counts an orphan payment (invoice not in set) so the balance reconciles', () => {
     const txs = [
       { transaction_id: 1, transaction_date: '2026-01-01', invoice_number: '1', total_amount: 1000 },

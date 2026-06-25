@@ -50,8 +50,8 @@ const COLUMN_META = {
 // minus every payment), the same number the system shows everywhere else, so
 // the statement's "Remaining" can never drift from the rest of the app. The
 // date range only controls which ledger rows are listed, not this balance.
-function computeStatementSummary(transactions = [], payments = []) {
-  const { totalInvoiced, totalPaid, balance } = getClientAccountSummary(transactions, payments)
+function computeStatementSummary(transactions = [], payments = [], openingBalance = 0) {
+  const { totalInvoiced, totalPaid, balance } = getClientAccountSummary(transactions, payments, openingBalance)
   return {
     total: totalInvoiced,
     paid: totalPaid,
@@ -78,6 +78,7 @@ export default function ClientStatementModal({
   const { t, language } = useLanguage()
   const currency = t('common.currency')
   const company = getCompanySettings()
+  const openingBalance = Number(client?.opening_balance || 0)
 
   const [dateFrom, setDateFrom] = useState(initialDateFrom)
   const [dateTo, setDateTo] = useState(initialDateTo)
@@ -144,8 +145,9 @@ export default function ClientStatementModal({
       buildStatementRows(transactions, payments, {
         dateFrom: dateFrom || null,
         dateTo: dateTo || null,
+        openingBalance,
       }),
-    [transactions, payments, dateFrom, dateTo]
+    [transactions, payments, dateFrom, dateTo, openingBalance]
   )
 
   const visibleColumnIds = LEDGER_COLUMNS
@@ -153,8 +155,8 @@ export default function ClientStatementModal({
     .filter((id) => ledgerColumns[id])
 
   const statementSummary = useMemo(
-    () => computeStatementSummary(transactions, payments),
-    [transactions, payments]
+    () => computeStatementSummary(transactions, payments, openingBalance),
+    [transactions, payments, openingBalance]
   )
 
   const toggleColumn = (id) => {

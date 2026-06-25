@@ -1000,6 +1000,11 @@ function TransactionPage({ config }) {
   // When an entity has no account/orphan payments this equals the stored
   // paid_amount/remaining_amount, so it's a no-op for the common case.
   const entityPaymentField = entityType === 'client' ? 'client_id' : 'supplier_id'
+  const openingBalanceByEntity = useMemo(() => {
+    const map = new Map()
+    for (const e of entities) map.set(e[entityIdField], Number(e.opening_balance || 0))
+    return map
+  }, [entities, entityIdField])
   const effectiveAllocation = useMemo(() => {
     const txByEntity = new Map()
     for (const tx of transactions) {
@@ -1018,11 +1023,11 @@ function TransactionPage({ config }) {
     }
     const byId = new Map()
     for (const [eid, txs] of txByEntity) {
-      const { byTransactionId } = allocateEntityInvoices(txs, payByEntity.get(eid) || [])
+      const { byTransactionId } = allocateEntityInvoices(txs, payByEntity.get(eid) || [], openingBalanceByEntity.get(eid) || 0)
       for (const [tid, v] of byTransactionId) byId.set(tid, v)
     }
     return byId
-  }, [transactions, payments, entityIdField, entityPaymentField])
+  }, [transactions, payments, entityIdField, entityPaymentField, openingBalanceByEntity])
 
   const effPaid = (tx) => effectiveAllocation.get(tx.transaction_id)?.paid ?? Number(tx.paid_amount || 0)
   const effRemaining = (tx) => effectiveAllocation.get(tx.transaction_id)?.remaining ?? Number(tx.remaining_amount || 0)

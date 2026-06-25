@@ -84,6 +84,18 @@ describe('allocateEntityInvoices', () => {
     expect(accountCredit).toBe(0)
   })
 
+  it('applies an opening credit (negative balance) to invoices via FIFO', () => {
+    const { byTransactionId, accountCredit } = allocateEntityInvoices(invoices, [], -500)
+    expect(byTransactionId.get(1)).toEqual({ paid: 500, remaining: 500, total: 1000 })
+    expect(byTransactionId.get(2)).toEqual({ paid: 0, remaining: 2000, total: 2000 })
+    expect(accountCredit).toBe(0)
+  })
+
+  it('ignores an opening debit (positive) for per-invoice paid', () => {
+    const { byTransactionId } = allocateEntityInvoices(invoices, [], 500)
+    expect(byTransactionId.get(1)).toEqual({ paid: 0, remaining: 1000, total: 1000 })
+  })
+
   it('spills direct overpayment of one invoice onto later invoices', () => {
     const payments = [
       { payment_id: 1, transaction_id: 1, payment_amount: 1500 }, // 500 overpaid on invoice 1
@@ -109,5 +121,12 @@ describe('getClientAccountSummary', () => {
     expect(summary.totalPaid).toBe(3500)
     expect(summary.amountDue).toBe(0)
     expect(summary.creditBalance).toBe(500)
+  })
+
+  it('includes the opening balance in the balance (credit reduces, debit adds)', () => {
+    const txs = [{ total_amount: 1000 }]
+    const pays = [{ payment_amount: 200 }]
+    expect(getClientAccountSummary(txs, pays, -300).balance).toBe(500) // credit carried in
+    expect(getClientAccountSummary(txs, pays, 300).balance).toBe(1100) // owed carried in
   })
 })

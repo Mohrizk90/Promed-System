@@ -81,15 +81,16 @@ function sumPayments(payments) {
   return payments.reduce((sum, p) => sum + Number(p.payment_amount || 0), 0)
 }
 
-// Opening balance is always derived from real activity before the start date
-// (sum of prior invoices minus all prior payments, including account-level ones).
-// With no start date there is nothing to carry forward, so it's 0. There is no
-// manual override — that produced a confusing balance that didn't reconcile.
-function computeOpeningBalance(transactions, payments, dateFrom) {
-  if (!dateFrom) return 0
+// Opening balance for the period = the client's carried-in opening balance
+// (set once, rolls forward) plus real activity before the start date
+// (prior invoices minus all prior payments, including account-level ones).
+// With no start date the period opening is just the carried-in balance.
+function computeOpeningBalance(transactions, payments, dateFrom, carriedOpeningBalance = 0) {
+  const carried = Number(carriedOpeningBalance || 0)
+  if (!dateFrom) return carried
   const priorTx = transactions.filter((tx) => isBefore(tx.transaction_date, dateFrom))
   const priorPayments = payments.filter((p) => isBefore(p.payment_date, dateFrom))
-  return sumInvoices(priorTx) - sumPayments(priorPayments)
+  return carried + sumInvoices(priorTx) - sumPayments(priorPayments)
 }
 
 /**
@@ -97,7 +98,7 @@ function computeOpeningBalance(transactions, payments, dateFrom) {
  * @returns {Array<{date, type, invoiceNumber, wht, invAmount, payment, balance}>}
  */
 export function buildStatementRows(transactions = [], payments = [], options = {}) {
-  const { dateFrom = null, dateTo = null } = options
+  const { dateFrom = null, dateTo = null, openingBalance = 0 } = options
 
   const paymentsByTx = payments.reduce((map, payment) => {
     const id = payment.transaction_id
@@ -110,7 +111,7 @@ export function buildStatementRows(transactions = [], payments = [], options = {
     list.sort((a, b) => compareDates(a.payment_date, b.payment_date))
   })
 
-  const startBalance = computeOpeningBalance(transactions, payments, dateFrom)
+  const startBalance = computeOpeningBalance(transactions, payments, dateFrom, openingBalance)
   const rows = []
   let balance = startBalance
 
@@ -320,6 +321,7 @@ export async function generateStatement({ client, transactions = [], payments = 
     language = 'en',
     dateFrom = null,
     dateTo = null,
+    openingBalance = 0,
   } = options
 
   const isAr = language === 'ar'
@@ -348,7 +350,7 @@ export async function generateStatement({ client, transactions = [], payments = 
   }
 
   const clientName = client?.client_name || '—'
-  const statementRows = buildStatementRows(transactions, payments, { dateFrom, dateTo })
+  const statementRows = buildStatementRows(transactions, payments, { dateFrom, dateTo, openingBalance })
   const statementPeriod = formatStatementPeriod(dateFrom, dateTo)
   const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -489,7 +491,7 @@ export async function generateStatement({ client, transactions = [], payments = 
 
   const closingBalance = statementRows.length > 0
     ? statementRows[statementRows.length - 1].balance
-    : computeOpeningBalance(transactions, payments, dateFrom)
+    : computeOpeningBalance(transactions, payments, dateFrom, openingBalance)
 
   if (y > ph - 40) {
     doc.addPage()

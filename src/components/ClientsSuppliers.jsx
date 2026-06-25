@@ -36,7 +36,7 @@ function ClientsSuppliers() {
   const [editingSupplier, setEditingSupplier] = useState(null)
   const [editingEmployee, setEditingEmployee] = useState(null)
 
-  const [clientForm, setClientForm] = useState({ client_name: '', contact_info: '', address: '' })
+  const [clientForm, setClientForm] = useState({ client_name: '', contact_info: '', address: '', opening_balance: '' })
   const [supplierForm, setSupplierForm] = useState({ supplier_name: '', contact_info: '', address: '' })
   const [employeeForm, setEmployeeForm] = useState({ name: '', contact_info: '', role: '', monthly_salary: '', notes: '' })
 
@@ -332,7 +332,7 @@ function ClientsSuppliers() {
 
   const resetClientForm = () => {
     setEditingClient(null)
-    setClientForm({ client_name: '', contact_info: '', address: '' })
+    setClientForm({ client_name: '', contact_info: '', address: '', opening_balance: '' })
     setShowClientFormModal(false)
   }
 
@@ -350,7 +350,7 @@ function ClientsSuppliers() {
 
   const openAddClientModal = () => {
     setEditingClient(null)
-    setClientForm({ client_name: '', contact_info: '', address: '' })
+    setClientForm({ client_name: '', contact_info: '', address: '', opening_balance: '' })
     setShowClientFormModal(true)
   }
 
@@ -378,7 +378,8 @@ function ClientsSuppliers() {
           .update({
             client_name: clientForm.client_name.trim(),
             contact_info: clientForm.contact_info || null,
-            address: clientForm.address || null
+            address: clientForm.address || null,
+            opening_balance: clientForm.opening_balance === '' ? 0 : Number(clientForm.opening_balance) || 0
           })
           .eq('client_id', editingClient.client_id)
 
@@ -390,7 +391,8 @@ function ClientsSuppliers() {
           .insert([{
             client_name: clientForm.client_name.trim(),
             contact_info: clientForm.contact_info || null,
-            address: clientForm.address || null
+            address: clientForm.address || null,
+            opening_balance: clientForm.opening_balance === '' ? 0 : Number(clientForm.opening_balance) || 0
           }])
 
         if (error) throw error
@@ -455,7 +457,8 @@ function ClientsSuppliers() {
     setClientForm({
       client_name: client.client_name || '',
       contact_info: client.contact_info || '',
-      address: client.address || ''
+      address: client.address || '',
+      opening_balance: client.opening_balance != null ? String(client.opening_balance) : ''
     })
     setShowClientFormModal(true)
   }
@@ -609,17 +612,20 @@ function ClientsSuppliers() {
     return language === 'ar' ? str + ' ' + currency : currency + ' ' + str
   }
 
+  const detailOpeningBalance = Number(detailEntity?.data?.opening_balance || 0)
+
   const detailAccountSummary = useMemo(() => {
     if (detailEntity?.type !== 'client') return null
-    return getClientAccountSummary(detailTransactions, detailPayments)
-  }, [detailEntity, detailTransactions, detailPayments])
+    return getClientAccountSummary(detailTransactions, detailPayments, detailOpeningBalance)
+  }, [detailEntity, detailTransactions, detailPayments, detailOpeningBalance])
 
-  // FIFO display allocation: spread account-level payments across this client's
-  // invoices (oldest first) so each invoice's paid/remaining reflects account
-  // payments, consistent with the statement — computed in-app, no DB allocation.
+  // FIFO display allocation: spread account-level payments (and any opening
+  // credit) across this client's invoices (oldest first) so each invoice's
+  // paid/remaining reflects them, consistent with the statement — computed
+  // in-app, no DB allocation.
   const detailInvoiceAllocation = useMemo(
-    () => allocateEntityInvoices(detailTransactions, detailPayments),
-    [detailTransactions, detailPayments]
+    () => allocateEntityInvoices(detailTransactions, detailPayments, detailOpeningBalance),
+    [detailTransactions, detailPayments, detailOpeningBalance]
   )
 
   const effectivePaid = (tx) =>
@@ -1192,12 +1198,12 @@ function ClientsSuppliers() {
         {/* Client add/edit modal */}
         <Modal
           isOpen={showClientFormModal}
-          onClose={() => { setShowClientFormModal(false); setEditingClient(null); setClientForm({ client_name: '', contact_info: '', address: '' }) }}
+          onClose={() => { setShowClientFormModal(false); setEditingClient(null); setClientForm({ client_name: '', contact_info: '', address: '', opening_balance: '' }) }}
           title={editingClient ? t('entities.editingClient') : t('entities.addClient')}
           size="md"
           footer={
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => { setShowClientFormModal(false); setEditingClient(null); setClientForm({ client_name: '', contact_info: '', address: '' }) }} className="btn btn-secondary">
+              <button type="button" onClick={() => { setShowClientFormModal(false); setEditingClient(null); setClientForm({ client_name: '', contact_info: '', address: '', opening_balance: '' }) }} className="btn btn-secondary">
                 {t('entities.cancel')}
               </button>
               <button type="submit" form="client-form" disabled={savingClient} className="btn btn-success">
@@ -1218,6 +1224,18 @@ function ClientsSuppliers() {
             <div>
               <label className="label text-xs">{t('entities.address')}</label>
               <input type="text" className="input py-2 text-sm" value={clientForm.address} onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })} />
+            </div>
+            <div>
+              <label className="label text-xs">{t('entities.openingBalanceField')}</label>
+              <input
+                type="number"
+                step="0.01"
+                className="input py-2 text-sm"
+                value={clientForm.opening_balance}
+                onChange={(e) => setClientForm({ ...clientForm, opening_balance: e.target.value })}
+                placeholder="0"
+              />
+              <p className="text-xs text-gray-500 mt-0.5">{t('entities.openingBalanceFieldHint')}</p>
             </div>
           </form>
         </Modal>

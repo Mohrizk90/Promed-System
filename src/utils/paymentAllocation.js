@@ -48,10 +48,15 @@ export function allocatePaymentFifo(paymentAmount, transactions = []) {
  *
  * @returns {{ byTransactionId: Map<number, {paid:number, remaining:number, total:number}>, accountCredit: number }}
  */
-export function allocateEntityInvoices(transactions = [], payments = []) {
+export function allocateEntityInvoices(transactions = [], payments = [], openingBalance = 0) {
   const knownIds = new Set(transactions.map((tx) => tx.transaction_id))
   const directPaid = new Map()
   let pool = 0
+  // An opening CREDIT (negative balance carried in) is money available to pay
+  // invoices, so it joins the FIFO pool. An opening DEBIT (positive) is owed but
+  // not tied to any invoice, so it doesn't reduce per-invoice remainings.
+  const ob = Number(openingBalance || 0)
+  if (ob < 0) pool += -ob
   for (const p of payments) {
     const amt = Number(p.payment_amount || 0) || 0
     if (amt <= 0) continue
@@ -104,13 +109,15 @@ export function sumInvoiceTotals(transactions = []) {
  * Account summary for a client.
  * balance = invoiced - paid (positive = customer owes, negative = credit)
  */
-export function getClientAccountSummary(transactions = [], payments = []) {
+export function getClientAccountSummary(transactions = [], payments = [], openingBalance = 0) {
   const totalInvoiced = sumInvoiceTotals(transactions)
   const totalPaid = sumPaymentAmounts(payments)
-  const balance = totalInvoiced - totalPaid
+  // balance = carried-in opening balance + invoiced - paid
+  const balance = Number(openingBalance || 0) + totalInvoiced - totalPaid
   return {
     totalInvoiced,
     totalPaid,
+    openingBalance: Number(openingBalance || 0),
     amountDue: Math.max(0, balance),
     creditBalance: Math.max(0, -balance),
     balance,
