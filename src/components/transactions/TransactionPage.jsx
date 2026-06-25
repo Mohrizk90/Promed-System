@@ -466,8 +466,17 @@ function TransactionPage({ config }) {
 
       const unitPrice = formData.product_price ? parseFloat(formData.product_price) : (formData.total_amount && formData.quantity ? parseFloat(formData.total_amount) / parseInt(formData.quantity) : 0)
 
-      const totalAmountNum = parseFloat(formData.total_amount)
-      const paidAmountNum = parseFloat(formData.paid_amount) || 0
+      const totalAmountNum = Number.isFinite(parseFloat(formData.total_amount)) ? parseFloat(formData.total_amount) : 0
+      const paidAmountNum = Number.isFinite(parseFloat(formData.paid_amount)) ? parseFloat(formData.paid_amount) : 0
+
+      // Guard against NaN/negative values before hitting the DB CHECK constraints
+      // (client_transactions_amounts_check + remaining_amount >= 0).
+      if (totalAmountNum < 0 || paidAmountNum < 0) {
+        throw new Error('Amounts cannot be negative')
+      }
+      if (paidAmountNum > totalAmountNum) {
+        throw new Error('Paid amount cannot exceed total amount')
+      }
 
       const linePayload = invoicingEnabled && invoiceModalMode
         ? buildLineItemsPayload(
@@ -478,8 +487,8 @@ function TransactionPage({ config }) {
       const taxBreakdown = linePayload
         ? computeInvoiceTax(linePayload.invoiceTotal, formData.wht_rate, formData.vat_rate)
         : null
-      const invoiceTotalNum = taxBreakdown?.netTotal ?? totalAmountNum
-      const remainingAmountNum = invoiceTotalNum - paidAmountNum
+      const invoiceTotalNum = Number.isFinite(taxBreakdown?.netTotal) ? taxBreakdown.netTotal : totalAmountNum
+      const remainingAmountNum = Math.max(0, invoiceTotalNum - paidAmountNum)
 
       let invoiceNumber = formData.invoice_number || null
       let workflowStatus = formData.status
