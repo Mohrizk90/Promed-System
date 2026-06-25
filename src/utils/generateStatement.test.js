@@ -59,6 +59,24 @@ describe('buildStatementRows', () => {
     expect(rows[1].payment).toBe(72320)
   })
 
+  it('counts an orphan payment (invoice not in set) so the balance reconciles', () => {
+    const txs = [
+      { transaction_id: 1, transaction_date: '2026-01-01', invoice_number: '1', total_amount: 1000 },
+    ]
+    const payments = [
+      // payment tied to invoice 999, which is not in the statement's transaction set
+      { payment_id: 5, transaction_id: 999, payment_date: '2026-02-01', payment_amount: 1002 },
+    ]
+
+    const rows = buildStatementRows(txs, payments)
+    const summary = getStatementClosingSummary(rows)
+
+    // the orphan payment appears (as an account payment) and reduces the balance
+    expect(rows.find((r) => r.type === 'accountPayment')?.payment).toBe(1002)
+    // closing = 1000 invoiced - 1002 paid = -2 (customer credit), not +1000
+    expect(summary.closingBalance).toBe(-2)
+  })
+
   it('shows customer credit when account payment exceeds invoices', () => {
     const txs = [
       { transaction_id: 1, transaction_date: '2026-01-01', invoice_number: '1', total_amount: 1000 },

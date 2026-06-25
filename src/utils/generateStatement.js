@@ -127,9 +127,15 @@ export function buildStatementRows(transactions = [], payments = [], options = {
   }
 
   const events = []
+  const knownTxIds = new Set(transactions.map((tx) => tx.transaction_id))
 
   payments.forEach((payment) => {
-    if (payment.transaction_id == null) {
+    // Account-level payments (no transaction_id) AND orphan payments — those tied
+    // to an invoice that isn't in this set (e.g. a deleted invoice) — are both
+    // shown as account payments. Dropping orphans would understate money received
+    // and leave the statement balance higher than the system's account balance.
+    const isOrphan = payment.transaction_id != null && !knownTxIds.has(payment.transaction_id)
+    if (payment.transaction_id == null || isOrphan) {
       if (inRange(payment.payment_date, dateFrom, dateTo)) {
         events.push({
           kind: 'accountPayment',
@@ -138,7 +144,6 @@ export function buildStatementRows(transactions = [], payments = [], options = {
           sortOrder: 1,
         })
       }
-      return
     }
   })
 

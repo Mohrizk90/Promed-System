@@ -49,12 +49,16 @@ export function allocatePaymentFifo(paymentAmount, transactions = []) {
  * @returns {{ byTransactionId: Map<number, {paid:number, remaining:number, total:number}>, accountCredit: number }}
  */
 export function allocateEntityInvoices(transactions = [], payments = []) {
+  const knownIds = new Set(transactions.map((tx) => tx.transaction_id))
   const directPaid = new Map()
   let pool = 0
   for (const p of payments) {
     const amt = Number(p.payment_amount || 0) || 0
     if (amt <= 0) continue
-    if (p.transaction_id == null) {
+    // Account payments AND orphan payments (tied to an invoice not in this set,
+    // e.g. a deleted one) go into the FIFO pool so every payment counts toward
+    // the balance — keeping this consistent with the statement.
+    if (p.transaction_id == null || !knownIds.has(p.transaction_id)) {
       pool += amt
     } else {
       directPaid.set(p.transaction_id, (directPaid.get(p.transaction_id) || 0) + amt)

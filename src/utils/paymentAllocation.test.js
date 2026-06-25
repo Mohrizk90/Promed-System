@@ -72,6 +72,18 @@ describe('allocateEntityInvoices', () => {
     expect(accountCredit).toBe(0)
   })
 
+  it('counts orphan payments (invoice not in set) as account credit', () => {
+    const payments = [
+      { payment_id: 1, transaction_id: 999, payment_amount: 1002 }, // invoice 999 not in set
+    ]
+    const { byTransactionId, accountCredit } = allocateEntityInvoices(invoices, payments)
+
+    // 1002 is applied FIFO to the oldest open invoices, not dropped
+    expect(byTransactionId.get(1)).toEqual({ paid: 1000, remaining: 0, total: 1000 })
+    expect(byTransactionId.get(2).paid).toBe(2) // 2 left over spills to invoice 2
+    expect(accountCredit).toBe(0)
+  })
+
   it('spills direct overpayment of one invoice onto later invoices', () => {
     const payments = [
       { payment_id: 1, transaction_id: 1, payment_amount: 1500 }, // 500 overpaid on invoice 1
