@@ -14,23 +14,51 @@ export function AuthProvider({ children }) {
       return
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+    let mounted = true
+
+    // Apply a session+user atomically so the route guard never sees a stale
+    // "loading=false, user=null" frame while Supabase is still hydrating.
+    const applySession = (nextSession) => {
+      if (!mounted) return
+      setSession(nextSession)
+      setUser(nextSession?.user ?? null)
+    }
+
+    // 1) Resolve the initial session from storage first.
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!mounted) return
+      applySession(initialSession)
+      // 2) Only mark loading=false after both getSession() AND the first
+      //    onAuthStateChange('INITIAL_SESSION') event have fired. This avoids
+      //    the race where getSession resolves with null because the storage
+      //    adapter hasn't hydrated yet, the guard redirects to /login, and
+      //    then the real session arrives.
       setLoading(false)
     })
 
-    // Listen for auth changes
+    // 3) onAuthStateChange also fires 'INITIAL_SESSION' once storage is ready —
+    //    we treat that as the authoritative "ready to render" signal too.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
+      (event, nextSession) => {
+        if (!mounted) return
+        applySession(nextSession)
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          setLoading(false)
+        }
       }
     )
 
-    return () => subscription.unsubscribe()
+    // Safety net: if neither callback resolves within 2s, stop showing the
+    // loader so the user is never stuck on a blank screen.
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 2000)
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   const signUp = async (email, password, metadata = {}) => {
