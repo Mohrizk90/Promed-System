@@ -580,19 +580,20 @@ body {
     visibility: visible;
   }
 
+  /* Mirror the (working) statement print rule exactly. The previous version
+     added overflow:hidden on this absolutely-positioned, taller-than-one-page
+     element, which made it clip and repeat onto a second page ("duplicate").
+     Width 100% + no overflow lets it paginate normally as a single document. */
   body.printing-invoice .client-invoice-document {
     position: absolute;
     left: 0;
-    right: 0;
     top: 0;
-    width: auto;
+    width: 100%;
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    box-sizing: border-box;
-    overflow: hidden;
   }
 
   body.printing-invoice .invoice-header {
