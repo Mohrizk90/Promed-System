@@ -50,11 +50,12 @@ const COLUMN_META = {
 // minus every payment), the same number the system shows everywhere else, so
 // the statement's "Remaining" can never drift from the rest of the app. The
 // date range only controls which ledger rows are listed, not this balance.
-function computeStatementSummary(transactions = [], payments = [], openingBalance = 0) {
+export function computeStatementSummary(transactions = [], payments = [], openingBalance = 0) {
   const { totalInvoiced, totalPaid, balance } = getClientAccountSummary(transactions, payments, openingBalance)
+  const openingCredit = Math.max(0, -Number(openingBalance || 0))
   return {
     total: totalInvoiced,
-    paid: totalPaid,
+    paid: totalPaid + openingCredit,
     remaining: balance,
   }
 }
