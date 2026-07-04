@@ -32,6 +32,7 @@ export function withTimeout(promise, ms, label = 'operation') {
 
 export function isRetryableGeminiError(err) {
   const msg = `${err?.message || ''} ${err?.status || ''}`.toLowerCase()
+  if (msg.includes('no longer available') || msg.includes('not found') && msg.includes('models/')) return false
   if (msg.includes('timeout')) return true
   if (msg.includes('429') || msg.includes('rate limit') || msg.includes('resource_exhausted')) return true
   if (msg.includes('503') || msg.includes('500') || msg.includes('unavailable')) return true

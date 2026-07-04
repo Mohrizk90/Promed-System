@@ -30,7 +30,7 @@ ${EXTRACTION_JSON_SCHEMA_DESCRIPTION}
 `.trim()
 
 function getModelName() {
-  return process.env.GEMINI_MODEL || process.env.EXTRACTION_MODEL || 'gemini-2.0-flash'
+  return process.env.GEMINI_MODEL || process.env.EXTRACTION_MODEL || 'gemini-2.5-flash'
 }
 
 function getApiKey() {
