@@ -14,6 +14,10 @@ const ICON_MAP = {
   renewed: RefreshCw,
   document_uploaded: FileText,
   document_replaced: FileText,
+  document_extracted: FileText,
+  document_reviewed: CheckCircle,
+  document_processing_failed: Activity,
+  extraction_applied: RefreshCw,
   task_completed: CheckCircle,
   task_added: Plus,
   fee_paid: Wallet,
@@ -26,6 +30,25 @@ function describePayload(event_type, payload, t) {
   if (event_type === 'owner_changed') return `${payload.from || ''} → ${payload.to || ''}`
   if (event_type === 'renewed') return `${payload.from || ''} → ${payload.to || ''}`
   if (event_type === 'document_uploaded' || event_type === 'document_replaced') return payload.file_name || ''
+  if (event_type === 'document_extracted') {
+    const bits = [payload.file_name]
+    if (payload.document_type) bits.push(payload.document_type)
+    if (payload.confidence != null) bits.push(`${Math.round(payload.confidence * 100)}%`)
+    return bits.join(' · ')
+  }
+  if (event_type === 'document_reviewed') {
+    return `${payload.file_name || ''} → ${payload.review_status || ''}`.trim()
+  }
+  if (event_type === 'document_processing_failed') {
+    const errs = (payload.errors || []).join('; ')
+    return `${payload.file_name || ''}${errs ? ` — ${errs}` : ''}`
+  }
+  if (event_type === 'extraction_applied') {
+    const applied = payload.applied
+      ? Object.entries(payload.applied).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(', ')
+      : ''
+    return payload.file_name ? `${payload.file_name} → ${applied || 'link only'}` : applied
+  }
   if (event_type === 'task_completed' || event_type === 'task_added') return payload.title || ''
   if (event_type === 'fee_paid') return `${payload.expense_type || ''} · ${payload.amount || ''}`
   return ''

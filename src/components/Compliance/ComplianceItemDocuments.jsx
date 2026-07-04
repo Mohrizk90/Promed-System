@@ -12,7 +12,9 @@ import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import Dropdown from '../ui/Dropdown'
-import { Upload, Download, Trash2, MoreVertical, FileText, File } from '../ui/Icons'
+import { Upload, Download, Trash2, MoreVertical, FileText, File, Clock } from '../ui/Icons'
+import DocumentPreviewModal from './DocumentPreviewModal'
+import ComplianceDocumentVersionHistory from './ComplianceDocumentVersionHistory'
 
 const BUCKET = 'compliance-documents'
 
@@ -37,6 +39,8 @@ export default function ComplianceItemDocuments({ itemId }) {
   const [uploading, setUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [previewTarget, setPreviewTarget] = useState(null)
+  const [historyTarget, setHistoryTarget] = useState(null)
 
   const fetchDocs = async () => {
     try {
@@ -208,6 +212,9 @@ export default function ComplianceItemDocuments({ itemId }) {
                   align="right"
                   className="inline-block"
                   items={[
+                    { label: t('entities.viewDetails') || 'Preview', icon: FileText, onClick: () => setPreviewTarget(doc) },
+                    { label: t('compliance.documentVersion.history'), icon: Clock, onClick: () => setHistoryTarget(doc) },
+                    { divider: true },
                     { label: t('common.delete'), icon: Trash2, danger: true, onClick: () => setDeleteTarget(doc) },
                   ]}
                 />
@@ -227,6 +234,9 @@ export default function ComplianceItemDocuments({ itemId }) {
         isLoading={deleting}
         variant="danger"
       />
+
+      <DocumentPreviewModal doc={previewTarget} open={!!previewTarget} onClose={() => setPreviewTarget(null)} />
+      <ComplianceDocumentVersionHistory doc={historyTarget} open={!!historyTarget} onClose={() => { setHistoryTarget(null); fetchDocs() }} />
     </div>
   )
 }

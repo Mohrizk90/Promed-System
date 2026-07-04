@@ -1,5 +1,5 @@
 // Detail page for a single compliance item. Header card + tabs:
-// Overview | Documents | Tasks | Expenses | Timeline.
+// Overview | Documents | Review | Tags | Links | Tasks | Expenses | Timeline.
 import { useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
@@ -9,6 +9,9 @@ import { useComplianceItem } from './useComplianceItems'
 import { useComplianceAuthorities, useComplianceCategories } from './useComplianceAuthorities'
 import { computeStatus, formatRemaining, statusColor, priorityColor } from '../../utils/complianceStatus'
 import ComplianceItemDocuments from './ComplianceItemDocuments'
+import ComplianceDocumentReview from './ComplianceDocumentReview'
+import ComplianceDocumentTagsTab from './ComplianceDocumentTagsTab'
+import ComplianceDocumentLinksTab from './ComplianceDocumentLinksTab'
 import ComplianceItemTasks from './ComplianceItemTasks'
 import ComplianceItemExpenses from './ComplianceItemExpenses'
 import ComplianceItemTimeline from './ComplianceItemTimeline'
@@ -17,7 +20,7 @@ import ConfirmDialog from '../ui/ConfirmDialog'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 
-const TABS = ['overview', 'documents', 'tasks', 'expenses', 'timeline']
+const TABS = ['overview', 'documents', 'review', 'tags', 'links', 'tasks', 'expenses', 'timeline']
 
 export default function ComplianceItemDetail() {
   const { t } = useLanguage()
@@ -173,6 +176,9 @@ export default function ComplianceItemDetail() {
           </div>
         )}
         {tab === 'documents' && <ComplianceItemDocuments itemId={item.id} />}
+        {tab === 'review' && <ComplianceDocumentReview itemId={item.id} />}
+        {tab === 'tags' && <ComplianceDocumentTagsTab itemId={item.id} />}
+        {tab === 'links' && <ComplianceDocumentLinksTab itemId={item.id} />}
         {tab === 'tasks' && <ComplianceItemTasks itemId={item.id} />}
         {tab === 'expenses' && <ComplianceItemExpenses itemId={item.id} />}
         {tab === 'timeline' && <ComplianceItemTimeline itemId={item.id} />}

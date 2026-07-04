@@ -2,38 +2,42 @@
 import { useEffect, useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
 import { useKeyboardShortcuts } from '../../context/KeyboardShortcutsContext'
+import { useDocumentWorker } from '../../hooks/useDocumentWorker'
 import ComplianceDashboard from './ComplianceDashboard'
 import ComplianceItemsList from './ComplianceItemsList'
 import ComplianceCalendar from './ComplianceCalendar'
 import ComplianceAuthorityManager from './ComplianceAuthorityManager'
+import ComplianceDocumentsLibrary from './ComplianceDocumentsLibrary'
+import ComplianceDocumentProcessingDashboard from './ComplianceDocumentProcessingDashboard'
 
-const TABS = ['dashboard', 'items', 'calendar', 'authorities']
+const TABS = ['dashboard', 'items', 'documents', 'processing', 'calendar', 'authorities']
 
 export default function ComplianceApp() {
   const { t } = useLanguage()
   const { registerShortcut, unregisterShortcut } = useKeyboardShortcuts()
   const [tab, setTab] = useState('dashboard')
 
-  // Numeric shortcuts 1..4 inside the module. Registered in an effect so the
-  // action functions don't change on every render (that would re-trigger
-  // setShortcuts in the provider, which re-renders, which calls us again ->
-  // infinite loop and a frozen page).
+  // Background processing worker tick (DB-only pipeline).
+  useDocumentWorker({ enabled: true })
+
   useEffect(() => {
     const set1 = () => setTab('dashboard')
     const set2 = () => setTab('items')
-    const set3 = () => setTab('calendar')
-    const set4 = () => setTab('authorities')
+    const set3 = () => setTab('documents')
+    const set4 = () => setTab('processing')
+    const set5 = () => setTab('calendar')
+    const set6 = () => setTab('authorities')
 
     registerShortcut('1', set1, t('compliance.tab_dashboard'))
     registerShortcut('2', set2, t('compliance.tab_items'))
-    registerShortcut('3', set3, t('compliance.tab_calendar'))
-    registerShortcut('4', set4, t('compliance.tab_authorities'))
+    registerShortcut('3', set3, t('compliance.documentsLibrary.title'))
+    registerShortcut('4', set4, t('compliance.processingDashboard.title'))
+    registerShortcut('5', set5, t('compliance.tab_calendar'))
+    registerShortcut('6', set6, t('compliance.tab_authorities'))
 
     return () => {
-      unregisterShortcut('1')
-      unregisterShortcut('2')
-      unregisterShortcut('3')
-      unregisterShortcut('4')
+      unregisterShortcut('1'); unregisterShortcut('2'); unregisterShortcut('3')
+      unregisterShortcut('4'); unregisterShortcut('5'); unregisterShortcut('6')
     }
   }, [registerShortcut, unregisterShortcut, t])
 
@@ -48,6 +52,9 @@ export default function ComplianceApp() {
         <nav className="flex flex-wrap gap-1 -mb-px" aria-label="Compliance tabs">
           {TABS.map((key) => {
             const active = tab === key
+            const labelKey = key === 'documents' ? 'compliance.documentsLibrary.title'
+                           : key === 'processing' ? 'compliance.processingDashboard.title'
+                           : `compliance.tab_${key}`
             return (
               <button
                 key={key}
@@ -60,7 +67,7 @@ export default function ComplianceApp() {
                 }`}
                 aria-current={active ? 'page' : undefined}
               >
-                {t(`compliance.tab_${key}`)}
+                {t(labelKey)}
               </button>
             )
           })}
@@ -70,6 +77,8 @@ export default function ComplianceApp() {
       <div className="flex-1 min-h-0">
         {tab === 'dashboard' && <ComplianceDashboard />}
         {tab === 'items' && <ComplianceItemsList />}
+        {tab === 'documents' && <ComplianceDocumentsLibrary />}
+        {tab === 'processing' && <ComplianceDocumentProcessingDashboard />}
         {tab === 'calendar' && <ComplianceCalendar />}
         {tab === 'authorities' && <ComplianceAuthorityManager />}
       </div>
