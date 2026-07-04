@@ -12,8 +12,14 @@ import ComplianceDocumentsLibrary from './ComplianceDocumentsLibrary'
 import ComplianceDocumentProcessingDashboard from './ComplianceDocumentProcessingDashboard'
 import AiWorkerStatus from './AiWorkerStatus'
 import { useComplianceWorkerStatus } from './ComplianceWorkerContext'
+import Dropdown from '../ui/Dropdown'
+import { MoreHorizontal, Activity, Shield } from '../ui/Icons'
 
-const TABS = ['dashboard', 'items', 'documents', 'processing', 'calendar', 'authorities']
+// Primary tabs stay inline; less-frequent views live under a "More" menu to
+// reduce clutter and make the module feel focused.
+const CORE_TABS = ['dashboard', 'items', 'documents', 'calendar']
+const MORE_TABS = ['processing', 'authorities']
+const MORE_ICONS = { processing: Activity, authorities: Shield }
 
 export default function ComplianceApp() {
   const { t } = useLanguage()
@@ -34,6 +40,16 @@ export default function ComplianceApp() {
   const setTab = (key) => {
     navigate(complianceTabPath(key))
   }
+
+  const tabLabel = (key) => (
+    key === 'documents' ? t('compliance.documentsLibrary.title')
+      : key === 'processing' ? t('compliance.processingDashboard.title')
+        : t(`compliance.tab_${key}`)
+  )
+
+  const moreActive = MORE_TABS.includes(tab)
+  // Show the active "More" tab inline (as active) so the user always sees where they are.
+  const inlineTabs = moreActive ? [...CORE_TABS, tab] : CORE_TABS
 
   useEffect(() => {
     const set1 = () => setTab('dashboard')
@@ -67,12 +83,9 @@ export default function ComplianceApp() {
       </div>
 
       <div className="border-b border-gray-200 print:hidden">
-        <nav className="flex flex-wrap gap-1 -mb-px" aria-label="Compliance tabs">
-          {TABS.map((key) => {
+        <nav className="flex flex-wrap items-center gap-1 -mb-px" aria-label="Compliance tabs">
+          {inlineTabs.map((key) => {
             const active = tab === key
-            const labelKey = key === 'documents' ? 'compliance.documentsLibrary.title'
-                           : key === 'processing' ? 'compliance.processingDashboard.title'
-                           : `compliance.tab_${key}`
             return (
               <button
                 key={key}
@@ -85,10 +98,24 @@ export default function ComplianceApp() {
                 }`}
                 aria-current={active ? 'page' : undefined}
               >
-                {t(labelKey)}
+                {tabLabel(key)}
               </button>
             )
           })}
+          <Dropdown
+            align="left"
+            className="ms-1"
+            trigger={
+              <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${moreActive ? 'text-rose-700' : 'text-gray-500'}`}>
+                <MoreHorizontal size={16} /> {t('common.more')}
+              </span>
+            }
+            items={MORE_TABS.map((key) => ({
+              label: tabLabel(key),
+              icon: MORE_ICONS[key],
+              onClick: () => setTab(key),
+            }))}
+          />
         </nav>
       </div>
 

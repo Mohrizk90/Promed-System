@@ -92,12 +92,9 @@ export default function ComplianceDocumentProcessingDashboard() {
 
   return (
     <div className="flex flex-col space-y-3 pb-4">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">{t('compliance.processingDashboard.title')}</h2>
-          <p className="text-sm text-gray-600">{t('compliance.processingDashboard.subtitle')}</p>
-        </div>
-        <AiWorkerStatus busy={worker.busy} lastResult={worker.lastResult} />
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">{t('compliance.processingDashboard.title')}</h2>
+        <p className="text-sm text-gray-600">{t('compliance.processingDashboard.subtitle')}</p>
       </div>
 
       <AiWorkerStatus busy={worker.busy} lastResult={worker.lastResult} variant="card" />

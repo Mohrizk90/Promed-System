@@ -160,6 +160,21 @@ export default function ComplianceOrphanReview() {
     }
   }
 
+  // Reviewing an orphan and creating/linking an item counts as approval, so we
+  // mark the document approved immediately (removes the confusing extra
+  // "still in review" step). Best-effort: a failure here doesn't undo the link.
+  const approveAfterAttach = async () => {
+    try {
+      await supabase.rpc('review_document', {
+        p_document_id: doc.id,
+        p_status: 'approved',
+        p_reviewer_email: user?.email || '',
+      })
+    } catch (err) {
+      console.error('[orphan] auto-approve failed', err)
+    }
+  }
+
   const createItem = async () => {
     setSubmitting(true)
     try {
@@ -171,6 +186,7 @@ export default function ComplianceOrphanReview() {
       if (error) throw error
       const errors = Array.isArray(data?.errors) ? data.errors : []
       if (errors.length) throw new Error(errors.join(', '))
+      await approveAfterAttach()
       success(t('compliance.import.orphan_created_item', { n: data?.item_id }))
       // The realtime listener above will navigate us into the item.
     } catch (err) {
@@ -194,6 +210,7 @@ export default function ComplianceOrphanReview() {
       if (error) throw error
       const errors = Array.isArray(data?.errors) ? data.errors : []
       if (errors.length) throw new Error(errors.join(', '))
+      await approveAfterAttach()
       success(t('compliance.import.orphan_linked_item'))
     } catch (err) {
       showError(err.message)

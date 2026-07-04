@@ -14,7 +14,7 @@ import {
   PROCESSING_STATES, REVIEW_STATES, processingColor, reviewColor,
   formatConfidence, confidenceColor,
 } from '../../utils/documentProcessing'
-import { Filter, Download, Upload } from '../ui/Icons'
+import { Filter, Download, Upload, FileText } from '../ui/Icons'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 const ROUTE_KEY = 'compliance_documents_library'
@@ -190,15 +190,24 @@ export default function ComplianceDocumentsLibrary() {
                   return (
                     <tr key={d.id} className="hover:bg-gray-50">
                       <td className="px-2 py-1.5 rtl-flip">
-                        <button
-                          type="button"
-                          onClick={() => navigate(d.compliance_items?.id
-                            ? `/compliance/item/${d.compliance_items.id}?doc=${d.id}`
-                            : `/compliance/review-orphan/${d.id}`)}
-                          className="font-medium text-gray-900 hover:underline text-left rtl:text-right"
-                        >
-                          {d.file_name}
-                        </button>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText size={15} className="text-gray-400 flex-shrink-0" />
+                          <button
+                            type="button"
+                            onClick={() => navigate(d.compliance_items?.id
+                              ? `/compliance/item/${d.compliance_items.id}?doc=${d.id}`
+                              : `/compliance/review-orphan/${d.id}`)}
+                            className="font-medium text-gray-900 hover:text-rose-700 hover:underline text-left rtl:text-right truncate"
+                            title={d.file_name}
+                          >
+                            {d.file_name}
+                          </button>
+                          {!d.compliance_items?.id && (
+                            <span className="inline px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 flex-shrink-0">
+                              {t('compliance.documentsLibrary.unlinked')}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-2 py-1.5 text-gray-700 rtl-flip whitespace-nowrap">{d.compliance_items?.compliance_authorities?.name || '–'}</td>
                       <td className="px-2 py-1.5 text-gray-700 rtl-flip whitespace-nowrap">{d.document_type || '–'}</td>
