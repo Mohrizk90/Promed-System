@@ -14,6 +14,15 @@ export function isExtractableStatus(status) {
   return EXTRACTABLE_STATES.has(status || 'uploaded')
 }
 
+// AI providers currently understand PDF and images. Other types (docx, xlsx,
+// csv, txt) skip extraction and go straight to manual review.
+const AI_SUPPORTED_MIME = /^(application\/pdf|image\/(png|jpe?g|webp|gif))$/i
+
+export function isAiSupportedMime(mimeType) {
+  if (!mimeType) return false
+  return AI_SUPPORTED_MIME.test(mimeType) || mimeType.toLowerCase().startsWith('image/')
+}
+
 function getApiBase() {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) {
     return String(import.meta.env.VITE_API_BASE).replace(/\/$/, '')

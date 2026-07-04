@@ -1079,6 +1079,8 @@ export const translations = {
       event_document_reviewed: 'Document reviewed',
       event_document_processing_failed: 'Document processing failed',
       event_extraction_applied: 'Extraction applied to item',
+      event_orphan_linked: 'Document linked to item',
+      event_item_created_from_orphan: 'Item created from document',
     }
   },
   ar: {
@@ -2153,6 +2155,8 @@ export const translations = {
       event_document_reviewed: 'تمت مراجعة المستند',
       event_document_processing_failed: 'فشلت معالجة المستند',
       event_extraction_applied: 'تم تطبيق الاستخراج على العنصر',
+      event_orphan_linked: 'تم ربط المستند بعنصر',
+      event_item_created_from_orphan: 'تم إنشاء عنصر من المستند',
     }
   }
 }

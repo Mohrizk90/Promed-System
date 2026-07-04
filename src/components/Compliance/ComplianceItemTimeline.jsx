@@ -18,6 +18,8 @@ const ICON_MAP = {
   document_reviewed: CheckCircle,
   document_processing_failed: Activity,
   extraction_applied: RefreshCw,
+  orphan_linked: FileText,
+  item_created_from_orphan: Plus,
   task_completed: CheckCircle,
   task_added: Plus,
   fee_paid: Wallet,
