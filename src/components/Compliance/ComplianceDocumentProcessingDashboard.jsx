@@ -11,6 +11,8 @@ import {
   bucketByStatus, averageConfidence, averageProcessingSeconds, formatConfidence,
 } from '../../utils/documentProcessing'
 import LoadingSpinner from '../LoadingSpinner'
+import AiWorkerStatus from './AiWorkerStatus'
+import { useComplianceWorkerStatus } from './ComplianceWorkerContext'
 
 const WORKING_STATES = ['queued', 'ocr_processing', 'text_extracted', 'classified', 'metadata_extracted']
 
@@ -54,6 +56,7 @@ export default function ComplianceDocumentProcessingDashboard() {
     load()
   }, [])
 
+  const worker = useComplianceWorkerStatus()
   const buckets = useMemo(() => bucketByStatus(docs), [docs])
   const avgConf = useMemo(() => averageConfidence(docs), [docs])
   const avgSeconds = useMemo(() => averageProcessingSeconds(docs), [docs])
@@ -89,10 +92,15 @@ export default function ComplianceDocumentProcessingDashboard() {
 
   return (
     <div className="flex flex-col space-y-3 pb-4">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">{t('compliance.processingDashboard.title')}</h2>
-        <p className="text-sm text-gray-600">{t('compliance.processingDashboard.subtitle')}</p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">{t('compliance.processingDashboard.title')}</h2>
+          <p className="text-sm text-gray-600">{t('compliance.processingDashboard.subtitle')}</p>
+        </div>
+        <AiWorkerStatus busy={worker.busy} lastResult={worker.lastResult} />
       </div>
+
+      <AiWorkerStatus busy={worker.busy} lastResult={worker.lastResult} variant="card" />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Card label={t('compliance.processingDashboard.queued')} value={workingTotal} tone="blue" />

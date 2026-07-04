@@ -9,6 +9,8 @@ import ComplianceCalendar from './ComplianceCalendar'
 import ComplianceAuthorityManager from './ComplianceAuthorityManager'
 import ComplianceDocumentsLibrary from './ComplianceDocumentsLibrary'
 import ComplianceDocumentProcessingDashboard from './ComplianceDocumentProcessingDashboard'
+import AiWorkerStatus from './AiWorkerStatus'
+import { ComplianceWorkerContext } from './ComplianceWorkerContext'
 
 const TABS = ['dashboard', 'items', 'documents', 'processing', 'calendar', 'authorities']
 
@@ -17,8 +19,8 @@ export default function ComplianceApp() {
   const { registerShortcut, unregisterShortcut } = useKeyboardShortcuts()
   const [tab, setTab] = useState('dashboard')
 
-  // Background processing worker tick (DB-only pipeline).
-  useDocumentWorker({ enabled: true })
+  // Background AI extraction worker (polls DB, calls /api/compliance/extract).
+  const worker = useDocumentWorker({ enabled: true })
 
   useEffect(() => {
     const set1 = () => setTab('dashboard')
@@ -42,10 +44,14 @@ export default function ComplianceApp() {
   }, [registerShortcut, unregisterShortcut, t])
 
   return (
+    <ComplianceWorkerContext.Provider value={worker}>
     <div className="flex flex-col space-y-3 pb-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{t('compliance.title')}</h1>
-        <p className="text-sm text-gray-600">{t('compliance.subtitle')}</p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{t('compliance.title')}</h1>
+          <p className="text-sm text-gray-600">{t('compliance.subtitle')}</p>
+        </div>
+        <AiWorkerStatus busy={worker.busy} lastResult={worker.lastResult} />
       </div>
 
       <div className="border-b border-gray-200 print:hidden">
@@ -83,5 +89,6 @@ export default function ComplianceApp() {
         {tab === 'authorities' && <ComplianceAuthorityManager />}
       </div>
     </div>
+    </ComplianceWorkerContext.Provider>
   )
 }

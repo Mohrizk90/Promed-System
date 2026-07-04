@@ -1081,6 +1081,14 @@ export const translations = {
       event_extraction_applied: 'Extraction applied to item',
       event_orphan_linked: 'Document linked to item',
       event_item_created_from_orphan: 'Item created from document',
+      ai: {
+        idle: 'AI ready',
+        analyzing: 'AI analyzing document…',
+        done: 'AI extraction complete',
+        error: 'AI extraction error',
+        sign_in: 'Sign in to run AI',
+        hint: 'Documents are analyzed automatically while this page is open.',
+      },
     }
   },
   ar: {
@@ -2157,6 +2165,14 @@ export const translations = {
       event_extraction_applied: 'تم تطبيق الاستخراج على العنصر',
       event_orphan_linked: 'تم ربط المستند بعنصر',
       event_item_created_from_orphan: 'تم إنشاء عنصر من المستند',
+      ai: {
+        idle: 'الذكاء الاصطناعي جاهز',
+        analyzing: 'جارٍ تحليل المستند…',
+        done: 'اكتمل الاستخراج',
+        error: 'خطأ في الاستخراج',
+        sign_in: 'سجّل الدخول لتشغيل الذكاء الاصطناعي',
+        hint: 'تتم معالجة المستندات تلقائياً أثناء فتح هذه الصفحة.',
+      },
     }
   }
 }
