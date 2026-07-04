@@ -18,7 +18,15 @@ export default defineConfig({
   server: {
     hmr: {
       overlay: true
-    }
+    },
+    proxy: process.env.VITE_API_PROXY
+      ? {
+          '/api': {
+            target: process.env.VITE_API_PROXY,
+            changeOrigin: true,
+          },
+        }
+      : undefined,
   },
   test: {
     globals: true,
