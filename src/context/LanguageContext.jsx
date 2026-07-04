@@ -26,6 +26,16 @@ export function LanguageProvider({ children }) {
     }
     
     if (value == null) return key
+    // Guard: a key that points at a nested object (e.g. 'compliance.review')
+    // must never be rendered as a React child — that throws React error #31 and
+    // blanks the page. Fall back to the last key segment instead.
+    if (typeof value === 'object') {
+      if (import.meta.env?.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn(`[i18n] key "${key}" resolves to an object, not a string`)
+      }
+      return keys[keys.length - 1]
+    }
     if (params && typeof value === 'string') {
       return value.replace(/\{(\w+)\}/g, (match, name) =>
         params[name] != null ? params[name] : match

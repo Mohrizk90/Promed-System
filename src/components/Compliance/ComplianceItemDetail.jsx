@@ -23,6 +23,20 @@ import { useToast } from '../../context/ToastContext'
 
 const TABS = ['overview', 'documents', 'review', 'tags', 'links', 'tasks', 'expenses', 'timeline']
 
+// Explicit label keys. NOTE: 'compliance.review' is an OBJECT in translations
+// (title/status/...), so it must never be used as a label directly — use the
+// nested .title. Rendering the object as a child triggers React error #31.
+const TAB_LABEL_KEYS = {
+  overview: 'compliance.overview',
+  documents: 'compliance.documents',
+  review: 'compliance.review.title',
+  tags: 'compliance.tags',
+  links: 'compliance.links',
+  tasks: 'compliance.tasks',
+  expenses: 'compliance.expenses',
+  timeline: 'compliance.timeline',
+}
+
 export default function ComplianceItemDetail() {
   const { t } = useLanguage()
   const { id } = useParams()
@@ -165,7 +179,7 @@ export default function ComplianceItemDetail() {
                 }`}
                 aria-current={active ? 'page' : undefined}
               >
-                {t(`compliance.${key}`)}
+                {t(TAB_LABEL_KEYS[key] || `compliance.${key}`)}
               </button>
             )
           })}
