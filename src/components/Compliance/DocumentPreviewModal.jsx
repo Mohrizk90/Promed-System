@@ -1,9 +1,11 @@
 // Inline document preview in a modal: embeds PDF via signed URL or shows an
-// image. Other file types get a download link instead.
+// image. Other file types get a download link instead. A Download button is
+// always available so the user can grab the original file stored in Supabase.
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useLanguage } from '../../context/LanguageContext'
 import Modal from '../ui/Modal'
+import { Download } from '../ui/Icons'
 
 export default function DocumentPreviewModal({ doc, open, onClose }) {
   const { t } = useLanguage()
@@ -38,22 +40,35 @@ export default function DocumentPreviewModal({ doc, open, onClose }) {
 
   return (
     <Modal isOpen={open} onClose={onClose} title={doc.file_name} size="xl">
-      {loading ? (
-        <p className="text-sm text-gray-500 py-6 text-center">{t('common.loading')}</p>
-      ) : error ? (
-        <p className="text-sm text-red-700 py-6 text-center">{error}</p>
-      ) : isPdf ? (
-        <iframe title={doc.file_name} src={url} className="w-full" style={{ height: '70vh' }} />
-      ) : isImage ? (
-        <img src={url} alt={doc.file_name} className="max-w-full max-h-[70vh] mx-auto" />
-      ) : (
-        <div className="py-6 text-center">
-          <p className="text-sm text-gray-600 mb-3">{doc.mime_type || 'unknown type'}</p>
-          <a href={url} download={doc.file_name} className="btn btn-primary inline-flex items-center gap-2">
-            Download
-          </a>
+      <div className="space-y-3">
+        <div className="flex items-center justify-end">
+          {url && (
+            <a
+              href={url}
+              download={doc.file_name}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary inline-flex items-center gap-2 py-1.5 px-3 text-sm"
+            >
+              <Download size={16} /> {t('common.download')}
+            </a>
+          )}
         </div>
-      )}
+        {loading ? (
+          <p className="text-sm text-gray-500 py-6 text-center">{t('common.loading')}</p>
+        ) : error ? (
+          <p className="text-sm text-red-700 py-6 text-center">{error}</p>
+        ) : isPdf ? (
+          <iframe title={doc.file_name} src={url} className="w-full rounded border border-gray-200" style={{ height: '70vh' }} />
+        ) : isImage ? (
+          <img src={url} alt={doc.file_name} className="max-w-full max-h-[70vh] mx-auto rounded" />
+        ) : (
+          <div className="py-10 text-center">
+            <p className="text-sm text-gray-600 mb-3">{doc.mime_type || 'unknown type'}</p>
+            <p className="text-xs text-gray-500">{t('compliance.review.preview_unavailable')}</p>
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }

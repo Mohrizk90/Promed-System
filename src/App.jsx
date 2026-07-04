@@ -23,6 +23,7 @@ const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
 import ProtectedRoute from './components/ProtectedRoute'
+import ErrorBoundary from './components/ErrorBoundary'
 import { Breadcrumbs } from './components/ui'
 import { Menu } from './components/ui/Icons'
 import { ToastProvider, useToast } from './context/ToastContext'
@@ -130,6 +131,7 @@ function AppContent() {
             <main className="flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6">
               <Breadcrumbs />
               <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col main-scroll-mobile">
+                <ErrorBoundary>
                 <Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-[200px]"><LoadingSpinner size="lg" /></div>}>
                   <Routes>
               {/* Public */}
@@ -164,6 +166,7 @@ function AppContent() {
               <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+                </ErrorBoundary>
               </div>
             </main>
           </AppShell>
