@@ -1,8 +1,10 @@
 // Top-level Compliance module page: tab shell + sub-views.
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useKeyboardShortcuts } from '../../context/KeyboardShortcutsContext'
 import { useDocumentWorker } from '../../hooks/useDocumentWorker'
+import { complianceTabPath, parseComplianceTab } from '../../utils/complianceRoutes'
 import ComplianceDashboard from './ComplianceDashboard'
 import ComplianceItemsList from './ComplianceItemsList'
 import ComplianceCalendar from './ComplianceCalendar'
@@ -17,10 +19,22 @@ const TABS = ['dashboard', 'items', 'documents', 'processing', 'calendar', 'auth
 export default function ComplianceApp() {
   const { t } = useLanguage()
   const { registerShortcut, unregisterShortcut } = useKeyboardShortcuts()
-  const [tab, setTab] = useState('dashboard')
+  const navigate = useNavigate()
+  const { tab: tabParam } = useParams()
+  const tab = parseComplianceTab(tabParam)
 
   // Background AI extraction worker (polls DB, calls /api/compliance/extract).
   const worker = useDocumentWorker({ enabled: true })
+
+  useEffect(() => {
+    if (tabParam && tabParam !== tab) {
+      navigate(complianceTabPath(tab), { replace: true })
+    }
+  }, [tab, tabParam, navigate])
+
+  const setTab = (key) => {
+    navigate(complianceTabPath(key))
+  }
 
   useEffect(() => {
     const set1 = () => setTab('dashboard')

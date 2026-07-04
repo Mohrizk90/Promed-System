@@ -18,10 +18,11 @@ import { useLanguage } from '../../context/LanguageContext'
 import { useToast } from '../../context/ToastContext'
 import { useImportJob } from '../../hooks/useImportJob'
 import { isImportMigrationError, ORPHAN_DOC_LIST_SELECT } from '../../utils/complianceImport'
+import { complianceTabPath } from '../../utils/complianceRoutes'
 import LoadingSpinner from '../LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import {
-  Upload, RefreshCw, X, FileText, Check, AlertCircle, Package, ChevronRight,
+  Upload, RefreshCw, X, FileText, Check, AlertCircle, Package, ChevronRight, ArrowLeft,
 } from '../ui/Icons'
 
 // ---------- helpers ----------------------------------------------------------
@@ -115,7 +116,16 @@ export default function ComplianceImport() {
   const { jobs, enqueue, retry, remove, clearCompleted, utils } = useImportJob({
     userEmail: user?.email || '',
     userId: user?.id || null,
-    onJobComplete: () => { fetchOrphans() },
+    onJobComplete: ({ fileName, docId }) => {
+      fetchOrphans()
+      success(t('compliance.import.upload_complete', { name: fileName || 'File' }))
+      if (docId) {
+        // Gentle nudge: scroll orphan list into view after upload.
+        requestAnimationFrame(() => {
+          document.getElementById('compliance-import-orphans')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        })
+      }
+    },
     onJobFailed: ({ message }) => {
       if (message) showError(message)
       if (isImportMigrationError({ message })) setMigrationNeeded(true)
@@ -176,12 +186,22 @@ export default function ComplianceImport() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('compliance.import.title')}</h1>
-          <p className="text-sm text-gray-600">{t('compliance.import.subtitle')}</p>
+        <div className="flex items-start gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={() => navigate(complianceTabPath('dashboard'))}
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 flex-shrink-0 mt-0.5"
+            aria-label={t('compliance.import.back_to_compliance')}
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900">{t('compliance.import.title')}</h1>
+            <p className="text-sm text-gray-600">{t('compliance.import.subtitle')}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/compliance/documents" className="btn btn-secondary py-1.5 px-3 text-sm flex items-center gap-1.5">
+          <Link to={complianceTabPath('documents')} className="btn btn-secondary py-1.5 px-3 text-sm flex items-center gap-1.5">
             <FileText size={16} /> {t('compliance.documentsLibrary.title')}
           </Link>
           <button
@@ -315,8 +335,8 @@ export default function ComplianceImport() {
                       </button>
                     )}
                     {j.status === 'completed' && j.docId && (
-                      <Link to={`/compliance/documents?doc=${j.docId}`} className="text-xs text-gray-700 hover:underline inline-flex items-center gap-1">
-                        {t('compliance.import.open')} <ChevronRight size={12} />
+                      <Link to={`/compliance/review-orphan/${j.docId}`} className="text-xs text-rose-700 hover:underline inline-flex items-center gap-1">
+                        {t('compliance.import.open_review')} <ChevronRight size={12} />
                       </Link>
                     )}
                     <button
@@ -336,7 +356,7 @@ export default function ComplianceImport() {
       </div>
 
       {/* Orphan list */}
-      <div className="bg-white shadow-sm rounded border border-gray-200">
+      <div id="compliance-import-orphans" className="bg-white shadow-sm rounded border border-gray-200">
         <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700">
             {t('compliance.import.orphans_title')} ({orphans.length})

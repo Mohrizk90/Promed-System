@@ -28,6 +28,7 @@ import { ToastProvider, useToast } from './context/ToastContext'
 import { LanguageProvider, useLanguage } from './context/LanguageContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from './context/KeyboardShortcutsContext'
+import { isCompliancePath } from './utils/complianceRoutes'
 
 const NAV_SHORTCUTS = [
   { path: '/dashboard', shortcut: 'd' },
@@ -79,15 +80,18 @@ function AppShell({ children }) {
 
 function NotFound() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const homePath = isCompliancePath(location.pathname) ? '/compliance' : '/'
+  const homeLabel = isCompliancePath(location.pathname) ? 'Compliance' : 'Home'
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">
       <h1 className="text-4xl font-bold text-gray-800 mb-2">404</h1>
       <p className="text-gray-600 mb-6">Page not found</p>
       <button
-        onClick={() => navigate('/')}
+        onClick={() => navigate(homePath)}
         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
       >
-        Go to Home
+        Go to {homeLabel}
       </button>
     </div>
   )
@@ -147,10 +151,11 @@ function AppContent() {
               <Route path="/reports/pnl" element={<ProtectedRoute><ProfitLossReport /></ProtectedRoute>} />
 
               {/* Compliance & Regulatory Management */}
-              <Route path="/compliance" element={<ProtectedRoute><ComplianceApp /></ProtectedRoute>} />
               <Route path="/compliance/import" element={<ProtectedRoute><ComplianceImport /></ProtectedRoute>} />
               <Route path="/compliance/review-orphan/:docId" element={<ProtectedRoute><ComplianceOrphanReview /></ProtectedRoute>} />
               <Route path="/compliance/item/:id" element={<ProtectedRoute><ComplianceItemDetail /></ProtectedRoute>} />
+              <Route path="/compliance/:tab" element={<ProtectedRoute><ComplianceApp /></ProtectedRoute>} />
+              <Route path="/compliance" element={<ProtectedRoute><ComplianceApp /></ProtectedRoute>} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

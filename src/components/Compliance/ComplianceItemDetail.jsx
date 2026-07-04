@@ -8,6 +8,7 @@ import { ArrowLeft, Edit as EditIcon, Trash2 } from '../ui/Icons'
 import { useComplianceItem } from './useComplianceItems'
 import { useComplianceAuthorities, useComplianceCategories } from './useComplianceAuthorities'
 import { computeStatus, formatRemaining, statusColor, priorityColor } from '../../utils/complianceStatus'
+import { complianceTabPath } from '../../utils/complianceRoutes'
 import ComplianceItemDocuments from './ComplianceItemDocuments'
 import ComplianceDocumentReview from './ComplianceDocumentReview'
 import ComplianceDocumentTagsTab from './ComplianceDocumentTagsTab'
@@ -41,7 +42,7 @@ export default function ComplianceItemDetail() {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-sm text-gray-500">Item not found</p>
-        <button type="button" onClick={() => navigate('/compliance')} className="mt-3 btn btn-secondary">
+        <button type="button" onClick={() => navigate(complianceTabPath('items'))} className="mt-3 btn btn-secondary">
           {t('common.cancel')}
         </button>
       </div>
@@ -58,7 +59,7 @@ export default function ComplianceItemDetail() {
       const { error } = await supabase.from('compliance_items').delete().eq('id', item.id)
       if (error) throw error
       success(t('compliance.item_deleted'))
-      navigate('/compliance')
+      navigate(complianceTabPath('items'))
     } catch (err) {
       showError(err.message)
     } finally {
@@ -71,7 +72,7 @@ export default function ComplianceItemDetail() {
     <div className="flex flex-col space-y-3 pb-4">
       {/* Header */}
       <div className="flex items-start gap-2">
-        <button type="button" onClick={() => navigate('/compliance')} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600" aria-label={t('common.cancel')}>
+        <button type="button" onClick={() => navigate(complianceTabPath('items'))} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600" aria-label={t('compliance.import.back_to_compliance')}>
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1 min-w-0">

@@ -29,7 +29,7 @@ import DocumentPreviewModal from './DocumentPreviewModal'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import Modal from '../ui/Modal'
 import {
-  Check, X, Save, RefreshCw, Eye, ArrowUpRight, Plus, Search, Tag,
+  Check, X, Save, RefreshCw, Eye, ArrowUpRight, Plus, Search, Tag, ArrowLeft,
 } from '../ui/Icons'
 
 export default function ComplianceOrphanReview() {
@@ -207,6 +207,13 @@ export default function ComplianceOrphanReview() {
   if (!doc) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-gray-200 rounded">
+        <button
+          type="button"
+          onClick={() => navigate('/compliance/import')}
+          className="mb-4 text-sm text-rose-700 hover:underline inline-flex items-center gap-1"
+        >
+          <ArrowLeft size={14} /> {t('compliance.import.back_to_import')}
+        </button>
         <p className="text-sm text-gray-500">{t('compliance.review.no_documents_to_review')}</p>
       </div>
     )
@@ -218,6 +225,21 @@ export default function ComplianceOrphanReview() {
 
   return (
     <div className="space-y-3">
+
+      <div className="flex items-start gap-2">
+        <button
+          type="button"
+          onClick={() => navigate('/compliance/import')}
+          className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 flex-shrink-0"
+          aria-label={t('compliance.import.back_to_import')}
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-gray-900 truncate">{doc.file_name}</h1>
+          <p className="text-sm text-gray-600">{t('compliance.import.review_orphan')}</p>
+        </div>
+      </div>
 
       {migrationNeeded && (
         <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded p-3 text-sm">
