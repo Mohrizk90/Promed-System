@@ -15,6 +15,8 @@ const ProductInventory = lazy(() => import('./components/ProductInventory'))
 const Invoices = lazy(() => import('./components/Invoices'))
 const ComplianceApp = lazy(() => import('./components/Compliance/ComplianceApp'))
 const ComplianceItemDetail = lazy(() => import('./components/Compliance/ComplianceItemDetail'))
+const ComplianceImport = lazy(() => import('./components/Compliance/ComplianceImport'))
+const ComplianceOrphanReview = lazy(() => import('./components/Compliance/ComplianceOrphanReview'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
@@ -146,6 +148,8 @@ function AppContent() {
 
               {/* Compliance & Regulatory Management */}
               <Route path="/compliance" element={<ProtectedRoute><ComplianceApp /></ProtectedRoute>} />
+              <Route path="/compliance/import" element={<ProtectedRoute><ComplianceImport /></ProtectedRoute>} />
+              <Route path="/compliance/review-orphan/:docId" element={<ProtectedRoute><ComplianceOrphanReview /></ProtectedRoute>} />
               <Route path="/compliance/item/:id" element={<ProtectedRoute><ComplianceItemDetail /></ProtectedRoute>} />
 
               {/* 404 */}

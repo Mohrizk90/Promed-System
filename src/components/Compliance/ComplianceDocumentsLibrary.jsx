@@ -1,7 +1,7 @@
 // Module-level Documents tab: every document across every item with search,
 // filters, paginated table.
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useComplianceDocuments, useComplianceDocumentTags } from '../../hooks/useComplianceDocuments'
 import { useComplianceAuthorities } from '../../hooks/useComplianceItems'
@@ -14,7 +14,7 @@ import {
   PROCESSING_STATES, REVIEW_STATES, processingColor, reviewColor,
   formatConfidence, confidenceColor,
 } from '../../utils/documentProcessing'
-import { Filter, Download } from '../ui/Icons'
+import { Filter, Download, Upload } from '../ui/Icons'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 const ROUTE_KEY = 'compliance_documents_library'
@@ -87,15 +87,24 @@ export default function ComplianceDocumentsLibrary() {
           <h2 className="text-xl font-bold text-gray-900">{t('compliance.documentsLibrary.title')}</h2>
           <p className="text-sm text-gray-600">{t('compliance.documentsLibrary.subtitle')}</p>
         </div>
-        <button
-          type="button"
-          onClick={handleExport}
-          disabled={docs.length === 0}
-          className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm"
-        >
-          <Download size={18} />
-          {t('common.exportCsv')}
-        </button>
+        <div className="flex items-center gap-2 print:hidden">
+          <Link
+            to="/compliance/import"
+            className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-3 rounded text-sm flex items-center gap-2"
+          >
+            <Upload size={16} />
+            {t('compliance.import.title')}
+          </Link>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={docs.length === 0}
+            className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm"
+          >
+            <Download size={18} />
+            {t('common.exportCsv')}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 print:hidden">

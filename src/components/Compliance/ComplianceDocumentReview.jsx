@@ -238,13 +238,13 @@ export default function ComplianceDocumentReview({ itemId }) {
             <button
               type="button"
               onClick={applyToItem}
-              disabled={submitting || doc.processing_status !== 'waiting_for_review'}
+              disabled={submitting || doc.processing_status !== 'waiting_for_review' || !doc.item_id}
               title={t('compliance.review.apply_to_item_help')}
               className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-3 rounded text-sm flex items-center gap-1.5 disabled:opacity-50"
             >
               <ArrowUpRight size={14} /> {t('compliance.review.apply_to_item')}
             </button>
-            <button type="button" onClick={() => submitReview('approved')} disabled={submitting} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded text-sm flex items-center gap-1.5 disabled:opacity-50">
+            <button type="button" onClick={() => submitReview('approved')} disabled={submitting || !doc.item_id} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded text-sm flex items-center gap-1.5 disabled:opacity-50">
               <Check size={14} /> {t('compliance.review.approve')}
             </button>
             <button type="button" onClick={() => submitReview('rejected')} disabled={submitting} className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 rounded text-sm flex items-center gap-1.5 disabled:opacity-50">

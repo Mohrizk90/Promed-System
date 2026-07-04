@@ -549,11 +549,16 @@ GRANT EXECUTE ON FUNCTION public.apply_extracted_metadata(INTEGER, VARCHAR, BOOL
 -- 7. Triggers
 -- =============================================================================
 
--- Auto-enqueue new (non-versioned) uploads.
+-- Auto-enqueue new (non-versioned) uploads. Orphan rows (item_id IS NULL)
+-- are deliberately skipped — they will only be queued once the user links or
+-- creates a compliance_item from them.
 CREATE OR REPLACE FUNCTION public.trg_enqueue_new_document()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-    IF NEW.previous_version_id IS NULL AND NEW.processing_status = 'uploaded' THEN
+    IF NEW.previous_version_id IS NULL
+       AND NEW.processing_status = 'uploaded'
+       AND NEW.item_id IS NOT NULL
+    THEN
         PERFORM public.enqueue_document(NEW.id);
     END IF;
     RETURN NEW;
@@ -565,9 +570,14 @@ CREATE TRIGGER trg_compliance_doc_enqueue
     FOR EACH ROW EXECUTE FUNCTION public.trg_enqueue_new_document();
 
 -- Log a 'document_extracted' event when status moves into waiting_for_review.
+-- Orphan rows (item_id IS NULL) are skipped so we never write events that
+-- can't be attached to a parent item.
 CREATE OR REPLACE FUNCTION public.trg_log_document_extraction_event()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
+    IF NEW.item_id IS NULL THEN
+        RETURN NEW;
+    END IF;
     IF TG_OP = 'UPDATE' AND OLD.processing_status IS DISTINCT FROM NEW.processing_status THEN
         IF NEW.processing_status = 'waiting_for_review' AND OLD.processing_status <> 'waiting_for_review' THEN
             INSERT INTO public.compliance_item_events (item_id, event_type, actor_email, payload)
