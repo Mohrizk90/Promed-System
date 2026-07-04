@@ -250,3 +250,56 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.compliance_document_import_batches;
     END IF;
 END $$;
+
+
+-- =============================================================================
+-- 7. RLS fix for orphan rows on compliance_item_documents
+--    The Phase-1 policies reference `item_id` directly. With item_id now NULL
+--    for orphans, Postgres / PostgREST error on select/update/delete. We drop
+--    and recreate the four policies so they allow orphan rows (where
+--    is_orphan = TRUE) under the same ownership rule (user_id matches or is
+--    shared system).
+-- =============================================================================
+DROP POLICY IF EXISTS "compliance_item_documents_select" ON public.compliance_item_documents;
+CREATE POLICY "compliance_item_documents_select" ON public.compliance_item_documents
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.compliance_items i
+            WHERE i.id = item_id AND (i.user_id = auth.uid() OR i.user_id IS NULL)
+        )
+        OR
+        (is_orphan = TRUE AND (user_id = auth.uid() OR user_id IS NULL))
+    );
+
+DROP POLICY IF EXISTS "compliance_item_documents_insert" ON public.compliance_item_documents;
+CREATE POLICY "compliance_item_documents_insert" ON public.compliance_item_documents
+    FOR INSERT WITH CHECK (
+        (item_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM public.compliance_items i
+            WHERE i.id = item_id AND (i.user_id = auth.uid() OR i.user_id IS NULL)
+        ))
+        OR
+        (item_id IS NULL AND is_orphan = TRUE AND (user_id = auth.uid() OR user_id IS NULL))
+    );
+
+DROP POLICY IF EXISTS "compliance_item_documents_update" ON public.compliance_item_documents;
+CREATE POLICY "compliance_item_documents_update" ON public.compliance_item_documents
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM public.compliance_items i
+            WHERE i.id = item_id AND (i.user_id = auth.uid() OR i.user_id IS NULL)
+        )
+        OR
+        (is_orphan = TRUE AND (user_id = auth.uid() OR user_id IS NULL))
+    );
+
+DROP POLICY IF EXISTS "compliance_item_documents_delete" ON public.compliance_item_documents;
+CREATE POLICY "compliance_item_documents_delete" ON public.compliance_item_documents
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM public.compliance_items i
+            WHERE i.id = item_id AND (i.user_id = auth.uid() OR i.user_id IS NULL)
+        )
+        OR
+        (is_orphan = TRUE AND (user_id = auth.uid() OR user_id IS NULL))
+    );

@@ -108,15 +108,17 @@ export default function ComplianceDocumentProcessingDashboard() {
           {byAuthority.length === 0 ? (
             <p className="text-sm text-gray-500 py-3 text-center">{t('compliance.processingDashboard.no_data')}</p>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={byAuthority}>
-                <CartesianGrid stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-30} textAnchor="end" height={60} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#e11d48" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: 240 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+                <BarChart data={byAuthority} margin={{ top: 8, right: 8, left: 0, bottom: 28 }}>
+                  <CartesianGrid stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-30} textAnchor="end" height={60} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#e11d48" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
 
@@ -125,15 +127,17 @@ export default function ComplianceDocumentProcessingDashboard() {
           {byType.length === 0 ? (
             <p className="text-sm text-gray-500 py-3 text-center">{t('compliance.processingDashboard.no_data')}</p>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={byType}>
-                <CartesianGrid stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="type" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: 240 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+                <BarChart data={byType} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                  <CartesianGrid stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="type" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       </div>
