@@ -92,17 +92,6 @@ export default function ComplianceImport() {
   const navigate = useNavigate()
   const inputRef = useRef(null)
 
-  const { jobs, enqueue, retry, remove, clearCompleted, utils } = useImportJob({
-    userEmail: user?.email || '',
-    userId: user?.id || null,
-  })
-
-  const [dropActive, setDropActive] = useState(false)
-  const [orphans, setOrphans] = useState([])
-  const [loadingOrphans, setLoadingOrphans] = useState(true)
-  const [migrationNeeded, setMigrationNeeded] = useState(false)
-
-  // Live orphans (real DB state). The job queue is in-memory.
   const fetchOrphans = useCallback(async () => {
     try {
       setLoadingOrphans(true)
@@ -122,6 +111,21 @@ export default function ComplianceImport() {
       setLoadingOrphans(false)
     }
   }, [showError])
+
+  const { jobs, enqueue, retry, remove, clearCompleted, utils } = useImportJob({
+    userEmail: user?.email || '',
+    userId: user?.id || null,
+    onJobComplete: () => { fetchOrphans() },
+    onJobFailed: ({ message }) => {
+      if (message) showError(message)
+      if (isImportMigrationError({ message })) setMigrationNeeded(true)
+    },
+  })
+
+  const [dropActive, setDropActive] = useState(false)
+  const [orphans, setOrphans] = useState([])
+  const [loadingOrphans, setLoadingOrphans] = useState(true)
+  const [migrationNeeded, setMigrationNeeded] = useState(false)
 
   useEffect(() => {
     fetchOrphans()
@@ -197,6 +201,12 @@ export default function ComplianceImport() {
           />
         </div>
       </div>
+
+      {(!user?.id) && (
+        <div className="bg-red-50 border border-red-200 text-red-900 rounded-lg p-4 text-sm">
+          {t('compliance.import.sign_in_required')}
+        </div>
+      )}
 
       {migrationNeeded && (
         <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-lg p-4 text-sm">

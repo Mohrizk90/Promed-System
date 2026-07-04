@@ -1,15 +1,5 @@
 // useImportJob — drives a Drive/Dropbox-style multi-file upload into
 // Supabase Storage + compliance_item_documents.
-//
-// State per job:
-//   queued         queued locally
-//   uploading      bytes flowing into Storage
-//   server_pending storage committed; DB row about to be inserted
-//   completed      DB row inserted with is_orphan = TRUE
-//   failed         any error during upload or row insert; the row surfaces
-//                  a `retry()` callback (cleared and re-queued)
-//
-// Bounded concurrency: PARALLEL jobs run at once, the rest queue.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -50,14 +40,34 @@ function bytesFormat(n) {
   return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
+function formatSupabaseError(err) {
+  if (!err) return 'Unknown error'
+  const parts = [err.message, err.details, err.hint, err.error].filter(Boolean)
+  return parts.join(' — ') || String(err)
+}
+
 function friendlyError(err) {
-  const msg = err?.message || String(err)
-  if (msg === 'not_signed_in') return 'Sign in required to upload documents'
-  if (msg.includes('Upload timed out')) return msg
-  if (msg.includes('row-level security') || msg.includes('RLS')) {
-    return 'Upload blocked by database permissions — run the compliance import SQL migration'
+  const msg = formatSupabaseError(err).toLowerCase()
+  if (msg === 'not_signed_in' || msg.includes('not_signed_in')) {
+    return 'Sign in required to upload documents'
   }
-  return msg
+  if (msg.includes('timed out')) return formatSupabaseError(err)
+  if (msg.includes('bucket') && msg.includes('not found')) {
+    return 'Storage bucket missing — run Supabase/supabase_compliance_storage.sql'
+  }
+  if (
+    msg.includes('row-level security')
+    || msg.includes('is_orphan')
+    || msg.includes('intended_title')
+    || (msg.includes('item_id') && msg.includes('null'))
+    || msg.includes('violates not-null constraint')
+  ) {
+    return 'Database not ready for import — run verify_compliance_import.sql in Supabase SQL Editor (includes trigger fix)'
+  }
+  if (msg.includes('log_compliance_document_event') || msg.includes('compliance_item_events')) {
+    return 'Upload blocked by document timeline trigger — re-run verify_compliance_import.sql (section 5) in Supabase'
+  }
+  return formatSupabaseError(err)
 }
 
 function withTimeout(promise, ms, label) {
@@ -69,16 +79,72 @@ function withTimeout(promise, ms, label) {
   ])
 }
 
-export function useImportJob({ userEmail = '', userId = null } = {}) {
-  const [jobs, setJobs] = useState([])
-  const queueRef    = useRef([])
-  const runningRef  = useRef(0)
-  const progressTimersRef = useRef(new Map())
-  const userIdRef   = useRef(userId)
+async function insertOrphanRow({ uid, userEmail, file, objKey }) {
+  const base = {
+    item_id:            null,
+    is_orphan:          true,
+    file_name:          file.name,
+    storage_path:       objKey,
+    bucket:             BUCKET,
+    mime_type:          file.type || null,
+    size_bytes:         file.size,
+    version:            1,
+    is_current_version: true,
+    uploaded_by_email:  userEmail || null,
+    user_id:            uid,
+  }
 
-  useEffect(() => {
-    userIdRef.current = userId
-  }, [userId])
+  const { data, error } = await supabase
+    .from('compliance_item_documents')
+    .insert([base])
+    .select('id')
+    .single()
+
+  if (!error) return data
+
+  const msg = formatSupabaseError(error).toLowerCase()
+  if (msg.includes('is_current_version') || msg.includes('processing_status')) {
+    const retry = await supabase
+      .from('compliance_item_documents')
+      .insert([{
+        item_id:       null,
+        is_orphan:     true,
+        file_name:     file.name,
+        storage_path:  objKey,
+        bucket:        BUCKET,
+        mime_type:     file.type || null,
+        size_bytes:    file.size,
+        version:       1,
+        uploaded_by_email: userEmail || null,
+        user_id:       uid,
+      }])
+      .select('id')
+      .single()
+    if (!retry.error) return retry.data
+    throw retry.error
+  }
+
+  throw error
+}
+
+export function useImportJob({
+  userEmail = '',
+  userId = null,
+  onJobComplete = null,
+  onJobFailed = null,
+} = {}) {
+  const [jobs, setJobs] = useState([])
+  const queueRef         = useRef([])
+  const runningRef       = useRef(0)
+  const progressTimersRef = useRef(new Map())
+  const jobFilesRef      = useRef(new Map())
+  const userIdRef        = useRef(userId)
+  const onCompleteRef    = useRef(onJobComplete)
+  const onFailedRef      = useRef(onJobFailed)
+
+  useEffect(() => { userIdRef.current = userId }, [userId])
+  useEffect(() => { onCompleteRef.current = onJobComplete }, [onJobComplete])
+  useEffect(() => { onFailedRef.current = onJobFailed }, [onJobFailed])
 
   const clearProgressTimer = (jobId) => {
     const timer = progressTimersRef.current.get(jobId)
@@ -93,10 +159,10 @@ export function useImportJob({ userEmail = '', userId = null } = {}) {
     const timer = setInterval(() => {
       setJobs((prev) => prev.map((j) => {
         if (j.jobId !== jobId || j.status !== 'uploading') return j
-        const next = Math.min((j.progress || 4) + 4, 85)
+        const next = Math.min((j.progress || 8) + 5, 85)
         return next === j.progress ? j : { ...j, progress: next }
       }))
-    }, 400)
+    }, 350)
     progressTimersRef.current.set(jobId, timer)
   }
 
@@ -105,16 +171,18 @@ export function useImportJob({ userEmail = '', userId = null } = {}) {
   }, [])
 
   const runJob = useCallback(async (jobId) => {
-    let job
-    setJobs((prev) => {
-      job = prev.find((j) => j.jobId === jobId)
-      return prev.map((j) => (j.jobId === jobId
-        ? { ...j, status: 'uploading', progress: 8, error: null }
-        : j))
-    })
-    if (!job?.file) return
+    const file = jobFilesRef.current.get(jobId)
+    if (!file) {
+      setJobs((prev) => prev.map((j) => (
+        j.jobId === jobId ? { ...j, status: 'failed', error: 'Upload queue lost file reference — remove and add again' } : j
+      )))
+      return
+    }
 
-    const file = job.file
+    setJobs((prev) => prev.map((j) => (
+      j.jobId === jobId ? { ...j, status: 'uploading', progress: 8, error: null } : j
+    )))
+
     let objKey = null
 
     try {
@@ -139,30 +207,15 @@ export function useImportJob({ userEmail = '', userId = null } = {}) {
       clearProgressTimer(jobId)
       updateJob(jobId, { progress: 92, status: 'server_pending' })
 
-      const { data: ins, error: insErr } = await withTimeout(
-        supabase
-          .from('compliance_item_documents')
-          .insert([{
-            item_id:            null,
-            is_orphan:          true,
-            file_name:          file.name,
-            storage_path:       objKey,
-            bucket:             BUCKET,
-            mime_type:          file.type || null,
-            size_bytes:         file.size,
-            version:            1,
-            is_current_version: true,
-            uploaded_by_email:  userEmail || null,
-            user_id:            uid,
-          }])
-          .select('id')
-          .single(),
+      const ins = await withTimeout(
+        insertOrphanRow({ uid, userEmail, file, objKey }),
         30_000,
         'Save',
       )
-      if (insErr) throw insErr
 
+      jobFilesRef.current.delete(jobId)
       updateJob(jobId, { progress: 100, status: 'completed', docId: ins.id })
+      onCompleteRef.current?.({ jobId, docId: ins.id, fileName: file.name })
     } catch (err) {
       clearProgressTimer(jobId)
       if (objKey) {
@@ -170,21 +223,21 @@ export function useImportJob({ userEmail = '', userId = null } = {}) {
       }
 
       const message = friendlyError(err)
-      let dropped = false
+      onFailedRef.current?.({ jobId, fileName: file.name, message })
+
       setJobs((prev) => {
         const idx = prev.findIndex((j) => j.jobId === jobId)
         if (idx < 0) return prev
         const cur = prev[idx]
         const nextFailureCount = (cur.failureCount || 0) + 1
         if (nextFailureCount >= MAX_FAILURES) {
-          dropped = true
+          jobFilesRef.current.delete(jobId)
           return prev.filter((_, i) => i !== idx)
         }
         return prev.map((j, i) => (i === idx
           ? { ...j, status: 'failed', error: message, failureCount: nextFailureCount, progress: 0 }
           : j))
       })
-      if (dropped) { /* row removed after max failures */ }
     }
   }, [updateJob, userEmail])
 
@@ -201,21 +254,30 @@ export function useImportJob({ userEmail = '', userId = null } = {}) {
 
   const enqueue = useCallback((files) => {
     if (!files) return
+    if (!userIdRef.current) {
+      onFailedRef.current?.({ jobId: null, fileName: null, message: 'Sign in required to upload documents' })
+      return
+    }
+
     const arr = Array.isArray(files) ? files : [files]
     const fresh = arr
       .filter((f) => f && f instanceof File)
-      .map((f) => ({
-        jobId:         generateJobId(),
-        file:          f,
-        fileName:      f.name,
-        sizeBytes:     f.size,
-        mimeType:      f.type,
-        status:        'queued',
-        progress:      0,
-        failureCount:  0,
-        error:         null,
-        docId:         null,
-      }))
+      .map((f) => {
+        const jobId = generateJobId()
+        jobFilesRef.current.set(jobId, f)
+        return {
+          jobId,
+          file:          f,
+          fileName:      f.name,
+          sizeBytes:     f.size,
+          mimeType:      f.type,
+          status:        'queued',
+          progress:      0,
+          failureCount:  0,
+          error:         null,
+          docId:         null,
+        }
+      })
     if (fresh.length === 0) return
     setJobs((prev) => [...prev, ...fresh])
     queueRef.current.push(...fresh.map((j) => j.jobId))
@@ -223,9 +285,11 @@ export function useImportJob({ userEmail = '', userId = null } = {}) {
   }, [pump])
 
   const retry = useCallback((jobId) => {
+    const file = jobFilesRef.current.get(jobId)
     setJobs((prev) => {
       const j = prev.find((x) => x.jobId === jobId)
       if (!j) return prev
+      if (j.file && !file) jobFilesRef.current.set(jobId, j.file)
       return prev.map((x) => (x.jobId === jobId
         ? { ...x, status: 'queued', error: null, progress: 0, failureCount: 0 }
         : x))
@@ -236,6 +300,7 @@ export function useImportJob({ userEmail = '', userId = null } = {}) {
 
   const remove = useCallback((jobId) => {
     clearProgressTimer(jobId)
+    jobFilesRef.current.delete(jobId)
     setJobs((prev) => prev.filter((j) => j.jobId !== jobId))
     queueRef.current = queueRef.current.filter((id) => id !== jobId)
   }, [])
@@ -247,6 +312,7 @@ export function useImportJob({ userEmail = '', userId = null } = {}) {
   useEffect(() => () => {
     for (const timer of progressTimersRef.current.values()) clearInterval(timer)
     progressTimersRef.current.clear()
+    jobFilesRef.current.clear()
   }, [])
 
   return {

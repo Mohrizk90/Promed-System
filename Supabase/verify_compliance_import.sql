@@ -118,3 +118,33 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.compliance_document_import_batches;
     END IF;
 END $$;
+
+
+-- 5. Skip timeline events for orphan documents (item_id IS NULL) -----------
+-- Phase-1 log_compliance_document_event() always wrote compliance_item_events
+-- on INSERT. With orphan imports item_id is NULL, which violates NOT NULL on
+-- compliance_item_events.item_id and rolls back the whole upload insert.
+CREATE OR REPLACE FUNCTION log_compliance_document_event()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.item_id IS NULL THEN
+            RETURN NEW;
+        END IF;
+        INSERT INTO public.compliance_item_events (item_id, event_type, actor_email, payload)
+        VALUES (
+            NEW.item_id,
+            CASE WHEN NEW.previous_version_id IS NULL THEN 'document_uploaded' ELSE 'document_replaced' END,
+            NEW.uploaded_by_email,
+            jsonb_build_object(
+                'document_id', NEW.id,
+                'file_name', NEW.file_name,
+                'version', NEW.version,
+                'previous_version_id', NEW.previous_version_id
+            )
+        );
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;

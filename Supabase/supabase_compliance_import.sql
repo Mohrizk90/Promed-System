@@ -303,3 +303,35 @@ CREATE POLICY "compliance_item_documents_delete" ON public.compliance_item_docum
         OR
         (is_orphan = TRUE AND (user_id = auth.uid() OR user_id IS NULL))
     );
+
+
+-- =============================================================================
+-- 8. Skip timeline events for orphan documents (item_id IS NULL)
+--    Without this patch, orphan INSERT succeeds in Storage but the DB row
+--    insert rolls back because log_compliance_document_event() tries to write
+--    compliance_item_events with a NULL item_id.
+-- =============================================================================
+CREATE OR REPLACE FUNCTION log_compliance_document_event()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.item_id IS NULL THEN
+            RETURN NEW;
+        END IF;
+        INSERT INTO public.compliance_item_events (item_id, event_type, actor_email, payload)
+        VALUES (
+            NEW.item_id,
+            CASE WHEN NEW.previous_version_id IS NULL THEN 'document_uploaded' ELSE 'document_replaced' END,
+            NEW.uploaded_by_email,
+            jsonb_build_object(
+                'document_id', NEW.id,
+                'file_name', NEW.file_name,
+                'version', NEW.version,
+                'previous_version_id', NEW.previous_version_id
+            )
+        );
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;

@@ -322,6 +322,10 @@ CREATE OR REPLACE FUNCTION log_compliance_document_event()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
+        -- Orphan import rows have no parent item yet; skip timeline write.
+        IF NEW.item_id IS NULL THEN
+            RETURN NEW;
+        END IF;
         INSERT INTO public.compliance_item_events (item_id, event_type, actor_email, payload)
         VALUES (
             NEW.item_id,
