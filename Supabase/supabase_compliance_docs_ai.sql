@@ -573,7 +573,7 @@ CREATE TRIGGER trg_compliance_doc_enqueue
 -- Orphan rows (item_id IS NULL) are skipped so we never write events that
 -- can't be attached to a parent item.
 CREATE OR REPLACE FUNCTION public.trg_log_document_extraction_event()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     IF NEW.item_id IS NULL THEN
         RETURN NEW;

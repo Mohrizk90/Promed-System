@@ -312,7 +312,7 @@ CREATE POLICY "compliance_item_documents_delete" ON public.compliance_item_docum
 --    compliance_item_events with a NULL item_id.
 -- =============================================================================
 CREATE OR REPLACE FUNCTION log_compliance_document_event()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER SECURITY DEFINER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         IF NEW.item_id IS NULL THEN

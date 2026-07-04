@@ -148,3 +148,68 @@ BEGIN
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- 6. Audit-log triggers must bypass RLS ------------------------------------
+-- The compliance_item_events table is an append-only audit log written only by
+-- triggers. Under the caller's RLS the trigger INSERT can fail with
+-- "new row violates row-level security policy for table compliance_item_events"
+-- (e.g. when the pipeline advances a document to waiting_for_review).
+-- Marking the trigger functions SECURITY DEFINER makes them run as the owner
+-- (postgres) so the audit insert always succeeds. auth.uid() still resolves
+-- from the JWT, so ownership logic elsewhere is unaffected.
+ALTER FUNCTION public.log_compliance_document_event() SECURITY DEFINER;
+ALTER FUNCTION public.log_compliance_item_event() SECURITY DEFINER;
+
+-- Recreate the document extraction event trigger with BOTH fixes:
+--   1. SECURITY DEFINER  -> audit insert bypasses the caller's RLS
+--   2. NULL item_id guard -> orphan documents (no parent item) never attempt to
+--      write compliance_item_events, which would violate the NOT NULL on item_id.
+-- An older deployment may have this function without the guard; recreating it
+-- here guarantees the correct version regardless of what is currently installed.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'trg_log_document_extraction_event'
+    ) THEN
+        CREATE OR REPLACE FUNCTION public.trg_log_document_extraction_event()
+        RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+        BEGIN
+            IF NEW.item_id IS NULL THEN
+                RETURN NEW; -- orphan document: no parent item, skip timeline
+            END IF;
+            IF TG_OP = 'UPDATE' AND OLD.processing_status IS DISTINCT FROM NEW.processing_status THEN
+                IF NEW.processing_status = 'waiting_for_review' AND OLD.processing_status <> 'waiting_for_review' THEN
+                    INSERT INTO public.compliance_item_events (item_id, event_type, actor_email, payload)
+                    VALUES (NEW.item_id, 'document_extracted', NULL,
+                            jsonb_build_object(
+                                'document_id', NEW.id,
+                                'file_name',    NEW.file_name,
+                                'document_type', NEW.document_type,
+                                'confidence',   NEW.confidence_score
+                            ));
+                ELSIF NEW.review_status IS DISTINCT FROM OLD.review_status
+                      AND NEW.review_status IN ('approved','rejected','edited') THEN
+                    INSERT INTO public.compliance_item_events (item_id, event_type, actor_email, payload)
+                    VALUES (NEW.item_id, 'document_reviewed', NEW.reviewed_by_email,
+                            jsonb_build_object(
+                                'document_id', NEW.id,
+                                'file_name',    NEW.file_name,
+                                'review_status', NEW.review_status
+                            ));
+                ELSIF NEW.processing_status = 'failed' AND OLD.processing_status <> 'failed' THEN
+                    INSERT INTO public.compliance_item_events (item_id, event_type, actor_email, payload)
+                    VALUES (NEW.item_id, 'document_processing_failed', NULL,
+                            jsonb_build_object(
+                                'document_id', NEW.id,
+                                'file_name',    NEW.file_name,
+                                'errors',       NEW.processing_errors
+                            ));
+                END IF;
+            END IF;
+            RETURN NEW;
+        END;
+        $fn$;
+    END IF;
+END $$;

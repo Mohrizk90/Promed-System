@@ -31,12 +31,29 @@ function getApiBase() {
 }
 
 async function readError(res) {
+  // Try JSON first (our API returns { error }). Fall back to raw text so that
+  // platform-level failures (timeouts, crashes) surface something meaningful
+  // instead of a bare "HTTP 500".
+  let raw = ''
   try {
-    const data = await res.json()
-    return data?.error || data?.message || res.statusText
+    raw = await res.text()
   } catch {
     return res.statusText || `HTTP ${res.status}`
   }
+  if (raw) {
+    try {
+      const data = JSON.parse(raw)
+      if (data?.error || data?.message) return data.error || data.message
+    } catch {
+      // not JSON — use a trimmed snippet of the body
+    }
+    const snippet = raw.replace(/\s+/g, ' ').trim().slice(0, 300)
+    if (snippet) return `HTTP ${res.status}: ${snippet}`
+  }
+  if (res.status === 504 || res.status === 500) {
+    return `HTTP ${res.status}: extraction timed out or the server crashed. Check the API function logs and GEMINI_API_KEY / SUPABASE_SERVICE_ROLE_KEY env vars.`
+  }
+  return res.statusText || `HTTP ${res.status}`
 }
 
 /**

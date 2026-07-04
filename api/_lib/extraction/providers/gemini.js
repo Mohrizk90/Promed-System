@@ -39,9 +39,13 @@ function getApiKey() {
   return key
 }
 
-function getTimeoutMs() {
-  const n = Number(process.env.EXTRACTION_TIMEOUT_MS || 55000)
-  return Number.isFinite(n) ? n : 55000
+// Total wall-clock budget for the WHOLE extraction (all attempts + backoff).
+// Must stay safely under the serverless function maxDuration (60s) so our own
+// error handler can return a JSON error instead of the platform killing the
+// function and returning a bare HTTP 500.
+function getTotalBudgetMs() {
+  const n = Number(process.env.EXTRACTION_TIMEOUT_MS || 50000)
+  return Number.isFinite(n) && n > 0 ? n : 50000
 }
 
 export function isSupportedMime(mimeType) {
@@ -59,19 +63,23 @@ export async function extractWithGemini({ buffer, mimeType, fileName }) {
 
   const apiKey = getApiKey()
   const modelName = getModelName()
-  const timeoutMs = getTimeoutMs()
+  const deadline = Date.now() + getTotalBudgetMs()
+
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const model = genAI.getGenerativeModel({
+    model: modelName,
+    generationConfig: {
+      temperature: 0.1,
+      responseMimeType: 'application/json',
+    },
+  })
+  const base64 = Buffer.from(buffer).toString('base64')
 
   const run = async () => {
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: 'application/json',
-      },
-    })
-
-    const base64 = Buffer.from(buffer).toString('base64')
+    const remaining = deadline - Date.now()
+    if (remaining < 3000) {
+      throw new Error('Gemini extraction time budget exhausted')
+    }
     const result = await withTimeout(
       model.generateContent([
         { text: EXTRACTION_PROMPT },
@@ -83,7 +91,7 @@ export async function extractWithGemini({ buffer, mimeType, fileName }) {
         },
         { text: `File name hint: ${fileName || 'document'}` },
       ]),
-      timeoutMs,
+      remaining,
       'Gemini extraction',
     )
 
@@ -94,8 +102,11 @@ export async function extractWithGemini({ buffer, mimeType, fileName }) {
 
   return withRetry(run, {
     attempts: Number(process.env.EXTRACTION_MAX_RETRIES || 3),
+    baseDelayMs: 800,
+    maxDelayMs: 3000,
     label: 'Gemini extraction',
-    shouldRetry: isRetryableGeminiError,
+    // Only retry when the error is retryable AND we still have time budget left.
+    shouldRetry: (err) => isRetryableGeminiError(err) && (deadline - Date.now()) > 6000,
   })
 }
 

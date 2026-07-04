@@ -279,7 +279,7 @@ CREATE TRIGGER update_compliance_authority_reminder_rules_updated_at
 
 -- Compliance items: log events on create / status change / renewal ----------
 CREATE OR REPLACE FUNCTION log_compliance_item_event()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER SECURITY DEFINER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO public.compliance_item_events (item_id, event_type, actor_email, payload)
@@ -319,7 +319,7 @@ CREATE TRIGGER trg_log_compliance_item_event
 
 -- Documents: log uploaded / replaced events ---------------------------------
 CREATE OR REPLACE FUNCTION log_compliance_document_event()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER SECURITY DEFINER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         -- Orphan import rows have no parent item yet; skip timeline write.
