@@ -1,5 +1,5 @@
 // Top-level Compliance module page: tab shell + sub-views.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
 import { useKeyboardShortcuts } from '../../context/KeyboardShortcutsContext'
 import ComplianceDashboard from './ComplianceDashboard'
@@ -14,16 +14,28 @@ export default function ComplianceApp() {
   const { registerShortcut, unregisterShortcut } = useKeyboardShortcuts()
   const [tab, setTab] = useState('dashboard')
 
-  // Numeric shortcuts 1..4 inside the module.
-  registerShortcut('1', () => setTab('dashboard'), t('compliance.tab_dashboard'))
-  registerShortcut('2', () => setTab('items'), t('compliance.tab_items'))
-  registerShortcut('3', () => setTab('calendar'), t('compliance.tab_calendar'))
-  registerShortcut('4', () => setTab('authorities'), t('compliance.tab_authorities'))
+  // Numeric shortcuts 1..4 inside the module. Registered in an effect so the
+  // action functions don't change on every render (that would re-trigger
+  // setShortcuts in the provider, which re-renders, which calls us again ->
+  // infinite loop and a frozen page).
+  useEffect(() => {
+    const set1 = () => setTab('dashboard')
+    const set2 = () => setTab('items')
+    const set3 = () => setTab('calendar')
+    const set4 = () => setTab('authorities')
 
-  // Cleanup: clear shortcuts when leaving the page (this component unmounts).
-  // We can't unregister by description easily here, so we just leave them —
-  // they don't fire when an input is focused, and the modules' tab state
-  // is harmless to reassign elsewhere.
+    registerShortcut('1', set1, t('compliance.tab_dashboard'))
+    registerShortcut('2', set2, t('compliance.tab_items'))
+    registerShortcut('3', set3, t('compliance.tab_calendar'))
+    registerShortcut('4', set4, t('compliance.tab_authorities'))
+
+    return () => {
+      unregisterShortcut('1')
+      unregisterShortcut('2')
+      unregisterShortcut('3')
+      unregisterShortcut('4')
+    }
+  }, [registerShortcut, unregisterShortcut, t])
 
   return (
     <div className="flex flex-col space-y-3 pb-4">
