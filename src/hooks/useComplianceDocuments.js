@@ -63,9 +63,11 @@ export function useComplianceDocuments({ filters = {}, onlyItemId = null } = {})
       if (filters.dateFrom) q = q.gte('created_at', filters.dateFrom)
       if (filters.dateTo)   q = q.lte('created_at', `${filters.dateTo}T23:59:59`)
 
-      const { data, error } = await q
-      if (error) throw error
+      const { data, error: err } = await q
+      if (err) throw err
       setDocs(data || [])
+    } catch (err) {
+      console.error('[useComplianceDocuments] load failed', err)
     } finally {
       setLoading(false)
     }
@@ -107,12 +109,14 @@ export function useComplianceDocumentTags() {
   const fetchTags = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data, error: err } = await supabase
         .from('compliance_document_tags')
         .select('*')
         .order('name', { ascending: true })
-      if (error) throw error
+      if (err) throw err
       setTags(data || [])
+    } catch (err) {
+      console.error('[useComplianceDocumentTags] load failed', err)
     } finally {
       setLoading(false)
     }
@@ -139,13 +143,15 @@ export function useComplianceDocument(docId) {
     if (!docId) return
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data, error: err } = await supabase
         .from('compliance_item_documents')
         .select(DOC_SELECT)
         .eq('id', docId)
         .single()
-      if (error) throw error
+      if (err) throw err
       setDoc(data)
+    } catch (err) {
+      console.error('[useComplianceDocument] load failed', err)
     } finally {
       setLoading(false)
     }

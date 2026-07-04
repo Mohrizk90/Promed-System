@@ -1,7 +1,7 @@
 // Detail page for a single compliance item. Header card + tabs:
 // Overview | Documents | Review | Tags | Links | Tasks | Expenses | Timeline.
-import { useState } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import LoadingSpinner from '../LoadingSpinner'
 import { ArrowLeft, Edit as EditIcon, Trash2 } from '../ui/Icons'
@@ -27,21 +27,30 @@ export default function ComplianceItemDetail() {
   const { t } = useLanguage()
   const { id } = useParams()
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const focusedDocId = params.get('doc')
   const { success, error: showError } = useToast()
   const { item, loading } = useComplianceItem(id)
   const { authorities } = useComplianceAuthorities()
   const { categories } = useComplianceCategories()
-  const [tab, setTab] = useState('overview')
+  // Deep link ?doc=... opens the Review tab so the document is front-and-center.
+  const [tab, setTab] = useState(focusedDocId ? 'review' : 'overview')
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // Reset to a sensible tab whenever the item (or focused doc) changes so
+  // navigating item→item doesn't strand the user on a stale tab.
+  useEffect(() => {
+    setTab(focusedDocId ? 'review' : 'overview')
+  }, [id, focusedDocId])
 
   if (loading) return <LoadingSpinner />
 
   if (!item) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-sm text-gray-500">Item not found</p>
+        <p className="text-sm text-gray-500">{t('compliance.itemNotFound')}</p>
         <button type="button" onClick={() => navigate(complianceTabPath('items'))} className="mt-3 btn btn-secondary">
           {t('common.cancel')}
         </button>
@@ -127,7 +136,7 @@ export default function ComplianceItemDetail() {
         </div>
         <div>
           <p className="text-gray-500">{t('compliance.renewal_period')}</p>
-          <p className="font-medium text-gray-900">{item.renewal_period_days ? `${item.renewal_period_days} days` : '–'}</p>
+          <p className="font-medium text-gray-900">{item.renewal_period_days ? t('compliance.renewalDaysValue', { n: item.renewal_period_days }) : '–'}</p>
         </div>
         {item.expiry_date && (
           <div className="col-span-2 sm:col-span-4">

@@ -106,8 +106,8 @@ export default function ComplianceItemTimeline({ itemId }) {
         const Icon = ICON_MAP[ev.event_type] || Activity
         const desc = describePayload(ev.event_type, ev.payload, t)
         return (
-          <li key={ev.id} className="ms-4">
-            <span className="absolute -start-2 flex items-center justify-center w-5 h-5 bg-rose-100 rounded-full ring-4 ring-white">
+          <li key={ev.id} className="relative ms-4">
+            <span className="absolute -start-[26px] top-1 flex items-center justify-center w-5 h-5 bg-rose-100 rounded-full ring-4 ring-white">
               <Icon size={12} className="text-rose-700" />
             </span>
             <div className="flex flex-col gap-0.5 py-1">

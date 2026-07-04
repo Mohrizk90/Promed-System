@@ -10,12 +10,14 @@ export function useComplianceAuthorities() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data, error: err } = await supabase
         .from('compliance_authorities')
         .select('*')
         .order('name', { ascending: true })
-      if (error) throw error
+      if (err) throw err
       setAuthorities(data || [])
+    } catch (err) {
+      console.error('[useComplianceAuthorities] load failed', err)
     } finally {
       setLoading(false)
     }
@@ -40,13 +42,15 @@ export function useComplianceCategories() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data, error: err } = await supabase
         .from('compliance_categories')
         .select('*')
         .order('is_system', { ascending: false })
         .order('name', { ascending: true })
-      if (error) throw error
+      if (err) throw err
       setCategories(data || [])
+    } catch (err) {
+      console.error('[useComplianceCategories] load failed', err)
     } finally {
       setLoading(false)
     }

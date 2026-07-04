@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import LoadingSpinner from '../LoadingSpinner'
+import ConfirmDialog from '../ui/ConfirmDialog'
 import { useComplianceDocumentTags } from '../../hooks/useComplianceDocuments'
 import { Tag, Plus, X, FileText } from '../ui/Icons'
 
@@ -18,6 +19,8 @@ export default function ComplianceDocumentTagsTab({ itemId }) {
   const [assignments, setAssignments] = useState([])
   const [newTagName, setNewTagName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [tagToDelete, setTagToDelete] = useState(null)
+  const [deletingTag, setDeletingTag] = useState(false)
   const { tags, refresh: refreshTags } = useComplianceDocumentTags()
 
   useEffect(() => {
@@ -92,14 +95,20 @@ export default function ComplianceDocumentTagsTab({ itemId }) {
     }
   }
 
-  const handleDeleteTag = async (tag) => {
+  const handleDeleteTag = async () => {
+    if (!tagToDelete) return
     try {
-      const { error } = await supabase.from('compliance_document_tags').delete().eq('id', tag.id)
+      setDeletingTag(true)
+      const { error } = await supabase.from('compliance_document_tags').delete().eq('id', tagToDelete.id)
       if (error) throw error
       await refreshTags()
       await fetchAssignments()
+      success(t('compliance.documentTag.tag_deleted'))
     } catch (err) {
       showError(err.message)
+    } finally {
+      setDeletingTag(false)
+      setTagToDelete(null)
     }
   }
 
@@ -108,13 +117,13 @@ export default function ComplianceDocumentTagsTab({ itemId }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="label text-xs">Document</label>
+        <label className="label text-xs">{t('compliance.documentTag.document_label')}</label>
         <select
           className="input py-2 text-sm w-72"
           value={selected || ''}
           onChange={(e) => setSelected(e.target.value ? Number(e.target.value) : null)}
         >
-          <option value="">— select —</option>
+          <option value="">{t('compliance.documentTag.select_placeholder')}</option>
           {docs.map((d) => (
             <option key={d.id} value={d.id}>{d.file_name} (v{d.version})</option>
           ))}
@@ -162,9 +171,10 @@ export default function ComplianceDocumentTagsTab({ itemId }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDeleteTag(tg)}
+                      onClick={() => setTagToDelete(tg)}
                       className="p-0.5 rounded-full hover:bg-red-100 text-red-600"
-                      title="Delete tag"
+                      title={t('compliance.documentTag.delete_tag')}
+                      aria-label={t('compliance.documentTag.delete_tag')}
                     >
                       <X size={12} />
                     </button>
@@ -177,9 +187,20 @@ export default function ComplianceDocumentTagsTab({ itemId }) {
       ) : (
         <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-gray-200 rounded">
           <FileText size={32} className="text-gray-300 mb-2" />
-          <p className="text-sm text-gray-500">Pick a document first.</p>
+          <p className="text-sm text-gray-500">{t('compliance.documentTag.pick_document_first')}</p>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!tagToDelete}
+        onClose={() => setTagToDelete(null)}
+        onConfirm={handleDeleteTag}
+        title={t('compliance.documentTag.delete_tag')}
+        message={t('compliance.documentTag.delete_tag_confirm')}
+        confirmLabel={t('compliance.documentTag.delete_tag')}
+        isLoading={deletingTag}
+        variant="danger"
+      />
     </div>
   )
 }

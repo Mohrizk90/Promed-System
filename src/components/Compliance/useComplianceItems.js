@@ -10,16 +10,21 @@ const ITEM_SELECT =
 export function useComplianceItems() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data, error: err } = await supabase
         .from('compliance_items')
         .select(ITEM_SELECT)
         .order('created_at', { ascending: false })
-      if (error) throw error
+      if (err) throw err
       setItems(data || [])
+      setError(null)
+    } catch (err) {
+      console.error('[useComplianceItems] load failed', err)
+      setError(err.message || 'Failed to load compliance items')
     } finally {
       setLoading(false)
     }
@@ -34,25 +39,30 @@ export function useComplianceItems() {
     return () => { supabase.removeChannel(ch) }
   }, [fetchData])
 
-  return { items, loading, refresh: fetchData }
+  return { items, loading, error, refresh: fetchData }
 }
 
 // Single-item hook used by the detail page.
 export function useComplianceItem(itemId) {
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const fetchData = useCallback(async () => {
     if (!itemId) return
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { data, error: err } = await supabase
         .from('compliance_items')
         .select(ITEM_SELECT)
         .eq('id', itemId)
         .single()
-      if (error) throw error
+      if (err) throw err
       setItem(data)
+      setError(null)
+    } catch (err) {
+      console.error('[useComplianceItem] load failed', err)
+      setError(err.message || 'Failed to load compliance item')
     } finally {
       setLoading(false)
     }
@@ -68,5 +78,5 @@ export function useComplianceItem(itemId) {
     return () => { supabase.removeChannel(ch) }
   }, [fetchData, itemId])
 
-  return { item, loading, refresh: fetchData }
+  return { item, loading, error, refresh: fetchData }
 }

@@ -14,6 +14,7 @@ const ProfitLossReport = lazy(() => import('./components/ProfitLossReport'))
 const ProductInventory = lazy(() => import('./components/ProductInventory'))
 const Invoices = lazy(() => import('./components/Invoices'))
 const ComplianceApp = lazy(() => import('./components/Compliance/ComplianceApp'))
+const ComplianceLayout = lazy(() => import('./components/Compliance/ComplianceLayout'))
 const ComplianceItemDetail = lazy(() => import('./components/Compliance/ComplianceItemDetail'))
 const ComplianceImport = lazy(() => import('./components/Compliance/ComplianceImport'))
 const ComplianceOrphanReview = lazy(() => import('./components/Compliance/ComplianceOrphanReview'))
@@ -150,12 +151,14 @@ function AppContent() {
               <Route path="/reports/aging" element={<ProtectedRoute><AgingReport /></ProtectedRoute>} />
               <Route path="/reports/pnl" element={<ProtectedRoute><ProfitLossReport /></ProtectedRoute>} />
 
-              {/* Compliance & Regulatory Management */}
-              <Route path="/compliance/import" element={<ProtectedRoute><ComplianceImport /></ProtectedRoute>} />
-              <Route path="/compliance/review-orphan/:docId" element={<ProtectedRoute><ComplianceOrphanReview /></ProtectedRoute>} />
-              <Route path="/compliance/item/:id" element={<ProtectedRoute><ComplianceItemDetail /></ProtectedRoute>} />
-              <Route path="/compliance/:tab" element={<ProtectedRoute><ComplianceApp /></ProtectedRoute>} />
-              <Route path="/compliance" element={<ProtectedRoute><ComplianceApp /></ProtectedRoute>} />
+              {/* Compliance & Regulatory Management (worker runs for all sub-routes) */}
+              <Route path="/compliance" element={<ProtectedRoute><ComplianceLayout /></ProtectedRoute>}>
+                <Route index element={<ComplianceApp />} />
+                <Route path="import" element={<ComplianceImport />} />
+                <Route path="review-orphan/:docId" element={<ComplianceOrphanReview />} />
+                <Route path="item/:id" element={<ComplianceItemDetail />} />
+                <Route path=":tab" element={<ComplianceApp />} />
+              </Route>
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

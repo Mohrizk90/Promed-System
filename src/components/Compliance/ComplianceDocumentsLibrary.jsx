@@ -190,7 +190,13 @@ export default function ComplianceDocumentsLibrary() {
                   return (
                     <tr key={d.id} className="hover:bg-gray-50">
                       <td className="px-2 py-1.5 rtl-flip">
-                        <button type="button" onClick={() => d.compliance_items?.id && navigate(`/compliance/item/${d.compliance_items.id}?doc=${d.id}`)} className="font-medium text-gray-900 hover:underline text-left rtl:text-right">
+                        <button
+                          type="button"
+                          onClick={() => navigate(d.compliance_items?.id
+                            ? `/compliance/item/${d.compliance_items.id}?doc=${d.id}`
+                            : `/compliance/review-orphan/${d.id}`)}
+                          className="font-medium text-gray-900 hover:underline text-left rtl:text-right"
+                        >
                           {d.file_name}
                         </button>
                       </td>

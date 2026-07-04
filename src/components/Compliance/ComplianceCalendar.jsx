@@ -64,11 +64,11 @@ export default function ComplianceCalendar() {
           <p className="text-sm text-gray-600">{t('compliance.subtitle')}</p>
         </div>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700" title={t('compliance.calendar_prev')}>
+          <button type="button" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700" title={t('compliance.calendar_prev')} aria-label={t('compliance.calendar_prev')}>
             <ChevronLeft size={16} />
           </button>
           <div className="px-3 py-1.5 text-sm font-semibold text-gray-800 min-w-[140px] text-center">{monthLabel}</div>
-          <button type="button" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700" title={t('compliance.calendar_next')}>
+          <button type="button" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700" title={t('compliance.calendar_next')} aria-label={t('compliance.calendar_next')}>
             <ChevronRight size={16} />
           </button>
           <button type="button" onClick={() => { const d = new Date(); setCursor(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDay(ymd(d.getFullYear(), d.getMonth(), d.getDate())) }} className="ml-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-100 text-rose-700 hover:bg-rose-200">
@@ -93,11 +93,14 @@ export default function ComplianceCalendar() {
             const isSelected = ds === selectedDay
             const dayItems = byDay.get(ds) || []
             return (
-              <button
-                type="button"
+              <div
                 key={ds}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
                 onClick={() => setSelectedDay(ds)}
-                className={`text-left rtl:text-right p-2 min-h-[88px] border-t border-r border-gray-100 last:border-r-0 transition-colors ${inMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'} ${isSelected ? 'ring-2 ring-rose-500 ring-inset' : ''} ${isToday ? 'bg-rose-50' : 'hover:bg-gray-50'}`}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDay(ds) } }}
+                className={`cursor-pointer text-left rtl:text-right p-2 min-h-[88px] border-t border-r border-gray-100 last:border-r-0 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-inset ${inMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'} ${isSelected ? 'ring-2 ring-rose-500 ring-inset' : ''} ${isToday ? 'bg-rose-50' : 'hover:bg-gray-50'}`}
               >
                 <div className={`text-xs font-semibold ${isToday ? 'text-rose-700' : ''}`}>{d.getDate()}</div>
                 <ul className="mt-1 space-y-0.5">
@@ -110,21 +113,23 @@ export default function ComplianceCalendar() {
                       archived: 'bg-gray-100 text-gray-600',
                     }[s]
                     return (
-                      <li
-                        key={it.id}
-                        className={`text-[10px] truncate px-1 rounded ${colors}`}
-                        title={it.title}
-                        onClick={(e) => { e.stopPropagation(); navigate(`/compliance/item/${it.id}`) }}
-                      >
-                        {it.title}
+                      <li key={it.id}>
+                        <button
+                          type="button"
+                          className={`w-full text-left rtl:text-right text-[10px] truncate px-1 rounded ${colors}`}
+                          title={it.title}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/compliance/item/${it.id}`) }}
+                        >
+                          {it.title}
+                        </button>
                       </li>
                     )
                   })}
                   {dayItems.length > 3 && (
-                    <li className="text-[10px] text-gray-500">+{dayItems.length - 3} more</li>
+                    <li className="text-[10px] text-gray-500">{t('compliance.calendar_more', { n: dayItems.length - 3 })}</li>
                   )}
                 </ul>
-              </button>
+              </div>
             )
           })}
         </div>
