@@ -13,6 +13,8 @@ const AgingReport = lazy(() => import('./components/AgingReport'))
 const ProfitLossReport = lazy(() => import('./components/ProfitLossReport'))
 const ProductInventory = lazy(() => import('./components/ProductInventory'))
 const Invoices = lazy(() => import('./components/Invoices'))
+const ComplianceApp = lazy(() => import('./components/Compliance/ComplianceApp'))
+const ComplianceItemDetail = lazy(() => import('./components/Compliance/ComplianceItemDetail'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
@@ -31,6 +33,7 @@ const NAV_SHORTCUTS = [
   { path: '/suppliers', shortcut: 's' },
   { path: '/entities', shortcut: 'e' },
   { path: '/liabilities', shortcut: 'l' },
+  { path: '/compliance', shortcut: 'm' },
 ]
 
 function AppShell({ children }) {
@@ -140,6 +143,10 @@ function AppContent() {
               <Route path="/products" element={<ProtectedRoute><ProductInventory /></ProtectedRoute>} />
               <Route path="/reports/aging" element={<ProtectedRoute><AgingReport /></ProtectedRoute>} />
               <Route path="/reports/pnl" element={<ProtectedRoute><ProfitLossReport /></ProtectedRoute>} />
+
+              {/* Compliance & Regulatory Management */}
+              <Route path="/compliance" element={<ProtectedRoute><ComplianceApp /></ProtectedRoute>} />
+              <Route path="/compliance/item/:id" element={<ProtectedRoute><ComplianceItemDetail /></ProtectedRoute>} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

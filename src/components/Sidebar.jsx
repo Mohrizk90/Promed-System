@@ -14,6 +14,7 @@ import {
   LogOut,
   User as UserIcon,
   ChevronDown,
+  Shield,
 } from './ui/Icons'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useLanguage } from '../context/LanguageContext'
@@ -42,6 +43,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e', color: 'emerald' },
     { path: '/products', label: t('nav.inventory'), icon: Package, shortcut: 'i', color: 'teal' },
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
+    { path: '/compliance', label: t('nav.compliance'), icon: Shield, shortcut: 'm', color: 'rose' },
   ]
 
   const iconColors = {
@@ -52,6 +54,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     emerald: { inactive: 'bg-emerald-500/90 text-white', active: 'bg-emerald-100 text-emerald-600' },
     teal: { inactive: 'bg-teal-500/90 text-white', active: 'bg-teal-100 text-teal-600' },
     amber: { inactive: 'bg-amber-500/90 text-white', active: 'bg-amber-100 text-amber-700' },
+    rose: { inactive: 'bg-rose-500/90 text-white', active: 'bg-rose-100 text-rose-600' },
   }
 
   const handleNavClick = () => { if (onClose) onClose() }
