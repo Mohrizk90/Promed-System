@@ -108,8 +108,8 @@ export default function ComplianceDocumentProcessingDashboard() {
           {byAuthority.length === 0 ? (
             <p className="text-sm text-gray-500 py-3 text-center">{t('compliance.processingDashboard.no_data')}</p>
           ) : (
-            <div style={{ width: '100%', height: 240 }}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+            <div className="w-full min-w-0" style={{ height: 240 }}>
+              <ResponsiveContainer width="100%" height={240} minWidth={0} debounce={50}>
                 <BarChart data={byAuthority} margin={{ top: 8, right: 8, left: 0, bottom: 28 }}>
                   <CartesianGrid stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-30} textAnchor="end" height={60} />
@@ -127,8 +127,8 @@ export default function ComplianceDocumentProcessingDashboard() {
           {byType.length === 0 ? (
             <p className="text-sm text-gray-500 py-3 text-center">{t('compliance.processingDashboard.no_data')}</p>
           ) : (
-            <div style={{ width: '100%', height: 240 }}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
+            <div className="w-full min-w-0" style={{ height: 240 }}>
+              <ResponsiveContainer width="100%" height={240} minWidth={0} debounce={50}>
                 <BarChart data={byType} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                   <CartesianGrid stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="type" tick={{ fontSize: 11 }} />

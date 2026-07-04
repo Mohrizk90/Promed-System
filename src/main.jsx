@@ -5,15 +5,19 @@ import SupabaseConfigMissing from './components/SupabaseConfigMissing.jsx'
 import { supabaseMissingConfig } from './lib/supabase.js'
 
 // Recharts 2.x prints a noisy "width(-1) / height(-1)" warning during the
-// first paint of any chart, even when we already wrap it in a sized container.
-// We drop ONLY that one message at the console level — every other error and
-// warning is preserved untouched.
-const RECHART_NEGATIVE_SIZE_MESSAGE = /The width\(-1\) and height\(-1\) of chart should be greater than 0/
-const originalConsoleError = console.error
-console.error = (...args) => {
-  const first = args[0]
-  if (typeof first === 'string' && RECHART_NEGATIVE_SIZE_MESSAGE.test(first)) return
-  originalConsoleError(...args)
+// first paint of any chart. Suppress only that message; leave all other
+// console output intact.
+const RECHART_NEGATIVE_SIZE_MESSAGE = /width\(-1\).*height\(-1\).*chart should be greater than 0/i
+function isRechartsNegativeSizeNoise(args) {
+  const text = args.map((a) => (typeof a === 'string' ? a : '')).join(' ')
+  return RECHART_NEGATIVE_SIZE_MESSAGE.test(text)
+}
+for (const level of ['error', 'warn']) {
+  const original = console[level]
+  console[level] = (...args) => {
+    if (isRechartsNegativeSizeNoise(args)) return
+    original(...args)
+  }
 }
 
 async function bootstrap() {

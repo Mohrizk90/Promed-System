@@ -1046,6 +1046,8 @@ export const translations = {
         reject_orphan_confirm: 'Reject this document? It will stay attached to no item.',
         approve_blocked_explainer: 'Approve is blocked while the document has no parent item. Use Create or Link above.',
         cannot_approve_orphan: 'Cannot approve an orphan document. Create or link an item first.',
+        migration_title: 'Database migration required',
+        migration_body: 'Run the compliance import SQL in your Supabase SQL Editor (orphan columns, RLS, and RPCs). Until then uploads and orphan review will fail.',
       },
       // Tags
       documentTag: {
@@ -2120,6 +2122,8 @@ export const translations = {
         reject_orphan_confirm: 'رفض هذا المستند؟ سيبقى غير مرتبط بأي عنصر.',
         approve_blocked_explainer: 'اعتماد المستند مغلق إلى أن يُربَط بعنصر أب. استخدم الإنشاء أو الربط أعلاه.',
         cannot_approve_orphan: 'لا يمكن اعتماد مستند يتيم. أنشئ عنصراً أولاً أو اربطه بعنصر.',
+        migration_title: 'مطلوب ترحيل قاعدة البيانات',
+        migration_body: 'نفّذ SQL استيراد الامتثال في محرر SQL في Supabase (أعمدة المستندات اليتيمة، RLS، ودوال RPC). حتى ذلك الحين سيفشل الرفع ومراجعة اليتيم.',
       },
       documentTag: {
         title: 'الوسوم',

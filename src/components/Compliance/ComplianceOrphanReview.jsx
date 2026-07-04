@@ -21,6 +21,9 @@ import { useToast } from '../../context/ToastContext'
 import {
   METADATA_FIELDS, processingColor, formatConfidence, confidenceColor,
 } from '../../utils/documentProcessing'
+import {
+  isImportMigrationError, ORPHAN_DOC_DETAIL_SELECT, parseExtractedMetadata,
+} from '../../utils/complianceImport'
 import LoadingSpinner from '../LoadingSpinner'
 import DocumentPreviewModal from './DocumentPreviewModal'
 import ConfirmDialog from '../ui/ConfirmDialog'
@@ -47,6 +50,7 @@ export default function ComplianceOrphanReview() {
   const [itemSearch, setItemSearch] = useState('')
   const [selectedItemId, setSelectedItemId] = useState(null)
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false)
+  const [migrationNeeded, setMigrationNeeded] = useState(false)
 
   // ---------------- Load orphan ----------------
   const loadDoc = async () => {
@@ -55,20 +59,15 @@ export default function ComplianceOrphanReview() {
       setLoadingDoc(true)
       const { data, error } = await supabase
         .from('compliance_item_documents')
-        .select('id, item_id, is_orphan, intended_title, intended_authority, file_name, storage_path, bucket, mime_type, processing_status, review_status, confidence_score, extracted_text, extracted_metadata, ai_summary')
+        .select(ORPHAN_DOC_DETAIL_SELECT)
         .eq('id', docId)
         .single()
       if (error) throw error
+      setMigrationNeeded(false)
       setDoc(data)
-      let meta = {}
-      try {
-        meta = typeof data.extracted_metadata === 'string' ? JSON.parse(data.extracted_metadata) : data.extracted_metadata || {}
-      } catch (_) { meta = {} }
-      const base = { ...meta }
-      if (data.intended_title && !base.title) base.title = data.intended_title
-      if (data.intended_authority && !base.authority_name) base.authority_name = data.intended_authority
-      setFormValues(base)
+      setFormValues(parseExtractedMetadata(data.extracted_metadata))
     } catch (err) {
+      if (isImportMigrationError(err)) setMigrationNeeded(true)
       showError(err.message)
     } finally {
       setLoadingDoc(false)
@@ -116,10 +115,9 @@ export default function ComplianceOrphanReview() {
 
   // ---------------- Actions ----------------
   const persistMeta = async () => {
-    const { intended_title, intended_authority, ...rest } = formValues
     const { error } = await supabase
       .from('compliance_item_documents')
-      .update({ extracted_metadata: rest, intended_title, intended_authority })
+      .update({ extracted_metadata: formValues })
       .eq('id', doc.id)
     if (error) throw error
   }
@@ -216,10 +214,17 @@ export default function ComplianceOrphanReview() {
 
   const pc = processingColor(doc.processing_status)
   const cc = confidenceColor(doc.confidence_score)
-  const blocked = doc.is_orphan || doc.item_id == null
+  const blocked = doc.item_id == null
 
   return (
     <div className="space-y-3">
+
+      {migrationNeeded && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded p-3 text-sm">
+          <p className="font-semibold">{t('compliance.import.migration_title')}</p>
+          <p className="mt-1">{t('compliance.import.migration_body')}</p>
+        </div>
+      )}
 
       {blocked && (
         <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded p-3 text-sm">

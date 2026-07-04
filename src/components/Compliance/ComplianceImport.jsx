@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useToast } from '../../context/ToastContext'
 import { useImportJob } from '../../hooks/useImportJob'
+import { isImportMigrationError, ORPHAN_DOC_LIST_SELECT } from '../../utils/complianceImport'
 import LoadingSpinner from '../LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import {
@@ -98,6 +99,7 @@ export default function ComplianceImport() {
   const [dropActive, setDropActive] = useState(false)
   const [orphans, setOrphans] = useState([])
   const [loadingOrphans, setLoadingOrphans] = useState(true)
+  const [migrationNeeded, setMigrationNeeded] = useState(false)
 
   // Live orphans (real DB state). The job queue is in-memory.
   const fetchOrphans = useCallback(async () => {
@@ -105,13 +107,15 @@ export default function ComplianceImport() {
       setLoadingOrphans(true)
       const { data, error } = await supabase
         .from('compliance_item_documents')
-        .select('id, file_name, mime_type, size_bytes, processing_status, review_status, created_at, extracted_metadata, intended_title, intended_authority')
+        .select(ORPHAN_DOC_LIST_SELECT)
         .is('item_id', null)
         .order('created_at', { ascending: false })
         .limit(100)
       if (error) throw error
+      setMigrationNeeded(false)
       setOrphans(data || [])
     } catch (err) {
+      if (isImportMigrationError(err)) setMigrationNeeded(true)
       showError(err.message)
     } finally {
       setLoadingOrphans(false)
@@ -192,6 +196,16 @@ export default function ComplianceImport() {
           />
         </div>
       </div>
+
+      {migrationNeeded && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-lg p-4 text-sm">
+          <p className="font-semibold">{t('compliance.import.migration_title')}</p>
+          <p className="mt-1 text-amber-900">{t('compliance.import.migration_body')}</p>
+          <p className="mt-2 text-xs font-mono text-amber-800">
+            Supabase/verify_compliance_import.sql → then Supabase/supabase_compliance_import.sql
+          </p>
+        </div>
+      )}
 
       {/* Drop zone */}
       <div
