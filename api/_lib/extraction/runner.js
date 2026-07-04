@@ -1,6 +1,6 @@
-import { runExtraction } from './extraction/index.js'
-import { toAdvancePayload } from './extraction/normalize.js'
-import { authenticateRequest, downloadDocumentBytes, HttpError, loadDocumentForUser } from './auth.js'
+import { runExtraction } from './index.js'
+import { toAdvancePayload } from './normalize.js'
+import { authenticateRequest, downloadDocumentBytes, HttpError, loadDocumentForUser } from '../auth.js'
 
 const MAX_BYTES = Number(process.env.EXTRACTION_MAX_BYTES || 15 * 1024 * 1024)
 

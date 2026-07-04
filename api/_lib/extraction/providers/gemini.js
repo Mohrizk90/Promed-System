@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { EXTRACTION_JSON_SCHEMA_DESCRIPTION, parseJsonFromModel, validateExtractionResult } from './schema.js'
-import { withRetry, withTimeout, isRetryableGeminiError } from './retry.js'
+import { EXTRACTION_JSON_SCHEMA_DESCRIPTION, parseJsonFromModel, validateExtractionResult } from '../schema.js'
+import { withRetry, withTimeout, isRetryableGeminiError } from '../retry.js'
 
 const SUPPORTED_MIME = new Set([
   'application/pdf',
