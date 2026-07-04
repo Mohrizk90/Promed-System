@@ -94,6 +94,7 @@ export default function ComplianceImport() {
 
   const { jobs, enqueue, retry, remove, clearCompleted, utils } = useImportJob({
     userEmail: user?.email || '',
+    userId: user?.id || null,
   })
 
   const [dropActive, setDropActive] = useState(false)
