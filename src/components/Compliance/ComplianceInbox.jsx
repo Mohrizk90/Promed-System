@@ -14,14 +14,15 @@ import { useComplianceWorkerStatus } from './ComplianceWorkerContext'
 import CompliancePipelineStepper from './CompliancePipelineStepper'
 import AiWorkerStatus from './AiWorkerStatus'
 import ComplianceScanCapture from './ComplianceScanCapture'
-import LoadingSpinner from '../LoadingSpinner'
+import { deleteComplianceDocument, deleteComplianceDocuments } from '../../utils/complianceDocumentDelete'
+import ConfirmDialog from '../ui/ConfirmDialog'
 import {
   Upload, FileText, ChevronRight, Package, RefreshCw, X, Check, Camera,
 } from '../ui/Icons'
 
 const DOC_INBOX_SELECT = `
   id, file_name, mime_type, size_bytes, processing_status, review_status,
-  created_at, updated_at, item_id,
+  created_at, updated_at, item_id, storage_path, bucket,
   compliance_items:item_id ( id, title )
 `
 
@@ -76,11 +77,16 @@ export default function ComplianceInbox() {
   const [migrationNeeded, setMigrationNeeded] = useState(false)
   const [dropActive, setDropActive] = useState(false)
   const [showScan, setShowScan] = useState(false)
+  const [failedDocs, setFailedDocs] = useState([])
+  const [selectedFailedIds, setSelectedFailedIds] = useState(new Set())
+  const [selectedJobIds, setSelectedJobIds] = useState(new Set())
+  const [deleteFailedTarget, setDeleteFailedTarget] = useState(null)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const refreshQueues = useCallback(async () => {
     try {
       setLoading(true)
-      const [procRes, attOrphanRes, attReviewRes, filedRes] = await Promise.all([
+      const [procRes, attOrphanRes, attReviewRes, filedRes, failedRes] = await Promise.all([
         supabase
           .from('compliance_item_documents')
           .select(DOC_INBOX_SELECT)
@@ -107,9 +113,15 @@ export default function ComplianceInbox() {
           .eq('review_status', 'approved')
           .order('updated_at', { ascending: false })
           .limit(12),
+        supabase
+          .from('compliance_item_documents')
+          .select(DOC_INBOX_SELECT)
+          .eq('processing_status', 'failed')
+          .order('updated_at', { ascending: false })
+          .limit(50),
       ])
 
-      const err = procRes.error || attOrphanRes.error || attReviewRes.error || filedRes.error
+      const err = procRes.error || attOrphanRes.error || attReviewRes.error || filedRes.error || failedRes.error
       if (err) throw err
 
       setMigrationNeeded(false)
@@ -122,6 +134,11 @@ export default function ComplianceInbox() {
       ]
       setAttention(mergedAttention)
       setFiled(filedRes.data || [])
+      setFailedDocs(failedRes.data || [])
+      setSelectedFailedIds((prev) => {
+        const valid = new Set((failedRes.data || []).map((d) => d.id))
+        return new Set([...prev].filter((id) => valid.has(id)))
+      })
     } catch (err) {
       if (isImportMigrationError(err)) setMigrationNeeded(true)
       showError(err.message)
@@ -130,7 +147,7 @@ export default function ComplianceInbox() {
     }
   }, [showError])
 
-  const { jobs, enqueue, retry, remove, clearCompleted } = useImportJob({
+  const { jobs, enqueue, retry, remove, clearCompleted, clearFailed, removeMany } = useImportJob({
     userEmail: user?.email || '',
     userId: user?.id || null,
     onJobComplete: ({ fileName }) => {
@@ -173,6 +190,47 @@ export default function ComplianceInbox() {
     if (attention.length > 0) return 3
     return 4
   }, [uploadStats.running, worker.busy, processing.length, attention.length])
+
+  const failedJobs = useMemo(() => jobs.filter((j) => j.status === 'failed'), [jobs])
+
+  const toggleFailedDoc = (id) => {
+    setSelectedFailedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleFailedJob = (jobId) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(jobId)) next.delete(jobId)
+      else next.add(jobId)
+      return next
+    })
+  }
+
+  const deleteFailedDocs = async (docs) => {
+    if (!docs?.length) return
+    try {
+      setBulkDeleting(true)
+      await deleteComplianceDocuments(docs)
+      success(t('compliance.bulk.deleted_count', { count: docs.length }))
+      setSelectedFailedIds(new Set())
+      setDeleteFailedTarget(null)
+      refreshQueues()
+    } catch (err) {
+      showError(err.message)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  const handleDeleteOneFailed = async () => {
+    if (!deleteFailedTarget) return
+    await deleteFailedDocs([deleteFailedTarget])
+  }
 
   const openDoc = (doc) => {
     if (doc.item_id == null) {
@@ -282,19 +340,54 @@ export default function ComplianceInbox() {
       {/* Active uploads */}
       {jobs.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-gray-800">{t('compliance.import.queue_title')}</h3>
-            {jobs.some((j) => j.status === 'completed') && (
-              <button type="button" onClick={clearCompleted} className="text-xs text-rose-700 hover:underline">
-                {t('compliance.import.clear_completed')}
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {failedJobs.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedJobIds(new Set(failedJobs.map((j) => j.jobId)))}
+                    className="text-xs text-gray-600 hover:text-gray-900"
+                  >
+                    {t('compliance.bulk.select_all_failed')}
+                  </button>
+                  {selectedJobIds.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { removeMany([...selectedJobIds]); setSelectedJobIds(new Set()) }}
+                      className="text-xs text-red-700 hover:underline font-medium"
+                    >
+                      {t('compliance.bulk.delete_selected', { count: selectedJobIds.size })}
+                    </button>
+                  )}
+                  <button type="button" onClick={() => { clearFailed(); setSelectedJobIds(new Set()) }} className="text-xs text-red-700 hover:underline font-medium">
+                    {t('compliance.bulk.clear_failed_uploads')}
+                  </button>
+                </>
+              )}
+              {jobs.some((j) => j.status === 'completed') && (
+                <button type="button" onClick={clearCompleted} className="text-xs text-rose-700 hover:underline">
+                  {t('compliance.import.clear_completed')}
+                </button>
+              )}
+            </div>
           </div>
           <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
             {jobs.map((j) => {
               const tone = UPLOAD_JOB_TONES[j.status] || UPLOAD_JOB_TONES.queued
+              const isFailed = j.status === 'failed'
               return (
                 <li key={j.jobId} className="px-4 py-2 flex items-center gap-3">
+                  {isFailed && (
+                    <input
+                      type="checkbox"
+                      checked={selectedJobIds.has(j.jobId)}
+                      onChange={() => toggleFailedJob(j.jobId)}
+                      className="rounded border-gray-300 text-rose-600 flex-shrink-0"
+                      aria-label={t('compliance.bulk.select')}
+                    />
+                  )}
                   <FileText size={16} className="text-gray-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -311,16 +404,79 @@ export default function ComplianceInbox() {
                     {j.error && <p className="text-[11px] text-red-600 mt-0.5">{j.error}</p>}
                   </div>
                   {j.status === 'failed' && (
-                    <button type="button" onClick={() => retry(j.jobId)} className="text-xs text-rose-700">
+                    <button type="button" onClick={() => retry(j.jobId)} className="text-xs text-rose-700 flex-shrink-0" title={t('compliance.import.retry')}>
                       <RefreshCw size={14} />
                     </button>
                   )}
-                  <button type="button" onClick={() => remove(j.jobId)} className="p-1 text-gray-400 hover:text-gray-600" aria-label="Remove">
+                  <button type="button" onClick={() => remove(j.jobId)} className="p-1 text-gray-400 hover:text-red-600 flex-shrink-0" aria-label={t('common.delete')} title={t('common.delete')}>
                     <X size={14} />
                   </button>
                 </li>
               )
             })}
+          </ul>
+        </div>
+      )}
+
+      {failedDocs.length > 0 && (
+        <div className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-red-50 border-b border-red-100 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-red-900">{t('compliance.bulk.failed_documents_title')}</h3>
+              <p className="text-[11px] text-red-700/80 mt-0.5">{t('compliance.bulk.failed_documents_hint')}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedFailedIds(new Set(failedDocs.map((d) => d.id)))}
+                className="text-xs text-gray-700 hover:underline"
+              >
+                {t('compliance.bulk.select_all_failed')}
+              </button>
+              {selectedFailedIds.size > 0 && (
+                <button
+                  type="button"
+                  disabled={bulkDeleting}
+                  onClick={() => deleteFailedDocs(failedDocs.filter((d) => selectedFailedIds.has(d.id)))}
+                  className="text-xs bg-red-600 text-white px-2.5 py-1 rounded font-medium hover:bg-red-700 disabled:opacity-50"
+                >
+                  {t('compliance.bulk.delete_selected', { count: selectedFailedIds.size })}
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={bulkDeleting}
+                onClick={() => deleteFailedDocs(failedDocs)}
+                className="text-xs text-red-700 hover:underline font-medium"
+              >
+                {t('compliance.bulk.delete_all_failed')}
+              </button>
+            </div>
+          </div>
+          <ul className="divide-y divide-gray-100 max-h-56 overflow-y-auto">
+            {failedDocs.map((d) => (
+              <li key={d.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50">
+                <input
+                  type="checkbox"
+                  checked={selectedFailedIds.has(d.id)}
+                  onChange={() => toggleFailedDoc(d.id)}
+                  className="rounded border-gray-300 text-rose-600 flex-shrink-0"
+                />
+                <FileText size={16} className="text-red-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{d.file_name}</p>
+                  <p className="text-[11px] text-red-600 truncate">{t('compliance.processing.failed')}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeleteFailedTarget(d)}
+                  className="p-1.5 text-red-600 hover:bg-red-50 rounded flex-shrink-0"
+                  title={t('common.delete')}
+                >
+                  <X size={16} />
+                </button>
+              </li>
+            ))}
           </ul>
         </div>
       )}
@@ -431,6 +587,17 @@ export default function ComplianceInbox() {
           {t('compliance.tab_calendar')}
         </button>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteFailedTarget}
+        onClose={() => setDeleteFailedTarget(null)}
+        onConfirm={handleDeleteOneFailed}
+        title={t('common.deleteConfirmTitle')}
+        message={t('compliance.deleteDocumentConfirm')}
+        confirmLabel={t('common.delete')}
+        isLoading={bulkDeleting}
+        variant="danger"
+      />
     </div>
   )
 }

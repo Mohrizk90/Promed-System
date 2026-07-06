@@ -230,10 +230,7 @@ export function useImportJob({
         if (idx < 0) return prev
         const cur = prev[idx]
         const nextFailureCount = (cur.failureCount || 0) + 1
-        if (nextFailureCount >= MAX_FAILURES) {
-          jobFilesRef.current.delete(jobId)
-          return prev.filter((_, i) => i !== idx)
-        }
+        jobFilesRef.current.delete(jobId)
         return prev.map((j, i) => (i === idx
           ? { ...j, status: 'failed', error: message, failureCount: nextFailureCount, progress: 0 }
           : j))
@@ -309,6 +306,30 @@ export function useImportJob({
     setJobs((prev) => prev.filter((j) => j.status !== 'completed'))
   }, [])
 
+  const clearFailed = useCallback(() => {
+    setJobs((prev) => {
+      const removing = prev.filter((j) => j.status === 'failed')
+      for (const j of removing) {
+        clearProgressTimer(j.jobId)
+        jobFilesRef.current.delete(j.jobId)
+      }
+      queueRef.current = queueRef.current.filter((id) => !removing.some((j) => j.jobId === id))
+      return prev.filter((j) => j.status !== 'failed')
+    })
+  }, [])
+
+  const removeMany = useCallback((jobIds) => {
+    const ids = new Set(jobIds || [])
+    setJobs((prev) => {
+      for (const id of ids) {
+        clearProgressTimer(id)
+        jobFilesRef.current.delete(id)
+      }
+      queueRef.current = queueRef.current.filter((id) => !ids.has(id))
+      return prev.filter((j) => !ids.has(j.jobId))
+    })
+  }, [])
+
   useEffect(() => () => {
     for (const timer of progressTimersRef.current.values()) clearInterval(timer)
     progressTimersRef.current.clear()
@@ -321,6 +342,8 @@ export function useImportJob({
     retry,
     remove,
     clearCompleted,
+    clearFailed,
+    removeMany,
     utils: { bytesFormat, isAllowed, PARALLEL, MAX_FAILURES, BUCKET },
   }
 }

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { getPostLoginPath } from '../../utils/userAccess'
+import { prefersComplianceMobile } from '../../utils/deviceProfile'
 import { useToast } from '../../context/ToastContext'
 import { Mail, Lock, Eye, EyeOff, LogIn, Spinner } from '../ui/Icons'
 
@@ -40,11 +42,12 @@ export default function Login() {
 
     setLoading(true)
     try {
-      const { error } = await signIn(email, password)
+      const { data, error } = await signIn(email, password)
       if (error) throw error
 
       success('Welcome back!')
-      navigate('/dashboard')
+      const signedInUser = data?.user
+      navigate(getPostLoginPath(signedInUser, { mobile: prefersComplianceMobile() }))
     } catch (err) {
       showError(err.message || 'Failed to sign in')
     } finally {

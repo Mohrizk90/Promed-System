@@ -3,18 +3,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
+import { useToast } from '../../context/ToastContext'
 import { useComplianceDocuments, useComplianceDocumentTags } from '../../hooks/useComplianceDocuments'
 import { useComplianceAuthorities } from '../../hooks/useComplianceItems'
+import { deleteComplianceDocuments } from '../../utils/complianceDocumentDelete'
 import LoadingSpinner from '../LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
+import ConfirmDialog from '../ui/ConfirmDialog'
 import Pagination from '../ui/Pagination'
+import Dropdown from '../ui/Dropdown'
 import { getPaginationPrefs, setPaginationPrefs } from '../../utils/paginationPrefs'
 import { downloadCsv } from '../../utils/exportCsv'
 import {
-  PROCESSING_STATES, REVIEW_STATES, processingColor, reviewColor,
-  formatConfidence, confidenceColor,
+  PROCESSING_STATES, REVIEW_STATES, processingColor, reviewColor, formatConfidence,
 } from '../../utils/documentProcessing'
-import { Filter, Download, Upload, FileText, FolderOpen, ClipboardList } from '../ui/Icons'
+import { Filter, Download, Upload, FileText, FolderOpen, ClipboardList, MoreVertical, Trash2 } from '../ui/Icons'
 import ComplianceFolderBrowser from './ComplianceFolderBrowser'
 import {
   groupIntoFolders, documentFolderKey, loadViewMode, saveViewMode, VIEW_MODE_KEY_DOCS,
@@ -25,6 +28,7 @@ const ROUTE_KEY = 'compliance_documents_library'
 
 export default function ComplianceDocumentsLibrary() {
   const { t } = useLanguage()
+  const { success, error: showError } = useToast()
   const navigate = useNavigate()
   const [filters, setFilters] = useState({
     search: '',
@@ -41,8 +45,11 @@ export default function ComplianceDocumentsLibrary() {
   const [viewMode, setViewMode] = useState(() => loadViewMode(VIEW_MODE_KEY_DOCS))
   const [selectedFolder, setSelectedFolder] = useState(null)
   const [folderSearch, setFolderSearch] = useState('')
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
-  const { docs, loading } = useComplianceDocuments({ filters })
+  const { docs, loading, refresh } = useComplianceDocuments({ filters })
   const { tags } = useComplianceDocumentTags()
   const { authorities } = useComplianceAuthorities()
 
@@ -68,7 +75,35 @@ export default function ComplianceDocumentsLibrary() {
   const goToPage = (p) => { setPage(p); setPaginationPrefs(ROUTE_KEY, { page: p, pageSize }) }
   const changePageSize = (s) => { setPageSize(s); setPage(1); setPaginationPrefs(ROUTE_KEY, { page: 1, pageSize: s }) }
 
-  const setF = (patch) => { setFilters((f) => ({ ...f, ...patch })); setPage(1) }
+  const setF = (patch) => { setFilters((f) => ({ ...f, ...patch })); setPage(1); setSelectedIds(new Set()) }
+
+  const failedInView = useMemo(() => docs.filter((d) => d.processing_status === 'failed'), [docs])
+  const showBulkBar = filters.processingStatus === 'failed' || failedInView.length > 0
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const deleteDocs = async (list) => {
+    if (!list?.length) return
+    try {
+      setBulkDeleting(true)
+      await deleteComplianceDocuments(list)
+      success(t('compliance.bulk.deleted_count', { count: list.length }))
+      setSelectedIds(new Set())
+      setDeleteTarget(null)
+      refresh()
+    } catch (err) {
+      showError(err.message)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
 
   const folders = useMemo(() => groupIntoFolders(docs, documentFolderKey), [docs])
 
@@ -184,6 +219,7 @@ export default function ComplianceDocumentsLibrary() {
           { id: 'attention', label: t('compliance.documentsLibrary.unlinked'), patch: { processingStatus: 'waiting_for_review', reviewStatus: 'all' } },
           { id: 'processing', label: t('compliance.workflow.col_processing'), patch: { processingStatus: 'ocr_processing', reviewStatus: 'all' } },
           { id: 'approved', label: t('compliance.review.status_approved'), patch: { processingStatus: 'all', reviewStatus: 'approved' } },
+          { id: 'failed', label: t('compliance.processing.failed'), patch: { processingStatus: 'failed', reviewStatus: 'all' } },
         ].map((preset) => {
           const active = preset.id === 'all'
             ? filters.processingStatus === 'all' && filters.reviewStatus === 'all'
@@ -191,7 +227,9 @@ export default function ComplianceDocumentsLibrary() {
               ? filters.processingStatus === 'waiting_for_review'
               : preset.id === 'processing'
                 ? filters.processingStatus === 'ocr_processing'
-                : filters.reviewStatus === 'approved'
+                : preset.id === 'failed'
+                  ? filters.processingStatus === 'failed'
+                  : filters.reviewStatus === 'approved'
           return (
             <button
               key={preset.id}
@@ -269,6 +307,39 @@ export default function ComplianceDocumentsLibrary() {
         </div>
       </div>
 
+      {showBulkBar && viewMode === 'table' && docs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-sm">
+          <span className="text-red-900 font-medium">{t('compliance.bulk.failed_documents_hint')}</span>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set(docs.map((d) => d.id)))}
+            className="text-xs text-gray-700 hover:underline"
+          >
+            {t('compliance.bulk.select_all')}
+          </button>
+          {selectedIds.size > 0 && (
+            <button
+              type="button"
+              disabled={bulkDeleting}
+              onClick={() => deleteDocs(docs.filter((d) => selectedIds.has(d.id)))}
+              className="text-xs bg-red-600 text-white px-2.5 py-1 rounded font-medium hover:bg-red-700 disabled:opacity-50"
+            >
+              {t('compliance.bulk.delete_selected', { count: selectedIds.size })}
+            </button>
+          )}
+          {failedInView.length > 0 && (
+            <button
+              type="button"
+              disabled={bulkDeleting}
+              onClick={() => deleteDocs(failedInView)}
+              className="text-xs text-red-700 hover:underline font-medium"
+            >
+              {t('compliance.bulk.delete_all_failed')}
+            </button>
+          )}
+        </div>
+      )}
+
       {docs.length === 0 ? (
         <EmptyState icon="default" title={t('compliance.documentsLibrary.no_results')} />
       ) : viewMode === 'folders' ? (
@@ -284,65 +355,78 @@ export default function ComplianceDocumentsLibrary() {
         />
       ) : (
         <>
-          <div className="bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">
-            <table className="min-w-full divide-y divide-gray-200 text-xs">
+          <div className="bg-white shadow rounded mt-2 overflow-hidden">
+            <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
+              <colgroup>
+                {showBulkBar && <col style={{ width: '4%' }} />}
+                <col style={{ width: showBulkBar ? '32%' : '36%' }} />
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '6%' }} />
+              </colgroup>
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-2 py-1.5 text-left font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_title')}</th>
-                  <th className="px-2 py-1.5 text-left font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_authority')}</th>
-                  <th className="px-2 py-1.5 text-left font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_type')}</th>
-                  <th className="px-2 py-1.5 text-left font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_processing')}</th>
-                  <th className="px-2 py-1.5 text-left font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_review')}</th>
-                  <th className="px-2 py-1.5 text-left font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_confidence')}</th>
-                  <th className="px-2 py-1.5 text-left font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_item')}</th>
+                  {showBulkBar && <th className="px-1 py-1.5" />}
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_title')}</th>
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_item')}</th>
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.documentsLibrary.column_processing')}</th>
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip hidden md:table-cell">{t('compliance.documentsLibrary.column_type')}</th>
+                  <th className="px-2 py-1.5 text-center font-semibold text-gray-700 uppercase rtl-flip print:hidden sticky end-0 bg-gray-100">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginated.map((d) => {
                   const pc = processingColor(d.processing_status)
                   const rc = reviewColor(d.review_status)
-                  const cc = confidenceColor(d.confidence_score)
+                  const open = () => navigate(d.compliance_items?.id
+                    ? `/compliance/item/${d.compliance_items.id}?doc=${d.id}`
+                    : `/compliance/review-orphan/${d.id}`)
                   return (
                     <tr key={d.id} className="hover:bg-gray-50">
+                      {showBulkBar && (
+                        <td className="px-1 py-1.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(d.id)}
+                            onChange={() => toggleSelect(d.id)}
+                            className="rounded border-gray-300 text-rose-600"
+                          />
+                        </td>
+                      )}
                       <td className="px-2 py-1.5 rtl-flip">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText size={15} className="text-gray-400 flex-shrink-0" />
-                          <button
-                            type="button"
-                            onClick={() => navigate(d.compliance_items?.id
-                              ? `/compliance/item/${d.compliance_items.id}?doc=${d.id}`
-                              : `/compliance/review-orphan/${d.id}`)}
-                            className="font-medium text-gray-900 hover:text-rose-700 hover:underline text-left rtl:text-right truncate"
-                            title={d.file_name}
-                          >
-                            {d.file_name}
-                          </button>
-                          {!d.compliance_items?.id && (
-                            <span className="inline px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 flex-shrink-0">
-                              {t('compliance.documentsLibrary.unlinked')}
-                            </span>
-                          )}
+                        <button type="button" onClick={open} className="flex items-start gap-2 min-w-0 text-start w-full hover:text-rose-700">
+                          <FileText size={15} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                          <span className="min-w-0">
+                            <span className="font-medium text-gray-900 block truncate">{d.file_name}</span>
+                            {!d.compliance_items?.id && (
+                              <span className="text-[10px] text-amber-700">{t('compliance.documentsLibrary.unlinked')}</span>
+                            )}
+                          </span>
+                        </button>
+                      </td>
+                      <td className="px-2 py-1.5 text-gray-700 rtl-flip truncate">{d.compliance_items?.title || '–'}</td>
+                      <td className="px-2 py-1.5 rtl-flip">
+                        <div className="flex flex-wrap gap-1">
+                          <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${pc.bg} ${pc.text}`}>
+                            {t(`compliance.processing.${d.processing_status}`)}
+                          </span>
+                          <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${rc.bg} ${rc.text}`}>
+                            {t(`compliance.review.status_${d.review_status}`)}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-2 py-1.5 text-gray-700 rtl-flip whitespace-nowrap">{d.compliance_items?.compliance_authorities?.name || '–'}</td>
-                      <td className="px-2 py-1.5 text-gray-700 rtl-flip whitespace-nowrap">{d.document_type || '–'}</td>
-                      <td className="px-2 py-1.5 rtl-flip whitespace-nowrap">
-                        <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${pc.bg} ${pc.text}`}>
-                          {t(`compliance.processing.${d.processing_status}`)}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 rtl-flip whitespace-nowrap">
-                        <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${rc.bg} ${rc.text}`}>
-                          {t(`compliance.review.status_${d.review_status}`)}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 rtl-flip whitespace-nowrap">
-                        <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${cc.bg} ${cc.text}`}>
-                          {formatConfidence(d.confidence_score)}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 text-gray-700 rtl-flip whitespace-nowrap truncate max-w-[160px]" title={d.compliance_items?.title}>
-                        {d.compliance_items?.title || '–'}
+                      <td className="px-2 py-1.5 text-gray-700 rtl-flip truncate hidden md:table-cell">{d.document_type || '–'}</td>
+                      <td className="px-1 py-1.5 rtl-flip print:hidden text-center sticky end-0 bg-white">
+                        <Dropdown
+                          trigger={<MoreVertical size={18} />}
+                          align="right"
+                          items={[
+                            { label: t('compliance.documentsLibrary.open'), onClick: open },
+                            { divider: true },
+                            { label: t('common.delete'), icon: Trash2, danger: true, onClick: () => setDeleteTarget(d) },
+                          ]}
+                        />
                       </td>
                     </tr>
                   )
@@ -361,6 +445,17 @@ export default function ComplianceDocumentsLibrary() {
           />
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteDocs(deleteTarget ? [deleteTarget] : [])}
+        title={t('common.deleteConfirmTitle')}
+        message={t('compliance.deleteDocumentConfirm')}
+        confirmLabel={t('common.delete')}
+        isLoading={bulkDeleting}
+        variant="danger"
+      />
     </div>
   )
 }

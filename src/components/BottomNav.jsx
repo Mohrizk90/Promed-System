@@ -1,10 +1,15 @@
 import { Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, FileText, Truck, Users, Plus } from './ui/Icons'
 import { useLanguage } from '../context/LanguageContext'
+import { useAuth } from '../context/AuthContext'
+import { isComplianceOnlyUser } from '../utils/userAccess'
 
 export default function BottomNav({ onAddClick } = {}) {
   const location = useLocation()
   const { t } = useLanguage()
+  const { user } = useAuth()
+
+  if (isComplianceOnlyUser(user)) return null
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard'), color: 'indigo' },

@@ -13,7 +13,7 @@
 // After either action, the user lands inside the now-attached item detail page
 // (because the orphan flagged disappears and review actions unlock).
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
@@ -37,7 +37,9 @@ export default function ComplianceOrphanReview() {
   const { user } = useAuth()
   const { success, error: showError } = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
   const { docId } = useParams()
+  const backPath = location.pathname.startsWith('/m/') ? '/m/compliance/queue' : '/compliance'
 
   const [doc, setDoc] = useState(null)
   const [loadingDoc, setLoadingDoc] = useState(true)
@@ -226,7 +228,7 @@ export default function ComplianceOrphanReview() {
       <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-gray-200 rounded">
         <button
           type="button"
-          onClick={() => navigate('/compliance')}
+          onClick={() => navigate(backPath)}
           className="mb-4 text-sm text-rose-700 hover:underline inline-flex items-center gap-1"
         >
           <ArrowLeft size={14} /> {t('compliance.import.back_to_compliance')}
@@ -246,7 +248,7 @@ export default function ComplianceOrphanReview() {
       <div className="flex items-start gap-2">
         <button
           type="button"
-          onClick={() => navigate('/compliance')}
+          onClick={() => navigate(backPath)}
           className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 flex-shrink-0"
           aria-label={t('compliance.import.back_to_compliance')}
         >

@@ -20,6 +20,7 @@ import LanguageSwitcher from './LanguageSwitcher'
 import { useLanguage } from '../context/LanguageContext'
 import packageJson from '../../package.json'
 import { useAuth } from '../context/AuthContext'
+import { isComplianceOnlyUser } from '../utils/userAccess'
 import { useKeyboardShortcuts } from '../context/KeyboardShortcutsContext'
 
 const SIDEBAR_WIDTH = '15rem'
@@ -44,7 +45,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/products', label: t('nav.inventory'), icon: Package, shortcut: 'i', color: 'teal' },
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
     { path: '/compliance', label: t('nav.compliance'), icon: Shield, shortcut: 'm', color: 'rose' },
-  ]
+  ].filter((item) => !isComplianceOnlyUser(user) || item.path === '/compliance')
 
   const iconColors = {
     indigo: { inactive: 'bg-indigo-500/90 text-white', active: 'bg-indigo-100 text-indigo-600' },

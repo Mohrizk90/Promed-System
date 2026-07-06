@@ -17,11 +17,16 @@ const ComplianceApp = lazy(() => import('./components/Compliance/ComplianceApp')
 const ComplianceLayout = lazy(() => import('./components/Compliance/ComplianceLayout'))
 const ComplianceItemDetail = lazy(() => import('./components/Compliance/ComplianceItemDetail'))
 const ComplianceOrphanReview = lazy(() => import('./components/Compliance/ComplianceOrphanReview'))
+const ComplianceMobileLayout = lazy(() => import('./components/Compliance/ComplianceMobileLayout'))
+const ComplianceMobileApp = lazy(() => import('./components/Compliance/ComplianceMobileApp'))
+const ComplianceMobileQueue = lazy(() => import('./components/Compliance/ComplianceMobileQueue'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
 import ProtectedRoute from './components/ProtectedRoute'
+import ComplianceOnlyGuard from './components/ComplianceOnlyGuard'
+import ComplianceMobileRedirect from './components/Compliance/ComplianceMobileRedirect'
 import ErrorBoundary from './components/ErrorBoundary'
 import { Breadcrumbs } from './components/ui'
 import { Menu } from './components/ui/Icons'
@@ -30,6 +35,8 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from './context/KeyboardShortcutsContext'
 import { isCompliancePath } from './utils/complianceRoutes'
+import { isMobileCompliancePath, prefersComplianceMobile } from './utils/deviceProfile'
+import { getComplianceHomePath, isComplianceOnlyUser } from './utils/userAccess'
 
 const NAV_SHORTCUTS = [
   { path: '/dashboard', shortcut: 'd' },
@@ -42,8 +49,12 @@ const NAV_SHORTCUTS = [
 
 function AppShell({ children }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { registerShortcut, setShowHelp } = useKeyboardShortcuts()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const homePath = isComplianceOnlyUser(user)
+    ? getComplianceHomePath({ mobile: prefersComplianceMobile() })
+    : '/dashboard'
 
   useEffect(() => {
     NAV_SHORTCUTS.forEach(({ path, shortcut }) => {
@@ -67,7 +78,7 @@ function AppShell({ children }) {
           >
             <Menu size={24} />
           </button>
-          <Link to="/dashboard" className="flex items-center" onClick={() => setSidebarOpen(false)}>
+          <Link to={homePath} className="flex items-center" onClick={() => setSidebarOpen(false)}>
             <div className="bg-white rounded-lg px-2 py-1.5">
               <img src="/Logo_Promed.png" alt="Promed" className="h-8 w-auto object-contain" />
             </div>
@@ -120,13 +131,40 @@ function AppContent() {
     )
   }
 
-  const showAppShell = user && !isLoginPage && !isSignUpPage
+  const showMobileComplianceShell = user && !isPublicPage && isMobileCompliancePath(location.pathname)
+  const showAppShell = user && !isLoginPage && !isSignUpPage && !showMobileComplianceShell
+
+  // Phone users on /compliance/* go straight to the scan mini-app (no ERP chrome flash).
+  if (
+    user
+    && !isPublicPage
+    && prefersComplianceMobile()
+    && location.pathname.startsWith('/compliance')
+    && !isMobileCompliancePath(location.pathname)
+  ) {
+    const suffix = location.pathname.replace(/^\/compliance/, '') || ''
+    return <Navigate to={`/m/compliance${suffix}${location.search}`} replace />
+  }
 
   return (
     <>
-      <div className={`${showAppShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell ? 'pb-0' : ''}`}>
-        {showAppShell ? (
+      <div className={`${showAppShell || showMobileComplianceShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell || showMobileComplianceShell ? 'pb-0' : ''}`}>
+        {showMobileComplianceShell ? (
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-[200px]"><LoadingSpinner size="lg" /></div>}>
+              <Routes>
+                <Route path="/m/compliance" element={<ProtectedRoute><ComplianceMobileLayout /></ProtectedRoute>}>
+                  <Route index element={<ComplianceMobileApp />} />
+                  <Route path="queue" element={<ComplianceMobileQueue />} />
+                  <Route path="review-orphan/:docId" element={<ComplianceOrphanReview />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/m/compliance" replace />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        ) : showAppShell ? (
           <AppShell>
+            <ComplianceMobileRedirect />
             <main className="flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6">
               <Breadcrumbs />
               <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col main-scroll-mobile">
@@ -137,26 +175,26 @@ function AppContent() {
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<SignUp />} />
 
-              {/* Protected: must be signed in to access */}
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/" element={<ProtectedRoute><ClientTransactions /></ProtectedRoute>} />
-              <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-              <Route path="/suppliers" element={<ProtectedRoute><SupplierTransactions /></ProtectedRoute>} />
-              <Route path="/entities" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
-              <Route path="/entities/clients" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
-              <Route path="/entities/suppliers" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
-              <Route path="/entities/employees" element={<ProtectedRoute><ClientsSuppliers /></ProtectedRoute>} />
-              <Route path="/liabilities" element={<ProtectedRoute><Liabilities /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              <Route path="/products" element={<ProtectedRoute><ProductInventory /></ProtectedRoute>} />
-              <Route path="/reports/aging" element={<ProtectedRoute><AgingReport /></ProtectedRoute>} />
-              <Route path="/reports/pnl" element={<ProtectedRoute><ProfitLossReport /></ProtectedRoute>} />
+              {/* Protected: must be signed in; compliance-only users are redirected */}
+              <Route path="/dashboard" element={<ProtectedRoute><ComplianceOnlyGuard><Dashboard /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute><ComplianceOnlyGuard><ClientTransactions /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/invoices" element={<ProtectedRoute><ComplianceOnlyGuard><Invoices /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/suppliers" element={<ProtectedRoute><ComplianceOnlyGuard><SupplierTransactions /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/entities" element={<ProtectedRoute><ComplianceOnlyGuard><ClientsSuppliers /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/entities/clients" element={<ProtectedRoute><ComplianceOnlyGuard><ClientsSuppliers /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/entities/suppliers" element={<ProtectedRoute><ComplianceOnlyGuard><ClientsSuppliers /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/entities/employees" element={<ProtectedRoute><ComplianceOnlyGuard><ClientsSuppliers /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/liabilities" element={<ProtectedRoute><ComplianceOnlyGuard><Liabilities /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><ComplianceOnlyGuard><SettingsPage /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/products" element={<ProtectedRoute><ComplianceOnlyGuard><ProductInventory /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/reports/aging" element={<ProtectedRoute><ComplianceOnlyGuard><AgingReport /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/reports/pnl" element={<ProtectedRoute><ComplianceOnlyGuard><ProfitLossReport /></ComplianceOnlyGuard></ProtectedRoute>} />
 
               {/* Compliance & Regulatory Management (worker runs for all sub-routes) */}
               <Route path="/compliance" element={<ProtectedRoute><ComplianceLayout /></ProtectedRoute>}>
                 <Route index element={<ComplianceApp />} />
                 <Route path="import" element={<Navigate to="/compliance" replace />} />
-                <Route path="scan" element={<Navigate to="/compliance?scan=1" replace />} />
+                <Route path="scan" element={<Navigate to="/m/compliance" replace />} />
                 <Route path="review-orphan/:docId" element={<ComplianceOrphanReview />} />
                 <Route path="item/:id" element={<ComplianceItemDetail />} />
                 <Route path=":tab" element={<ComplianceApp />} />

@@ -1,10 +1,14 @@
 // Live AI worker status pill. Reads { busy, lastResult } from useDocumentWorker
 // (shared via ComplianceApp) so users can see extraction happening + errors.
+import { useEffect, useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
 import { RefreshCw, CheckCircle, AlertCircle, Activity } from '../ui/Icons'
 
+const DONE_VISIBLE_MS = 8000
+
 export default function AiWorkerStatus({ busy, lastResult, variant = 'pill' }) {
   const { t } = useLanguage()
+  const [hideDone, setHideDone] = useState(false)
 
   let tone = 'idle'
   let label = t('compliance.ai.idle')
@@ -27,6 +31,17 @@ export default function AiWorkerStatus({ busy, lastResult, variant = 'pill' }) {
     label = t('compliance.ai.done')
   }
 
+  useEffect(() => {
+    if (tone !== 'done') {
+      setHideDone(false)
+      return undefined
+    }
+    const timer = setTimeout(() => setHideDone(true), DONE_VISIBLE_MS)
+    return () => clearTimeout(timer)
+  }, [lastResult?.id, tone])
+
+  if (tone === 'idle' || (tone === 'done' && hideDone)) return null
+
   const tones = {
     idle:  { bg: 'bg-gray-100',   text: 'text-gray-600',   Icon: Activity },
     busy:  { bg: 'bg-blue-100',   text: 'text-blue-700',   Icon: RefreshCw },
@@ -44,7 +59,9 @@ export default function AiWorkerStatus({ busy, lastResult, variant = 'pill' }) {
         <div className="min-w-0">
           <p className={`text-sm font-semibold ${s.text}`}>{label}</p>
           {detail && <p className="text-xs text-gray-600 break-words">{detail}</p>}
-          <p className="text-[11px] text-gray-500 mt-0.5">{t('compliance.ai.hint')}</p>
+          {busy && (
+            <p className="text-[11px] text-gray-500 mt-0.5">{t('compliance.ai.hint')}</p>
+          )}
         </div>
       </div>
     )

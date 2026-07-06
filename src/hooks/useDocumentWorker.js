@@ -61,9 +61,8 @@ export function useDocumentWorker({ enabled = true, outputLocale = 'en' } = {}) 
     async function tick() {
       if (stopRef.current || inFlightRef.current) return
       inFlightRef.current = true
+      let working = false
       try {
-        setBusy(true)
-
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.access_token) {
           setLastResult({ error: 'not_authenticated' })
@@ -71,7 +70,10 @@ export function useDocumentWorker({ enabled = true, outputLocale = 'en' } = {}) 
         }
 
         const doc = await pickNextDoc()
-        if (!doc) { setLastResult(null); return }
+        if (!doc) return
+
+        working = true
+        setBusy(true)
 
         // Unsupported types skip AI and go straight to manual review.
         if (!isAiSupportedMime(doc.mime_type)) {
@@ -114,7 +116,7 @@ export function useDocumentWorker({ enabled = true, outputLocale = 'en' } = {}) 
         setLastResult({ error: err.message })
       } finally {
         inFlightRef.current = false
-        setBusy(false)
+        if (working) setBusy(false)
       }
     }
 

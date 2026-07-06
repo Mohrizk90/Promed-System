@@ -346,38 +346,32 @@ export default function ComplianceItemsList() {
         />
       ) : (
         <>
-          <div className="bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">
-            <table className="min-w-full divide-y divide-gray-200 text-xs">
-              <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
+          <div className="bg-white shadow rounded mt-2 overflow-hidden">
+            <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
+              <colgroup>
+                <col style={{ width: '34%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '6%' }} />
+              </colgroup>
+              <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase min-w-[140px] rtl-flip">
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip">
                     <button type="button" onClick={() => toggleSort('title')} className="flex items-center gap-0.5 hover:underline">
                       {t('compliance.title_field')} {sortBy === 'title' && (sortAsc ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
                     </button>
                   </th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-32 whitespace-nowrap rtl-flip">
-                    {t('compliance.authority')}
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.category')}</th>
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip">{t('compliance.status')}</th>
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip">
+                    <button type="button" onClick={() => toggleSort('expiry_date')} className="hover:underline">
+                      {t('compliance.expiry_date')} {sortBy === 'expiry_date' && (sortAsc ? '↑' : '↓')}
+                    </button>
                   </th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-28 whitespace-nowrap rtl-flip">
-                    {t('compliance.category')}
-                  </th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-24 whitespace-nowrap rtl-flip">
-                    {t('compliance.status')}
-                  </th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-20 whitespace-nowrap rtl-flip">
-                    {t('compliance.priority')}
-                  </th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-32 whitespace-nowrap rtl-flip">
-                    {t('compliance.owner')}
-                  </th>
-                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-24 whitespace-nowrap rtl-flip">
-                    <button type="button" onClick={() => toggleSort('issue_date')} className="hover:underline ml-auto">{t('compliance.issue_date')} {sortBy === 'issue_date' && (sortAsc ? '↑' : '↓')}</button>
-                  </th>
-                  <th className="px-2 py-1 text-right font-semibold text-gray-700 uppercase w-24 whitespace-nowrap rtl-flip">
-                    <button type="button" onClick={() => toggleSort('expiry_date')} className="hover:underline ml-auto">{t('compliance.expiry_date')} {sortBy === 'expiry_date' && (sortAsc ? '↑' : '↓')}</button>
-                  </th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase min-w-[80px] rtl-flip">{t('compliance.expiry.remaining')}</th>
-                  <th className="px-2 py-1 text-left font-semibold text-gray-700 uppercase w-24 whitespace-nowrap rtl-flip print:hidden">{t('common.actions')}</th>
+                  <th className="px-2 py-1.5 text-start font-semibold text-gray-700 uppercase rtl-flip hidden sm:table-cell">{t('compliance.owner')}</th>
+                  <th className="px-2 py-1.5 text-center font-semibold text-gray-700 uppercase rtl-flip print:hidden sticky end-0 bg-gray-100">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -387,33 +381,32 @@ export default function ComplianceItemsList() {
                   const remaining = formatRemaining(row.expiry_date, t)
                   return (
                     <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-2 py-1 text-gray-900 rtl-flip max-w-[180px] truncate">
-                        <button type="button" onClick={() => navigate(`/compliance/item/${row.id}`)} className="font-medium hover:underline text-left rtl:text-right">
+                      <td className="px-2 py-1.5 text-gray-900 rtl-flip">
+                        <button type="button" onClick={() => navigate(`/compliance/item/${row.id}`)} className="font-medium hover:underline text-start rtl:text-end block w-full truncate">
                           {row.title}
                         </button>
-                        {row.reference_number && <p className="text-[10px] text-gray-500 truncate" title={row.reference_number}>{row.reference_number}</p>}
+                        <p className="text-[10px] text-gray-500 truncate">{row.compliance_authorities?.name || '–'}</p>
+                        {row.reference_number && <p className="text-[10px] text-gray-400 truncate">{row.reference_number}</p>}
                       </td>
-                      <td className="px-2 py-1 text-gray-700 rtl-flip whitespace-nowrap">{row.compliance_authorities?.name || '–'}</td>
-                      <td className="px-2 py-1 text-gray-700 rtl-flip whitespace-nowrap">{row.compliance_categories?.name || '–'}</td>
-                      <td className="px-2 py-1 rtl-flip whitespace-nowrap">
-                        <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${sc.bg} ${sc.text}`}>
-                          {t(`compliance.status_${row.derivedStatus}`)}
-                        </span>
+                      <td className="px-2 py-1.5 text-gray-700 rtl-flip truncate">{row.compliance_categories?.name || '–'}</td>
+                      <td className="px-2 py-1.5 rtl-flip">
+                        <div className="flex flex-wrap gap-1">
+                          <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${sc.bg} ${sc.text}`}>
+                            {t(`compliance.status_${row.derivedStatus}`)}
+                          </span>
+                          <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${pc.bg} ${pc.text}`}>
+                            {t(`compliance.priority_${row.priority}`)}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-2 py-1 rtl-flip whitespace-nowrap">
-                        <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${pc.bg} ${pc.text}`}>
-                          {t(`compliance.priority_${row.priority}`)}
-                        </span>
+                      <td className="px-2 py-1.5 text-gray-700 rtl-flip">
+                        <div className="truncate">{row.expiry_date || '–'}</div>
+                        <div className="text-[10px] text-gray-500 truncate">{remaining || t('compliance.expiry.noDate')}</div>
                       </td>
-                      <td className="px-2 py-1 text-gray-700 rtl-flip whitespace-nowrap truncate max-w-[120px]" title={row.owner_email}>{row.owner_email || '–'}</td>
-                      <td className="px-2 py-1 text-right text-gray-700 whitespace-nowrap rtl-flip">{row.issue_date || '–'}</td>
-                      <td className="px-2 py-1 text-right text-gray-700 whitespace-nowrap rtl-flip">{row.expiry_date || '–'}</td>
-                      <td className="px-2 py-1 text-gray-700 whitespace-nowrap">
-                        {remaining || <span className="text-gray-400">{t('compliance.expiry.noDate')}</span>}
-                      </td>
-                      <td className="px-2 py-1 rtl-flip print:hidden whitespace-nowrap">
+                      <td className="px-2 py-1.5 text-gray-700 rtl-flip truncate hidden sm:table-cell" title={row.owner_email}>{row.owner_email || '–'}</td>
+                      <td className="px-1 py-1.5 rtl-flip print:hidden text-center sticky end-0 bg-white">
                         <Dropdown
-                          trigger={<MoreVertical size={20} />}
+                          trigger={<MoreVertical size={18} />}
                           align="right"
                           className="inline-block"
                           items={[
