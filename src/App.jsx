@@ -156,6 +156,7 @@ function AppContent() {
               <Route path="/compliance" element={<ProtectedRoute><ComplianceLayout /></ProtectedRoute>}>
                 <Route index element={<ComplianceApp />} />
                 <Route path="import" element={<Navigate to="/compliance" replace />} />
+                <Route path="scan" element={<Navigate to="/compliance?scan=1" replace />} />
                 <Route path="review-orphan/:docId" element={<ComplianceOrphanReview />} />
                 <Route path="item/:id" element={<ComplianceItemDetail />} />
                 <Route path=":tab" element={<ComplianceApp />} />

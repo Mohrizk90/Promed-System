@@ -1,7 +1,7 @@
 // Compliance Inbox — workflow home: upload papers, watch AI extraction,
 // then review and file them. Replaces the old dashboard + separate import page.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
@@ -13,9 +13,10 @@ import { processingColor, reviewColor } from '../../utils/documentProcessing'
 import { useComplianceWorkerStatus } from './ComplianceWorkerContext'
 import CompliancePipelineStepper from './CompliancePipelineStepper'
 import AiWorkerStatus from './AiWorkerStatus'
+import ComplianceScanCapture from './ComplianceScanCapture'
 import LoadingSpinner from '../LoadingSpinner'
 import {
-  Upload, FileText, ChevronRight, Package, RefreshCw, X, Check,
+  Upload, FileText, ChevronRight, Package, RefreshCw, X, Check, Camera,
 } from '../ui/Icons'
 
 const DOC_INBOX_SELECT = `
@@ -64,6 +65,7 @@ export default function ComplianceInbox() {
   const { user } = useAuth()
   const { success, error: showError } = useToast()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const inputRef = useRef(null)
   const worker = useComplianceWorkerStatus()
 
@@ -73,6 +75,7 @@ export default function ComplianceInbox() {
   const [loading, setLoading] = useState(true)
   const [migrationNeeded, setMigrationNeeded] = useState(false)
   const [dropActive, setDropActive] = useState(false)
+  const [showScan, setShowScan] = useState(false)
 
   const refreshQueues = useCallback(async () => {
     try {
@@ -139,6 +142,13 @@ export default function ComplianceInbox() {
       if (isImportMigrationError({ message })) setMigrationNeeded(true)
     },
   })
+
+  useEffect(() => {
+    if (searchParams.get('scan') === '1') {
+      setShowScan(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     refreshQueues()
@@ -233,14 +243,24 @@ export default function ComplianceInbox() {
         </div>
         <h2 className="text-lg font-bold text-gray-900">{t('compliance.workflow.upload_title')}</h2>
         <p className="text-sm text-gray-600 mt-1 max-w-md mx-auto">{t('compliance.workflow.upload_subtitle')}</p>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={!user?.id}
-          className="mt-4 inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold py-2.5 px-5 rounded-lg text-sm shadow-sm"
-        >
-          <Upload size={18} /> {t('compliance.import.choose_files')}
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={!user?.id}
+            className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold py-2.5 px-5 rounded-lg text-sm shadow-sm"
+          >
+            <Upload size={18} /> {t('compliance.import.choose_files')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowScan(true)}
+            disabled={!user?.id}
+            className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 disabled:opacity-50 text-rose-700 font-semibold py-2.5 px-5 rounded-lg text-sm border-2 border-rose-200 shadow-sm"
+          >
+            <Camera size={18} /> {t('compliance.scan.button')}
+          </button>
+        </div>
         <p className="text-[11px] text-gray-400 mt-3">{t('compliance.import.dropzone_help')}</p>
         <input
           ref={inputRef}
@@ -251,6 +271,13 @@ export default function ComplianceInbox() {
           onChange={onPick}
         />
       </div>
+
+      <ComplianceScanCapture
+        open={showScan}
+        onClose={() => setShowScan(false)}
+        disabled={!user?.id}
+        onCapture={(files) => enqueue(files)}
+      />
 
       {/* Active uploads */}
       {jobs.length > 0 && (

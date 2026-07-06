@@ -11,7 +11,7 @@ const SUPPORTED_MIME = new Set([
   'image/gif',
 ])
 
-const EXTRACTION_PROMPT = `
+const EXTRACTION_PROMPT_BASE = `
 You are a compliance document intelligence engine for a medical / regulatory ERP.
 Analyze the attached document (PDF or image, possibly scanned) and extract structured metadata.
 
@@ -21,13 +21,38 @@ Rules:
 - Use empty arrays [] when none found for array fields.
 - Dates must be ISO YYYY-MM-DD when possible.
 - confidence and extraction_confidence must be numbers between 0 and 1.
-- extracted_text should contain the full readable text you can recover from the document.
+- extracted_text should contain the full readable text you can recover from the document (preserve original script).
 - summary should be a concise 2-4 sentence human-readable summary.
 - document_type examples: certificate, license, inspection_report, invoice, letter, scan, spreadsheet, other.
-- language: ISO 639-1 code when detectable (e.g. en, ar).
+- language: ISO 639-1 code for the document's primary language (e.g. en, ar).
 
 ${EXTRACTION_JSON_SCHEMA_DESCRIPTION}
 `.trim()
+
+function localeInstructions(outputLocale) {
+  const loc = (outputLocale || 'en').toLowerCase().startsWith('ar') ? 'ar' : 'en'
+  if (loc === 'ar') {
+    return `
+OUTPUT LOCALE: Arabic (ar)
+- Write title, summary, authority_name, organization, issuer, inspector, auditor, important_notes, and all other human-readable string fields in Arabic script.
+- Do NOT transliterate Arabic to English or Latin letters in output fields.
+- If the document is Arabic, keep Arabic. If bilingual, prefer Arabic for output fields.
+- extracted_text must keep the document's original script; never romanize Arabic names or titles.
+- Set language to "ar" when the document is primarily Arabic.
+`.trim()
+  }
+  return `
+OUTPUT LOCALE: English (en)
+- Write title, summary, authority_name, organization, issuer, inspector, auditor, important_notes, and all other human-readable string fields in clear English.
+- Translate or transliterate Arabic (or other non-Latin) content into English for these output fields so English-speaking users can read them.
+- extracted_text may include original script where helpful, but summary must be English.
+- Set language to the document's primary language code (e.g. ar, en).
+`.trim()
+}
+
+function buildExtractionPrompt(outputLocale) {
+  return `${EXTRACTION_PROMPT_BASE}\n\n${localeInstructions(outputLocale)}`
+}
 
 function getModelName() {
   return process.env.GEMINI_MODEL || process.env.EXTRACTION_MODEL || 'gemini-2.5-flash'
@@ -55,7 +80,7 @@ export function isSupportedMime(mimeType) {
   return m.startsWith('image/')
 }
 
-export async function extractWithGemini({ buffer, mimeType, fileName }) {
+export async function extractWithGemini({ buffer, mimeType, fileName, outputLocale }) {
   if (!buffer?.length) throw new Error('Empty document buffer')
   if (!isSupportedMime(mimeType)) {
     throw new Error(`Unsupported MIME type for AI extraction: ${mimeType || 'unknown'}. Supported: PDF, JPG, PNG.`)
@@ -82,7 +107,7 @@ export async function extractWithGemini({ buffer, mimeType, fileName }) {
     }
     const result = await withTimeout(
       model.generateContent([
-        { text: EXTRACTION_PROMPT },
+        { text: buildExtractionPrompt(outputLocale) },
         {
           inlineData: {
             mimeType: mimeType.toLowerCase(),

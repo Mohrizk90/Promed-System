@@ -60,7 +60,7 @@ async function readError(res) {
  * Call backend extraction for one document.
  * Returns payload shaped for advance_document_processing RPC.
  */
-export async function extractDocument(documentId, accessToken) {
+export async function extractDocument(documentId, accessToken, outputLocale = 'en') {
   if (!documentId) throw new Error('documentId is required')
   if (!accessToken) throw new Error('Sign in required for document extraction')
 
@@ -70,7 +70,7 @@ export async function extractDocument(documentId, accessToken) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ documentId }),
+    body: JSON.stringify({ documentId, outputLocale }),
   })
 
   if (!res.ok) {

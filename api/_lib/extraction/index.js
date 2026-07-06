@@ -13,10 +13,10 @@ export function getExtractionProvider(name) {
   return provider
 }
 
-export async function runExtraction({ buffer, mimeType, fileName, providerName }) {
+export async function runExtraction({ buffer, mimeType, fileName, providerName, outputLocale }) {
   const provider = getExtractionProvider(providerName)
-  console.info(`[extraction] provider=${provider.name} file=${fileName || 'unknown'} mime=${mimeType || 'unknown'} bytes=${buffer?.length || 0}`)
-  const result = await provider.extract({ buffer, mimeType, fileName })
+  console.info(`[extraction] provider=${provider.name} file=${fileName || 'unknown'} mime=${mimeType || 'unknown'} bytes=${buffer?.length || 0} locale=${outputLocale || 'en'}`)
+  const result = await provider.extract({ buffer, mimeType, fileName, outputLocale })
   return result
 }
 

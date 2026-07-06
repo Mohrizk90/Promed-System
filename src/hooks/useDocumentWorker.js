@@ -40,7 +40,7 @@ async function pickNextDoc() {
   return stuck?.[0] || null
 }
 
-export function useDocumentWorker({ enabled = true } = {}) {
+export function useDocumentWorker({ enabled = true, outputLocale = 'en' } = {}) {
   const [busy, setBusy] = useState(false)
   const [lastResult, setLastResult] = useState(null)
   const stopRef = useRef(false)
@@ -89,7 +89,7 @@ export function useDocumentWorker({ enabled = true } = {}) {
 
         let payload
         try {
-          payload = await extractDocument(doc.id, session.access_token)
+          payload = await extractDocument(doc.id, session.access_token, outputLocale)
         } catch (extractErr) {
           await advance(doc.id, {
             p_next_status: 'failed',
@@ -125,7 +125,7 @@ export function useDocumentWorker({ enabled = true } = {}) {
       stopRef.current = true
       clearInterval(interval)
     }
-  }, [enabled])
+  }, [enabled, outputLocale])
 
   return { busy, lastResult }
 }

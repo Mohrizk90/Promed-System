@@ -8,7 +8,11 @@ import { supabase } from '../lib/supabase'
 
 const DOC_SELECT = `
   *,
-  compliance_items:item_id ( id, title, authority_id, compliance_authorities:authority_id (id, name, color) ),
+  compliance_items:item_id (
+    id, title, authority_id, category_id,
+    compliance_categories:category_id ( id, name, key ),
+    compliance_authorities:authority_id ( id, name, color )
+  ),
   compliance_document_links ( id, entity_type, entity_id, link_role ),
   compliance_document_tag_assignments ( tag_id, compliance_document_tags ( id, name ) )
 `

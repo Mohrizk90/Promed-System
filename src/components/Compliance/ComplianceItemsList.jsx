@@ -19,6 +19,11 @@ import {
   computeStatus, formatRemaining, statusColor, priorityColor,
 } from '../../utils/complianceStatus'
 import ComplianceItemFormModal from './ComplianceItemFormModal'
+import ComplianceFolderBrowser from './ComplianceFolderBrowser'
+import {
+  groupIntoFolders, itemFolderKey, loadViewMode, saveViewMode, VIEW_MODE_KEY_ITEMS,
+} from '../../utils/complianceFolders'
+import { FolderOpen, ClipboardList } from '../ui/Icons'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 const ROUTE_KEY = 'compliance_items'
@@ -44,6 +49,9 @@ export default function ComplianceItemsList() {
   const [editing, setEditing] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [viewMode, setViewMode] = useState(() => loadViewMode(VIEW_MODE_KEY_ITEMS))
+  const [selectedFolder, setSelectedFolder] = useState(null)
+  const [folderSearch, setFolderSearch] = useState('')
 
   // Hydrate page + pageSize from localStorage on mount.
   useEffect(() => {
@@ -117,6 +125,51 @@ export default function ComplianceItemsList() {
     return { total, active, expired, due, critical }
   }, [sorted])
 
+  const folders = useMemo(() => groupIntoFolders(sorted, itemFolderKey), [sorted])
+
+  const setView = (mode) => {
+    setViewMode(mode)
+    saveViewMode(VIEW_MODE_KEY_ITEMS, mode)
+    setSelectedFolder(null)
+    setFolderSearch('')
+  }
+
+  const itemFolderRender = useMemo(() => ({
+    key: (row) => row.id,
+    matchesSearch: (row, q) => (
+      (row.title || '').toLowerCase().includes(q)
+      || (row.reference_number || '').toLowerCase().includes(q)
+      || (row.compliance_authorities?.name || '').toLowerCase().includes(q)
+      || (row.owner_email || '').toLowerCase().includes(q)
+    ),
+    render: (row, chevron) => {
+      const sc = statusColor(row.derivedStatus)
+      const remaining = formatRemaining(row.expiry_date, t)
+      return (
+        <button
+          type="button"
+          onClick={() => navigate(`/compliance/item/${row.id}`)}
+          className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-900 truncate">{row.title}</p>
+            <p className="text-xs text-gray-500 truncate mt-0.5">
+              {row.compliance_authorities?.name || '–'}
+              {row.reference_number ? ` · ${row.reference_number}` : ''}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${sc.bg} ${sc.text}`}>
+                {t(`compliance.status_${row.derivedStatus}`)}
+              </span>
+              {remaining && <span className="text-[10px] text-gray-600">{remaining}</span>}
+            </div>
+          </div>
+          {chevron}
+        </button>
+      )
+    },
+  }), [navigate, t])
+
   const toggleSort = (col) => {
     setSortBy(col)
     setSortAsc((prev) => (sortBy === col ? !prev : true))
@@ -171,9 +224,25 @@ export default function ComplianceItemsList() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
         <div>
           <h2 className="text-xl font-bold text-gray-900">{t('compliance.tab_items')}</h2>
-          <p className="text-sm text-gray-600">{t('compliance.subtitle')}</p>
+          <p className="text-sm text-gray-600">{t('compliance.folders.items_subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
+          <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+            <button
+              type="button"
+              onClick={() => setView('folders')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium ${viewMode === 'folders' ? 'bg-white shadow text-rose-700' : 'text-gray-600'}`}
+            >
+              <FolderOpen size={14} /> {t('compliance.view.folders')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('table')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium ${viewMode === 'table' ? 'bg-white shadow text-rose-700' : 'text-gray-600'}`}
+            >
+              <ClipboardList size={14} /> {t('compliance.view.table')}
+            </button>
+          </div>
           <button type="button" onClick={handleExport} disabled={sorted.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm">
             <Download size={18} />
             {t('common.exportCsv')}
@@ -214,7 +283,7 @@ export default function ComplianceItemsList() {
         </div>
       )}
 
-      {items.length > 0 && (
+      {items.length > 0 && viewMode === 'table' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 print:hidden overflow-hidden">
           <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
             <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -263,6 +332,18 @@ export default function ComplianceItemsList() {
         <EmptyState icon="default" title={t('compliance.noItems')} description={t('compliance.noItemsHint')} actionLabel={t('compliance.addItem')} onAction={openAdd} />
       ) : sorted.length === 0 ? (
         <EmptyState icon="default" title={t('compliance.noMatchingItems')} description={t('compliance.tryDifferentSearch')} />
+      ) : viewMode === 'folders' ? (
+        <ComplianceFolderBrowser
+          folders={folders}
+          selectedKey={selectedFolder}
+          onSelectKey={setSelectedFolder}
+          renderItem={itemFolderRender}
+          searchQuery={folderSearch}
+          onSearchChange={setFolderSearch}
+          searchPlaceholder={t('compliance.searchPlaceholder')}
+          emptyTitle={t('compliance.noMatchingItems')}
+          emptyHint={t('compliance.tryDifferentSearch')}
+        />
       ) : (
         <>
           <div className="bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">

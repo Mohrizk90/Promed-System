@@ -102,6 +102,7 @@ import {
   // Misc
   Package,
   Box,
+  Camera,
   Loader2,
   Grip,
   Move,
@@ -216,6 +217,7 @@ export {
   // Misc
   Package,
   Box,
+  Camera,
   Loader2,
   Grip,
   Move,

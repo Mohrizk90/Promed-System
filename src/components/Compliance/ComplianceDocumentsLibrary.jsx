@@ -14,7 +14,11 @@ import {
   PROCESSING_STATES, REVIEW_STATES, processingColor, reviewColor,
   formatConfidence, confidenceColor,
 } from '../../utils/documentProcessing'
-import { Filter, Download, Upload, FileText } from '../ui/Icons'
+import { Filter, Download, Upload, FileText, FolderOpen, ClipboardList } from '../ui/Icons'
+import ComplianceFolderBrowser from './ComplianceFolderBrowser'
+import {
+  groupIntoFolders, documentFolderKey, loadViewMode, saveViewMode, VIEW_MODE_KEY_DOCS,
+} from '../../utils/complianceFolders'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 const ROUTE_KEY = 'compliance_documents_library'
@@ -34,6 +38,9 @@ export default function ComplianceDocumentsLibrary() {
   })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [viewMode, setViewMode] = useState(() => loadViewMode(VIEW_MODE_KEY_DOCS))
+  const [selectedFolder, setSelectedFolder] = useState(null)
+  const [folderSearch, setFolderSearch] = useState('')
 
   const { docs, loading } = useComplianceDocuments({ filters })
   const { tags } = useComplianceDocumentTags()
@@ -63,6 +70,54 @@ export default function ComplianceDocumentsLibrary() {
 
   const setF = (patch) => { setFilters((f) => ({ ...f, ...patch })); setPage(1) }
 
+  const folders = useMemo(() => groupIntoFolders(docs, documentFolderKey), [docs])
+
+  const setView = (mode) => {
+    setViewMode(mode)
+    saveViewMode(VIEW_MODE_KEY_DOCS, mode)
+    setSelectedFolder(null)
+    setFolderSearch('')
+  }
+
+  const docFolderRender = useMemo(() => ({
+    key: (d) => d.id,
+    matchesSearch: (d, q) => (
+      (d.file_name || '').toLowerCase().includes(q)
+      || (d.compliance_items?.title || '').toLowerCase().includes(q)
+      || (d.document_type || '').toLowerCase().includes(q)
+    ),
+    render: (d, chevron) => {
+      const pc = processingColor(d.processing_status)
+      const rc = reviewColor(d.review_status)
+      return (
+        <button
+          type="button"
+          onClick={() => navigate(d.compliance_items?.id
+            ? `/compliance/item/${d.compliance_items.id}?doc=${d.id}`
+            : `/compliance/review-orphan/${d.id}`)}
+          className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-gray-50 transition-colors"
+        >
+          <FileText size={18} className="text-gray-400 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-900 truncate">{d.file_name}</p>
+            <p className="text-xs text-gray-500 truncate mt-0.5">
+              {d.compliance_items?.title || t('compliance.folders.unfiled')}
+            </p>
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${pc.bg} ${pc.text}`}>
+                {t(`compliance.processing.${d.processing_status}`)}
+              </span>
+              <span className={`inline px-1.5 py-0.5 rounded text-[10px] font-medium ${rc.bg} ${rc.text}`}>
+                {t(`compliance.review.status_${d.review_status}`)}
+              </span>
+            </div>
+          </div>
+          {chevron}
+        </button>
+      )
+    },
+  }), [navigate, t])
+
   const handleExport = () => {
     const rows = docs.map((d) => ({
       Title: d.file_name,
@@ -85,9 +140,25 @@ export default function ComplianceDocumentsLibrary() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 print:hidden">
         <div>
           <h2 className="text-xl font-bold text-gray-900">{t('compliance.documentsLibrary.title')}</h2>
-          <p className="text-sm text-gray-600">{t('compliance.documentsLibrary.subtitle')}</p>
+          <p className="text-sm text-gray-600">{t('compliance.folders.documents_subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 print:hidden">
+          <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+            <button
+              type="button"
+              onClick={() => setView('folders')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium ${viewMode === 'folders' ? 'bg-white shadow text-rose-700' : 'text-gray-600'}`}
+            >
+              <FolderOpen size={14} /> {t('compliance.view.folders')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('table')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium ${viewMode === 'table' ? 'bg-white shadow text-rose-700' : 'text-gray-600'}`}
+            >
+              <ClipboardList size={14} /> {t('compliance.view.table')}
+            </button>
+          </div>
           <Link
             to="/compliance"
             className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-3 rounded-lg text-sm flex items-center gap-2 shadow-sm"
@@ -140,7 +211,7 @@ export default function ComplianceDocumentsLibrary() {
         <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
           <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             <Filter size={16} className="text-gray-500" />
-            {t('common.filters')}
+            {viewMode === 'folders' ? t('compliance.folders.quick_filters') : t('common.filters')}
           </h3>
         </div>
         <div className="p-4 flex flex-wrap items-end gap-3">
@@ -148,6 +219,8 @@ export default function ComplianceDocumentsLibrary() {
             <label className="text-xs font-medium text-gray-500">{t('compliance.documentsLibrary.search_placeholder')}</label>
             <input type="search" className="input py-2 text-sm w-full rounded-lg border-gray-300" value={filters.search} onChange={(e) => setF({ search: e.target.value })} placeholder={t('compliance.documentsLibrary.search_placeholder')} />
           </div>
+          {viewMode === 'table' && (
+          <>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500">{t('compliance.documentsLibrary.filter_authority')}</label>
             <select className="input py-2 text-sm w-44 rounded-lg border-gray-300" value={filters.authority} onChange={(e) => setF({ authority: e.target.value })}>
@@ -191,11 +264,24 @@ export default function ComplianceDocumentsLibrary() {
             <label className="text-xs font-medium text-gray-500">{t('compliance.documentsLibrary.filter_date_to')}</label>
             <input type="date" className="input py-2 text-sm rounded-lg border-gray-300" value={filters.dateTo} onChange={(e) => setF({ dateTo: e.target.value })} />
           </div>
+          </>
+          )}
         </div>
       </div>
 
       {docs.length === 0 ? (
         <EmptyState icon="default" title={t('compliance.documentsLibrary.no_results')} />
+      ) : viewMode === 'folders' ? (
+        <ComplianceFolderBrowser
+          folders={folders}
+          selectedKey={selectedFolder}
+          onSelectKey={setSelectedFolder}
+          renderItem={docFolderRender}
+          searchQuery={folderSearch}
+          onSearchChange={setFolderSearch}
+          searchPlaceholder={t('compliance.documentsLibrary.search_placeholder')}
+          emptyTitle={t('compliance.documentsLibrary.no_results')}
+        />
       ) : (
         <>
           <div className="bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">

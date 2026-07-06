@@ -4,7 +4,7 @@ import { authenticateRequest, downloadDocumentBytes, HttpError, loadDocumentForU
 
 const MAX_BYTES = Number(process.env.EXTRACTION_MAX_BYTES || 15 * 1024 * 1024)
 
-export async function extractDocumentForUser({ documentId, user }) {
+export async function extractDocumentForUser({ documentId, user, outputLocale }) {
   const doc = await loadDocumentForUser(documentId, user)
 
   if (doc.size_bytes && doc.size_bytes > MAX_BYTES) {
@@ -20,6 +20,7 @@ export async function extractDocumentForUser({ documentId, user }) {
     buffer,
     mimeType: doc.mime_type,
     fileName: doc.file_name,
+    outputLocale,
   })
 
   const payload = toAdvancePayload(extraction)
@@ -35,7 +36,8 @@ export async function handleExtractRequest(req) {
   const { user } = await authenticateRequest(req)
   const body = req.body && typeof req.body === 'object' ? req.body : {}
   const documentId = body.documentId ?? body.document_id
-  return extractDocumentForUser({ documentId, user })
+  const outputLocale = body.outputLocale ?? body.output_locale ?? body.locale ?? 'en'
+  return extractDocumentForUser({ documentId, user, outputLocale })
 }
 
 export { HttpError }
