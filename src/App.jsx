@@ -16,7 +16,6 @@ const Invoices = lazy(() => import('./components/Invoices'))
 const ComplianceApp = lazy(() => import('./components/Compliance/ComplianceApp'))
 const ComplianceLayout = lazy(() => import('./components/Compliance/ComplianceLayout'))
 const ComplianceItemDetail = lazy(() => import('./components/Compliance/ComplianceItemDetail'))
-const ComplianceImport = lazy(() => import('./components/Compliance/ComplianceImport'))
 const ComplianceOrphanReview = lazy(() => import('./components/Compliance/ComplianceOrphanReview'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
@@ -156,7 +155,7 @@ function AppContent() {
               {/* Compliance & Regulatory Management (worker runs for all sub-routes) */}
               <Route path="/compliance" element={<ProtectedRoute><ComplianceLayout /></ProtectedRoute>}>
                 <Route index element={<ComplianceApp />} />
-                <Route path="import" element={<ComplianceImport />} />
+                <Route path="import" element={<Navigate to="/compliance" replace />} />
                 <Route path="review-orphan/:docId" element={<ComplianceOrphanReview />} />
                 <Route path="item/:id" element={<ComplianceItemDetail />} />
                 <Route path=":tab" element={<ComplianceApp />} />

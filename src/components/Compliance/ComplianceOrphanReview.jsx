@@ -226,10 +226,10 @@ export default function ComplianceOrphanReview() {
       <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-gray-200 rounded">
         <button
           type="button"
-          onClick={() => navigate('/compliance/import')}
+          onClick={() => navigate('/compliance')}
           className="mb-4 text-sm text-rose-700 hover:underline inline-flex items-center gap-1"
         >
-          <ArrowLeft size={14} /> {t('compliance.import.back_to_import')}
+          <ArrowLeft size={14} /> {t('compliance.import.back_to_compliance')}
         </button>
         <p className="text-sm text-gray-500">{t('compliance.review.no_documents_to_review')}</p>
       </div>
@@ -246,9 +246,9 @@ export default function ComplianceOrphanReview() {
       <div className="flex items-start gap-2">
         <button
           type="button"
-          onClick={() => navigate('/compliance/import')}
+          onClick={() => navigate('/compliance')}
           className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 flex-shrink-0"
-          aria-label={t('compliance.import.back_to_import')}
+          aria-label={t('compliance.import.back_to_compliance')}
         >
           <ArrowLeft size={18} />
         </button>

@@ -1,24 +1,26 @@
-// Compliance module URL helpers — keep tab navigation in sync with the router
-// so browser Back stays inside Compliance instead of jumping to the ERP home.
+// Compliance module URL helpers — workflow-first navigation (Inbox is home).
 
 export const COMPLIANCE_TABS = [
-  'dashboard',
-  'items',
+  'inbox',
   'documents',
-  'processing',
+  'items',
   'calendar',
   'authorities',
+  'processing',
+  // Legacy aliases (redirect in ComplianceApp)
+  'dashboard',
 ]
 
 export function complianceTabPath(tab) {
-  const key = tab || 'dashboard'
-  if (key === 'dashboard') return '/compliance'
+  const key = tab || 'inbox'
+  if (key === 'inbox' || key === 'dashboard') return '/compliance'
   return `/compliance/${key}`
 }
 
 export function parseComplianceTab(tabParam) {
-  if (!tabParam) return 'dashboard'
-  return COMPLIANCE_TABS.includes(tabParam) ? tabParam : 'dashboard'
+  if (!tabParam || tabParam === 'dashboard') return 'inbox'
+  if (tabParam === 'import') return 'inbox'
+  return COMPLIANCE_TABS.includes(tabParam) ? tabParam : 'inbox'
 }
 
 export function isCompliancePath(pathname = '') {

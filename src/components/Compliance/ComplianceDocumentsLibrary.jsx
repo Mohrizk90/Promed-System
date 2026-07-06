@@ -89,11 +89,11 @@ export default function ComplianceDocumentsLibrary() {
         </div>
         <div className="flex items-center gap-2 print:hidden">
           <Link
-            to="/compliance/import"
-            className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-3 rounded text-sm flex items-center gap-2"
+            to="/compliance"
+            className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-3 rounded-lg text-sm flex items-center gap-2 shadow-sm"
           >
             <Upload size={16} />
-            {t('compliance.import.title')}
+            {t('compliance.workflow.upload_title')}
           </Link>
           <button
             type="button"
@@ -105,6 +105,35 @@ export default function ComplianceDocumentsLibrary() {
             {t('common.exportCsv')}
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 print:hidden">
+        {[
+          { id: 'all', label: t('compliance.all'), patch: { processingStatus: 'all', reviewStatus: 'all' } },
+          { id: 'attention', label: t('compliance.documentsLibrary.unlinked'), patch: { processingStatus: 'waiting_for_review', reviewStatus: 'all' } },
+          { id: 'processing', label: t('compliance.workflow.col_processing'), patch: { processingStatus: 'ocr_processing', reviewStatus: 'all' } },
+          { id: 'approved', label: t('compliance.review.status_approved'), patch: { processingStatus: 'all', reviewStatus: 'approved' } },
+        ].map((preset) => {
+          const active = preset.id === 'all'
+            ? filters.processingStatus === 'all' && filters.reviewStatus === 'all'
+            : preset.id === 'attention'
+              ? filters.processingStatus === 'waiting_for_review'
+              : preset.id === 'processing'
+                ? filters.processingStatus === 'ocr_processing'
+                : filters.reviewStatus === 'approved'
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => setF(preset.patch)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                active ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-gray-600 border-gray-200 hover:border-rose-200'
+              }`}
+            >
+              {preset.label}
+            </button>
+          )
+        })}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 print:hidden">

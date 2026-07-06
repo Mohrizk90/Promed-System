@@ -61,7 +61,7 @@ export default function Breadcrumbs() {
   const pathSegments = location.pathname.split('/').filter(Boolean)
   const names = routeNames[language] || routeNames.en
   const inCompliance = isCompliancePath(location.pathname)
-  const homePath = inCompliance ? complianceTabPath('dashboard') : '/'
+  const homePath = inCompliance ? complianceTabPath('inbox') : '/'
   const homeLabel = inCompliance ? names.compliance : 'Home'
   const crumbSegments = inCompliance && pathSegments[0] === 'compliance'
     ? pathSegments.slice(1)
@@ -87,7 +87,7 @@ export default function Breadcrumbs() {
         
         {crumbSegments.map((segment, index) => {
           const path = inCompliance
-            ? `${complianceTabPath('dashboard')}${crumbSegments.slice(0, index + 1).map((s) => `/${s}`).join('')}`
+            ? `${complianceTabPath('inbox')}${crumbSegments.slice(0, index + 1).map((s) => `/${s}`).join('')}`
             : `/${pathSegments.slice(0, index + 1).join('/')}`
           const isLast = index === crumbSegments.length - 1
           const name = names[segment] || segment.charAt(0).toUpperCase() + segment.slice(1)
