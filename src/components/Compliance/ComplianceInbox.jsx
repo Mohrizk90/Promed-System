@@ -16,6 +16,7 @@ import AiWorkerStatus from './AiWorkerStatus'
 import ComplianceScanCapture from './ComplianceScanCapture'
 import { deleteComplianceDocument, deleteComplianceDocuments } from '../../utils/complianceDocumentDelete'
 import ConfirmDialog from '../ui/ConfirmDialog'
+import LoadingSpinner from '../LoadingSpinner'
 import {
   Upload, FileText, ChevronRight, Package, RefreshCw, X, Check, Camera,
 } from '../ui/Icons'
