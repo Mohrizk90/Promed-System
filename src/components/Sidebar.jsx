@@ -20,7 +20,8 @@ import LanguageSwitcher from './LanguageSwitcher'
 import { useLanguage } from '../context/LanguageContext'
 import packageJson from '../../package.json'
 import { useAuth } from '../context/AuthContext'
-import { isComplianceOnlyUser } from '../utils/userAccess'
+import { isComplianceOnlyUser, getComplianceHomePath } from '../utils/userAccess'
+import { prefersComplianceMobile } from '../utils/deviceProfile'
 import { useKeyboardShortcuts } from '../context/KeyboardShortcutsContext'
 
 const SIDEBAR_WIDTH = '15rem'
@@ -101,12 +102,17 @@ export default function Sidebar({ mobileOpen, onClose }) {
     )
   }
 
+  const complianceOnly = isComplianceOnlyUser(user)
+  const homePath = complianceOnly
+    ? getComplianceHomePath({ mobile: prefersComplianceMobile() })
+    : '/dashboard'
+
   /* ── Desktop sidebar content ── */
   const sidebarContent = (
     <>
       {/* Logo */}
       <div className="flex-shrink-0 px-3 pt-3 pb-2">
-        <Link to="/dashboard" onClick={handleNavClick} className="block bg-white rounded-lg px-2.5 py-1.5">
+        <Link to={homePath} onClick={handleNavClick} className="block bg-white rounded-lg px-2.5 py-1.5">
           <img src="/Logo_Promed.png" alt="Promed" className="h-10 w-auto mx-auto object-contain" />
         </Link>
       </div>
@@ -150,14 +156,16 @@ export default function Sidebar({ mobileOpen, onClose }) {
             <>
               <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} aria-hidden="true" />
               <div className="absolute bottom-full left-1 right-1 mb-1 bg-white rounded-lg shadow-lg border border-gray-200 py-0.5 z-20">
-                <button
-                  type="button"
-                  onClick={() => { setUserMenuOpen(false); handleNavClick(); navigate('/settings') }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 rounded"
-                >
-                  <Settings size={13} />
-                  {t('common.settings')}
-                </button>
+                {!complianceOnly && (
+                  <button
+                    type="button"
+                    onClick={() => { setUserMenuOpen(false); handleNavClick(); navigate('/settings') }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 rounded"
+                  >
+                    <Settings size={13} />
+                    {t('common.settings')}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleSignOut}

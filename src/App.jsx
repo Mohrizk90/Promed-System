@@ -36,7 +36,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from './context/KeyboardShortcutsContext'
 import { isCompliancePath } from './utils/complianceRoutes'
 import { isMobileCompliancePath, prefersComplianceMobile } from './utils/deviceProfile'
-import { getComplianceHomePath, isComplianceOnlyUser } from './utils/userAccess'
+import { getComplianceHomePath, isComplianceOnlyUser, isErpPath } from './utils/userAccess'
 
 const NAV_SHORTCUTS = [
   { path: '/dashboard', shortcut: 'd' },
@@ -57,11 +57,16 @@ function AppShell({ children }) {
     : '/dashboard'
 
   useEffect(() => {
-    NAV_SHORTCUTS.forEach(({ path, shortcut }) => {
+    const shortcuts = isComplianceOnlyUser(user)
+      ? NAV_SHORTCUTS.filter(({ path }) => path === '/compliance')
+      : NAV_SHORTCUTS
+    shortcuts.forEach(({ path, shortcut }) => {
       registerShortcut(shortcut, () => navigate(path), `Go to ${path}`)
     })
-    registerShortcut('?', () => setShowHelp(true), 'Show keyboard shortcuts')
-  }, [navigate, registerShortcut, setShowHelp])
+    if (!isComplianceOnlyUser(user)) {
+      registerShortcut('?', () => setShowHelp(true), 'Show keyboard shortcuts')
+    }
+  }, [navigate, registerShortcut, setShowHelp, user])
 
   return (
     <div className="flex h-full min-h-0 bg-gray-100">
@@ -133,6 +138,11 @@ function AppContent() {
 
   const showMobileComplianceShell = user && !isPublicPage && isMobileCompliancePath(location.pathname)
   const showAppShell = user && !isLoginPage && !isSignUpPage && !showMobileComplianceShell
+
+  // Compliance-only users must never land on ERP routes (sidebar links, bookmarks, shortcuts).
+  if (user && !isPublicPage && isComplianceOnlyUser(user) && isErpPath(location.pathname)) {
+    return <Navigate to={getComplianceHomePath({ mobile: prefersComplianceMobile() })} replace />
+  }
 
   // Phone users on /compliance/* go straight to the scan mini-app (no ERP chrome flash).
   if (

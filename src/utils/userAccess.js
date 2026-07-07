@@ -7,11 +7,58 @@ export const APP_ROLES = {
   COMPLIANCE_ONLY: 'compliance_only',
 }
 
+const COMPLIANCE_ROLE_VALUES = new Set(['compliance_only', 'compliance', 'compliance-only'])
+
+function normalizeRoleValue(value) {
+  if (typeof value !== 'string') return ''
+  return value.trim().toLowerCase().replace(/[\s-]+/g, '_')
+}
+
+// Look for the compliance role in every place Supabase might stash it. The
+// dashboard "User Metadata" box writes to user_metadata; app_metadata is only
+// settable via SQL/Admin API — so we check both, plus a few common key names
+// and a boolean flag, to avoid the "I set it but it still sees everything" trap.
+function detectComplianceFlag(container) {
+  if (!container || typeof container !== 'object') return false
+
+  const roleCandidates = [
+    container.role,
+    container.app_role,
+    container.appRole,
+    container.user_role,
+    container.access,
+    container.access_level,
+  ]
+  if (roleCandidates.some((r) => COMPLIANCE_ROLE_VALUES.has(normalizeRoleValue(r)))) {
+    return true
+  }
+
+  // Role stored as an array, e.g. { roles: ['compliance_only'] }
+  const roleArrays = [container.roles, container.role_list]
+  for (const arr of roleArrays) {
+    if (Array.isArray(arr) && arr.some((r) => COMPLIANCE_ROLE_VALUES.has(normalizeRoleValue(r)))) {
+      return true
+    }
+  }
+
+  // Explicit boolean flags.
+  if (container.compliance_only === true || container.complianceOnly === true) return true
+  if (normalizeRoleValue(container.compliance_only) === 'true') return true
+
+  return false
+}
+
 export function getUserAppRole(user) {
   if (!user) return APP_ROLES.FULL
 
-  const fromMeta = user.app_metadata?.role || user.user_metadata?.role
-  if (fromMeta === 'compliance_only' || fromMeta === 'compliance') {
+  const containers = [
+    user.app_metadata,
+    user.user_metadata,
+    user.raw_app_meta_data,
+    user.raw_user_meta_data,
+    user, // top-level (e.g. user.role in some setups)
+  ]
+  if (containers.some((c) => detectComplianceFlag(c))) {
     return APP_ROLES.COMPLIANCE_ONLY
   }
 

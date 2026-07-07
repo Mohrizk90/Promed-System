@@ -1,0 +1,21 @@
+-- =============================================================================
+-- Promed: assign compliance-only access to a user
+-- =============================================================================
+-- Run in Supabase SQL Editor (requires service-role / postgres access).
+--
+-- compliance_only users:
+--   • Desktop → /compliance only (no dashboard, transactions, inventory, etc.)
+--   • Mobile  → /m/compliance scan mini-app
+--
+-- IMPORTANT: user must sign OUT and sign IN again after this runs so the JWT
+-- picks up the new app_metadata.
+
+-- Replace with the compliance user's email:
+-- UPDATE auth.users
+-- SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || '{"role":"compliance_only"}'::jsonb
+-- WHERE email = 'compliance@yourcompany.com';
+
+-- Verify:
+-- SELECT id, email, raw_app_meta_data, raw_user_meta_data
+-- FROM auth.users
+-- WHERE email = 'compliance@yourcompany.com';
