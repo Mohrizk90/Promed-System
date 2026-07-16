@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS public.vps_metrics (
         'net_out_bps',
         'bot_up',
         'mcp_up',
-        'telegram_queue_lag'
+        'telegram_queue_lag',
+        'collector_mode'
     )),
     value_num DOUBLE PRECISION,
     value_text TEXT,
