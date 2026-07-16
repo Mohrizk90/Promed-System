@@ -1,5 +1,5 @@
-import { allocateNextInvoiceNumber, getInvoiceSettings } from './invoiceSettings'
-import { getCompanySettings } from './companySettings'
+import { allocateNextInvoiceNumber, getInvoiceSettings } from './invoiceSettings.js'
+import { getCompanySettings } from './companySettings.js'
 
 const DRAFT_STATUSES = new Set(['not_started', 'in_progress'])
 

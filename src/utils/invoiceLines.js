@@ -1,4 +1,4 @@
-import { isDraftInvoice, isIssuedInvoice } from './invoiceService'
+import { isDraftInvoice, isIssuedInvoice } from './invoiceService.js'
 
 export function emptyInvoiceLine() {
   return {

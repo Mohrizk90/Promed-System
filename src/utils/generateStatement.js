@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
-import { getDisplayInvoiceNumber } from './invoiceService'
+import { getDisplayInvoiceNumber } from './invoiceService.js'
 
 /* ───── Browser-side download helper ───── */
 // Converts raw PDF bytes to a Blob and triggers a browser download.
