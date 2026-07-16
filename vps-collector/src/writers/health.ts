@@ -1,6 +1,7 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { type SupabaseClient } from '@supabase/supabase-js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
+import { supabase } from '../supabase.js';
 
 export interface BotHealthSnapshot {
   host: string;
@@ -13,15 +14,9 @@ export interface BotHealthSnapshot {
   error: string | null;
 }
 
-let client: SupabaseClient | null = null;
-
 function getClient(): SupabaseClient | null {
-  if (client) return client;
   if (!config.SUPABASE_URL || !config.SUPABASE_SERVICE_ROLE_KEY) return null;
-  client = createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-  return client;
+  return supabase();
 }
 
 export async function upsertBotHealth(rows: BotHealthSnapshot[]): Promise<number> {

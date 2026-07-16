@@ -1,6 +1,7 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { type SupabaseClient } from '@supabase/supabase-js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
+import { supabase } from '../supabase.js';
 
 export interface MetricRow {
   host: string;
@@ -11,17 +12,9 @@ export interface MetricRow {
   tags?: Record<string, unknown> | null;
 }
 
-let client: SupabaseClient | null = null;
-
 function getClient(): SupabaseClient | null {
-  if (client) return client;
-  if (!config.SUPABASE_URL || !config.SUPABASE_SERVICE_ROLE_KEY) {
-    return null;
-  }
-  client = createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-  return client;
+  if (!config.SUPABASE_URL || !config.SUPABASE_SERVICE_ROLE_KEY) return null;
+  return supabase();
 }
 
 /** Upsert a batch of metric rows into `vps_metrics`. Returns the number of
