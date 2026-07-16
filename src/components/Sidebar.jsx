@@ -21,7 +21,8 @@ import LanguageSwitcher from './LanguageSwitcher'
 import { useLanguage } from '../context/LanguageContext'
 import packageJson from '../../package.json'
 import { useAuth } from '../context/AuthContext'
-import { isComplianceOnlyUser } from '../utils/userAccess'
+import { isComplianceOnlyUser, getComplianceHomePath } from '../utils/userAccess'
+import { prefersComplianceMobile } from '../utils/deviceProfile'
 import { useKeyboardShortcuts } from '../context/KeyboardShortcutsContext'
 
 const SIDEBAR_WIDTH = '15rem'
@@ -33,6 +34,10 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const { user, signOut } = useAuth()
   const { setShowHelp } = useKeyboardShortcuts()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const complianceOnly = isComplianceOnlyUser(user)
+  const homePath = complianceOnly
+    ? getComplianceHomePath({ mobile: prefersComplianceMobile() })
+    : '/dashboard'
 
   const isActive = (path) =>
     location.pathname === path || (path === '/reports/aging' && location.pathname.startsWith('/reports'))
@@ -47,7 +52,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
     { path: '/compliance', label: t('nav.compliance'), icon: Shield, shortcut: 'm', color: 'rose' },
     { path: '/monitoring/agent', label: t('nav.monitoring'), icon: Activity, shortcut: null, color: 'slate' },
-  ].filter((item) => !isComplianceOnlyUser(user) || item.path === '/compliance')
+  ].filter((item) => !complianceOnly || item.path === '/compliance')
 
   const iconColors = {
     indigo: { inactive: 'bg-indigo-500/90 text-white', active: 'bg-indigo-100 text-indigo-600' },
@@ -109,7 +114,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     <>
       {/* Logo */}
       <div className="flex-shrink-0 px-3 pt-3 pb-2">
-        <Link to="/dashboard" onClick={handleNavClick} className="block bg-white rounded-lg px-2.5 py-1.5">
+        <Link to={homePath} onClick={handleNavClick} className="block bg-white rounded-lg px-2.5 py-1.5">
           <img src="/Logo_Promed.png" alt="Promed" className="h-10 w-auto mx-auto object-contain" />
         </Link>
       </div>
@@ -121,15 +126,17 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
       {/* Bottom section */}
       <div className="flex-shrink-0 px-2 py-2 border-t border-white/10 space-y-0.5">
-        {/* Help */}
-        <button
-          type="button"
-          onClick={() => { setShowHelp(true); if (onClose) onClose() }}
-          className="rtl-flip w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[12px] text-blue-200/80 hover:bg-white/10 hover:text-white transition-colors"
-        >
-          <HelpCircle size={14} className="flex-shrink-0" />
-          <span className="truncate">{t('common.keyboard')}</span>
-        </button>
+        {/* Help — ERP keyboard shortcuts only */}
+        {!complianceOnly && (
+          <button
+            type="button"
+            onClick={() => { setShowHelp(true); if (onClose) onClose() }}
+            className="rtl-flip w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[12px] text-blue-200/80 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            <HelpCircle size={14} className="flex-shrink-0" />
+            <span className="truncate">{t('common.keyboard')}</span>
+          </button>
+        )}
 
         {/* Language */}
         <div className="px-1">
@@ -153,14 +160,16 @@ export default function Sidebar({ mobileOpen, onClose }) {
             <>
               <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} aria-hidden="true" />
               <div className="absolute bottom-full left-1 right-1 mb-1 bg-white rounded-lg shadow-lg border border-gray-200 py-0.5 z-20">
-                <button
-                  type="button"
-                  onClick={() => { setUserMenuOpen(false); handleNavClick(); navigate('/settings') }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 rounded"
-                >
-                  <Settings size={13} />
-                  {t('common.settings')}
-                </button>
+                {!complianceOnly && (
+                  <button
+                    type="button"
+                    onClick={() => { setUserMenuOpen(false); handleNavClick(); navigate('/settings') }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 rounded"
+                  >
+                    <Settings size={13} />
+                    {t('common.settings')}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleSignOut}
@@ -237,14 +246,16 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
           {/* Mobile bottom */}
           <div className="flex-shrink-0 px-2 py-2 border-t border-white/10 space-y-0.5">
-            <button
-              type="button"
-              onClick={() => { setShowHelp(true); onClose?.() }}
-              className="rtl-flip w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[12px] text-blue-200/80 hover:bg-white/10 hover:text-white"
-            >
-              <HelpCircle size={14} />
-              <span>{t('common.keyboard')}</span>
-            </button>
+            {!complianceOnly && (
+              <button
+                type="button"
+                onClick={() => { setShowHelp(true); onClose?.() }}
+                className="rtl-flip w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[12px] text-blue-200/80 hover:bg-white/10 hover:text-white"
+              >
+                <HelpCircle size={14} />
+                <span>{t('common.keyboard')}</span>
+              </button>
+            )}
             <div className="px-1">
               <LanguageSwitcher />
             </div>

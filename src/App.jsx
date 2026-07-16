@@ -58,11 +58,16 @@ function AppShell({ children }) {
     : '/dashboard'
 
   useEffect(() => {
-    NAV_SHORTCUTS.forEach(({ path, shortcut }) => {
+    const shortcuts = isComplianceOnlyUser(user)
+      ? [{ path: getComplianceHomePath({ mobile: prefersComplianceMobile() }), shortcut: 'm' }]
+      : NAV_SHORTCUTS
+    shortcuts.forEach(({ path, shortcut }) => {
       registerShortcut(shortcut, () => navigate(path), `Go to ${path}`)
     })
-    registerShortcut('?', () => setShowHelp(true), 'Show keyboard shortcuts')
-  }, [navigate, registerShortcut, setShowHelp])
+    if (!isComplianceOnlyUser(user)) {
+      registerShortcut('?', () => setShowHelp(true), 'Show keyboard shortcuts')
+    }
+  }, [navigate, registerShortcut, setShowHelp, user])
 
   return (
     <div className="flex h-full min-h-0 bg-gray-100">
@@ -94,8 +99,12 @@ function AppShell({ children }) {
 function NotFound() {
   const navigate = useNavigate()
   const location = useLocation()
-  const homePath = isCompliancePath(location.pathname) ? '/compliance' : '/'
-  const homeLabel = isCompliancePath(location.pathname) ? 'Compliance' : 'Home'
+  const { user } = useAuth()
+  const complianceOnly = isComplianceOnlyUser(user)
+  const homePath = complianceOnly
+    ? getComplianceHomePath({ mobile: prefersComplianceMobile() })
+    : (isCompliancePath(location.pathname) ? '/compliance' : '/')
+  const homeLabel = complianceOnly || isCompliancePath(location.pathname) ? 'Compliance' : 'Home'
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">
       <h1 className="text-4xl font-bold text-gray-800 mb-2">404</h1>
