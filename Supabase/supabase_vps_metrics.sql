@@ -23,9 +23,15 @@ CREATE TABLE IF NOT EXISTS public.vps_metrics (
     )),
     value_num DOUBLE PRECISION,
     value_text TEXT,
+    tags JSONB,
     ts TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (host, metric, ts)
 );
+
+-- Idempotent in-place migration for older installs (the table was created
+-- without a `tags` column; the collector now writes JSON metadata with each
+-- metric row).
+ALTER TABLE public.vps_metrics ADD COLUMN IF NOT EXISTS tags JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_vps_metrics_host_metric_ts
     ON public.vps_metrics(host, metric, ts DESC);

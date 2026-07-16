@@ -53,7 +53,7 @@ export async function reportError(opts: {
     source: opts.source,
     severity: opts.severity,
     message: opts.message,
-    context: opts.context ?? {},
+    context_json: opts.context ?? {},
     created_at: new Date().toISOString(),
   };
   const { error } = await c.from('bot_error_feed').insert(row);
