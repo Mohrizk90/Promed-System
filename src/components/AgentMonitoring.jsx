@@ -101,7 +101,7 @@ function StatusCard({ title, snapshot, icon: Icon, extra }) {
   const ageMs = snapshot?.ts ? Date.now() - new Date(snapshot.ts).getTime() : null
   const status = snapshot?.status || null
   const c = statusColor(ageMs, status)
-  const IconComponent = Icon || Server
+  const IconComponent = Icon || Box
   return (
     <div className={`card p-4 border ${c.border}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
@@ -581,7 +581,7 @@ export default function AgentMonitoring() {
                 <span className="text-sm font-semibold text-gray-900">{t('monitoring.vpsSmops')}</span>
               </div>
               <div className="p-1.5 rounded-md bg-slate-50">
-                <Server size={16} className="text-slate-600" />
+                <Box size={16} className="text-slate-600" />
               </div>
             </div>
             <div className="space-y-2 mt-3">
