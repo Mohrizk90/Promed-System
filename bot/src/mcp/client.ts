@@ -70,7 +70,16 @@ export class MCPStreamableHttpClient {
           return;
         } catch (err) {
           lastErr = err;
-          logger.warn({ err, attempt: i + 1 }, "mcp connect failed; retrying");
+          // The MCP server uses a stateful StreamableHTTPServerTransport. If
+          // our retry races a previously-issued initialize, the server replies
+          // "Invalid Request: Server already initialized". That is harmless —
+          // a fresh transport handles it on the next attempt. Demote to debug.
+          const msg = (err as Error)?.message ?? "";
+          if (/Server already initialized/i.test(msg)) {
+            logger.debug({ attempt: i + 1 }, "mcp init race; retrying");
+          } else {
+            logger.warn({ err, attempt: i + 1 }, "mcp connect failed; retrying");
+          }
           await new Promise((r) => setTimeout(r, backoffs[i] ?? 4000));
         }
       }
