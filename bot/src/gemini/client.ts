@@ -131,12 +131,27 @@ export class GeminiClient {
         }
         toolCalls.push({ name, args: parsedArgs, ok });
 
+        // Coerce to a plain object for the Gemini wire payload — arrays, null,
+        // primitives at the top level all trigger "Proto field is not repeating"
+        // (Gemini's function_response.response is a Struct, not a list).
+        let safeResponse: Record<string, unknown>;
+        if (
+          responsePayload !== null &&
+          typeof responsePayload === "object" &&
+          !Array.isArray(responsePayload)
+        ) {
+          safeResponse = responsePayload as Record<string, unknown>;
+        } else {
+          safeResponse =
+            responsePayload === null ? { result: null } : { result: responsePayload };
+        }
+
         // Provide a functionResponse back to Gemini so it can continue the turn.
         await chat.sendMessage([
           {
             functionResponse: {
               name,
-              response: responsePayload as Record<string, unknown>,
+              response: safeResponse,
             },
           } as unknown as Part,
         ]);
