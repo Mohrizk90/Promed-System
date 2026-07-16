@@ -20,8 +20,12 @@ export async function synthesizeSpeech(text: string): Promise<TtsResult | null> 
   const voiceName = cfg.GEMINI_TTS_VOICE;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(cfg.GEMINI_API_KEY)}`;
 
+  // Prompt the TTS model to deliver Egyptian Arabic with a natural male delivery.
+  const ttsPrompt =
+    `Read this aloud in Egyptian Arabic (Masri), natural male Cairo office tone, calm and clear:\n\n${spoken}`;
+
   const body = {
-    contents: [{ parts: [{ text: spoken }] }],
+    contents: [{ parts: [{ text: ttsPrompt }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
       speechConfig: {

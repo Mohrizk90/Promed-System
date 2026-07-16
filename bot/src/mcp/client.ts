@@ -95,18 +95,45 @@ export class MCPStreamableHttpClient {
     }
   }
 
-  async listTools(): Promise<McpTool[]> {
+  /**
+   * When the MCP server restarts (e.g. a deploy) our session dies but
+   * `connected` stays true, so every call fails until the bot is restarted.
+   * Detect session/transport-shaped failures, rebuild the connection once,
+   * and retry — deploys of the MCP must never require a bot restart.
+   */
+  private static isStaleSessionError(err: unknown): boolean {
+    const msg = (err as Error)?.message ?? "";
+    return /session|initiali[sz]ed|terminated|not found|fetch failed|ECONNREFUSED|ECONNRESET|socket hang up|404|400/i.test(
+      msg,
+    );
+  }
+
+  private async withReconnect<T>(op: () => Promise<T>): Promise<T> {
     await this.ensureConnected();
     if (!this.client) throw new Error("mcp client not initialised");
-    const { tools } = await this.client.listTools();
+    try {
+      return await op();
+    } catch (err) {
+      if (!MCPStreamableHttpClient.isStaleSessionError(err)) throw err;
+      logger.warn(
+        { err: (err as Error).message },
+        "mcp call failed with stale-session error; reconnecting and retrying once",
+      );
+      await this.close();
+      await this.ensureConnected();
+      if (!this.client) throw new Error("mcp client not initialised after reconnect");
+      return await op();
+    }
+  }
+
+  async listTools(): Promise<McpTool[]> {
+    const { tools } = await this.withReconnect(() => this.client!.listTools());
     return tools;
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<McpToolCallResult> {
-    await this.ensureConnected();
-    if (!this.client) throw new Error("mcp client not initialised");
     try {
-      const res = await this.client.callTool({ name, arguments: args });
+      const res = await this.withReconnect(() => this.client!.callTool({ name, arguments: args }));
       const isError = Boolean((res as { isError?: boolean }).isError);
       return { content: (res as { content: unknown }).content, isError };
     } catch (err) {

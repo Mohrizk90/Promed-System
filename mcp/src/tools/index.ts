@@ -1,22 +1,9 @@
 import { z } from 'zod';
 import { whoamiHandler, whoamiSchema } from './whoami.js';
-import {
-  listClientsHandler,
-  getClientHandler,
-  listClientsSchema,
-  getClientSchema,
-} from './clients.js';
-import {
-  listInvoicesHandler,
-  getClientTransactionHandler,
-  listInvoicesSchema,
-  getClientTransactionSchema,
-} from './invoices.js';
+import { listClientsHandler, listClientsSchema } from './clients.js';
 import {
   generateClientStatementHandler,
-  generateInvoiceHandler,
   generateClientStatementSchema,
-  generateInvoiceSchema,
 } from './reports.js';
 
 export type ToolKind = 'read' | 'write';
@@ -28,6 +15,10 @@ export interface ToolDef<S extends z.ZodTypeAny> {
   description: string;
 }
 
+// Deliberately minimal: the Telegram agent does ONE job — client statements.
+// The full tool set (clients/products/transactions/payments CRUD) still lives
+// in ./clients.ts, ./transactions.ts, ./payments.ts, ./products.ts,
+// ./invoices.ts and can be re-registered here once statements are rock solid.
 export const tools = {
   whoami: {
     schema: whoamiSchema,
@@ -39,25 +30,7 @@ export const tools = {
     schema: listClientsSchema,
     handler: listClientsHandler,
     kind: 'read' as const,
-    description: 'List clients. Optional query substring matches name/phone.',
-  },
-  get_client: {
-    schema: getClientSchema,
-    handler: getClientHandler,
-    kind: 'read' as const,
-    description: 'Get a client by id with recent transactions.',
-  },
-  list_invoices: {
-    schema: listInvoicesSchema,
-    handler: listInvoicesHandler,
-    kind: 'read' as const,
-    description: 'List invoiced client transactions.',
-  },
-  get_client_transaction: {
-    schema: getClientTransactionSchema,
-    handler: getClientTransactionHandler,
-    kind: 'read' as const,
-    description: 'Get a single client transaction with payments.',
+    description: 'List clients. Optional query substring matches name/phone (Arabic≈Latin fuzzy).',
   },
   generate_client_statement: {
     schema: generateClientStatementSchema,
@@ -65,12 +38,13 @@ export const tools = {
     kind: 'read' as const,
     description: 'Generate a PDF statement for a client. Returns short-lived signed URL.',
   },
-  generate_invoice: {
-    schema: generateInvoiceSchema,
-    handler: generateInvoiceHandler,
-    kind: 'read' as const,
-    description: 'Generate a PDF invoice. Returns short-lived signed URL.',
-  },
 } satisfies Record<string, ToolDef<z.ZodTypeAny>>;
 
 export type ToolName = keyof typeof tools;
+
+/** Tool names that mutate ERP data (bot confirmation gate). Empty for now. */
+export const WRITE_TOOL_NAMES = new Set(
+  (Object.entries(tools) as [ToolName, ToolDef<z.ZodTypeAny>][])
+    .filter(([, def]) => def.kind === 'write')
+    .map(([name]) => name),
+);

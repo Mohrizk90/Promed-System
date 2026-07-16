@@ -1,71 +1,67 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import type TelegramBot from "node-telegram-bot-api";
 import { logger } from "../logger.js";
 import { RateLimiter } from "../ratelimit.js";
-import {
-  writeAudit,
-  writeError,
-  upsertPending,
-  clearPending as auditClearPending,
-  fiveMinBucket,
-} from "../audit.js";
+import { writeAudit, writeError, fiveMinBucket } from "../audit.js";
 import { getMcpClient } from "../mcp/client.js";
 import { getGemini, type GeminiInlinePart } from "../gemini/client.js";
 import { buildToolList } from "../gemini/prompt.js";
-import { getSession, clearPendingFor, persistSession, formatSessionContext, type Session } from "../session/store.js";
-import {
-  buildConfirmKeyboard,
-  buildCancelKeyboard,
-  parseCallbackData,
-  isYesDelete,
-} from "./keyboards.js";
+import { getSession, persistSession, formatSessionContext, type Session } from "../session/store.js";
 import { createLinkCode, resolveLink, touchLastSeen, relativeTime } from "./linking.js";
 import { downloadTelegramFile, sendPdfToChat } from "./files.js";
 import { synthesizeSpeech } from "../gemini/tts.js";
 
 const WELCOME =
-  "Welcome to Promed ERP Assistant. /link to connect your account. /help for commands.\n\n" +
-  "مرحباً بك في مساعد Promed. /link لربط حسابك. /help للأوامر.";
+  "أهلاً بيك، معاك حسن من بروميد.\n" +
+  "/link عشان تربط حسابك · /help للأوامر.\n" +
+  "ابعتلي اسم العميل كتابة أو فويس وأنا أبعتلك كشف الحساب PDF.";
 
 const HELP = [
-  "/start — Welcome + bump last seen",
-  "/link — Generate a 6-char claim code (15 min TTL)",
-  "/whoami — Show the linked Supabase user",
-  "/cancel — Clear any pending confirmation",
-  "/help — This message",
+  "/start — ترحيب",
+  "/link — كود ربط الحساب (صالح 15 دقيقة)",
+  "/whoami — مين الحساب المربوط",
+  "/help — الرسالة دي",
   "",
-  "Send any text, voice note, or photo to chat with the assistant.",
+  "شغلي دلوقتي: كشوف حساب العملاء PDF.",
+  "قول مثلاً: «كشف حساب ام بي اس» — نص أو فويس.",
 ].join("\n");
-
-const WRITE_PREFIXES = ["create_", "update_", "delete_", "add_", "remove_", "set_"];
-
-function isWriteTool(name: string): boolean {
-  const lower = name.toLowerCase();
-  return WRITE_PREFIXES.some((p) => lower.startsWith(p));
-}
 
 function hashArgs(args: Record<string, unknown>): string {
   return createHash("sha256").update(JSON.stringify(args)).digest("hex").slice(0, 16);
 }
 
-function nonce(): string {
-  return randomBytes(8).toString("hex");
-}
-
 function sendText(bot: TelegramBot, chatId: number, text: string): Promise<void> {
-  // Default to plain text so arbitrary Gemini output (which can contain
-  // Markdown punctuation like _, *, [, ], `, ~) doesn't trigger Telegram's
-  // "can't parse entities" Bad Request mid-conversation.
+  // Plain text so arbitrary Gemini output (Markdown punctuation like _, *, [,
+  // ], `, ~) doesn't trigger Telegram's "can't parse entities" Bad Request.
   return bot.sendMessage(chatId, text).then(() => undefined);
 }
 
 function notLinkedReply(): string {
-  return "Your account isn't linked yet. Send /link to get a 6-char code, then paste it in Promed → Settings → Telegram.";
+  return "الحساب لسه مش مربوط. ابعت /link وخد الكود، ولصقه في Promed ← الإعدادات ← Telegram.";
 }
 
-function detectLocaleHint(text: string): "en" | "ar" | "auto" {
-  if (/[\u0600-\u06FF]/.test(text)) return "ar";
-  return "auto";
+/** Default Egyptian Arabic; English only if the message is clearly Latin-only. */
+function detectLocaleHint(text: string): "en" | "ar" {
+  const hasArabic = /[؀-ۿ]/.test(text);
+  const hasLatin = /[A-Za-z]{3,}/.test(text);
+  if (!hasArabic && hasLatin) return "en";
+  return "ar";
+}
+
+/**
+ * Per-chat turn queue. Without it, two quick voice notes are processed
+ * concurrently and the replies (text + TTS voice) land out of order — the
+ * user hears the answer to an OLD voice note after sending a new one.
+ * Serializing per chat guarantees replies arrive in the order asked.
+ */
+const chatQueues = new Map<number, Promise<void>>();
+function enqueueTurn(chatId: number, job: () => Promise<void>): void {
+  const prev = chatQueues.get(chatId) ?? Promise.resolve();
+  const next = prev.then(job, job);
+  chatQueues.set(chatId, next);
+  void next.finally(() => {
+    if (chatQueues.get(chatId) === next) chatQueues.delete(chatId);
+  });
 }
 
 export type HandlerDeps = {
@@ -105,7 +101,7 @@ export function registerHandlers(deps: HandlerDeps): void {
       await safeSend(bot, dryRun, chatId, text);
     } catch (err) {
       writeError({ source: "supabase", severity: "error", message: (err as Error).message, ctx: { chatId } });
-      await safeSend(bot, dryRun, chatId, "Couldn't generate a link code right now. Try again in a moment.");
+      await safeSend(bot, dryRun, chatId, "ما قدرتش أعمل كود الربط دلوقتي. جرّب بعد شوية.");
     }
   });
 
@@ -124,26 +120,28 @@ export function registerHandlers(deps: HandlerDeps): void {
     );
   });
 
-  bot.onText(/^\/cancel(?:@\w+)?\s*$/, async (msg) => {
-    const chatId = msg.chat.id;
-    clearPendingFor(chatId);
-    auditClearPending(chatId);
-    await safeSend(bot, dryRun, chatId, "Cancelled.");
-  });
-
   // Text messages.
   bot.on("message", async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text ?? "";
     if (text.startsWith("/")) return; // commands handled above
-    if (msg.voice || msg.photo || msg.document || msg.audio) return; // handled below
+    if (msg.voice || msg.audio) return; // handled below
+    if (msg.photo || msg.document) {
+      await safeSend(
+        bot,
+        dryRun,
+        chatId,
+        "أنا شغال كشوف الحساب بس دلوقتي يا باشا — ابعتلي اسم العميل نص أو فويس.",
+      );
+      return;
+    }
+    if (!text.trim()) return;
 
     if (!rateLimiter.allow(chatId)) {
-      await safeSend(bot, dryRun, chatId, "Slow down — try again in a minute.");
+      await safeSend(bot, dryRun, chatId, "استنى شوية — كتير أوي في دقيقة.");
       return;
     }
 
-    const session = await getSession(chatId);
     const link = await resolveLink(chatId).catch(() => null);
     if (!link) {
       await safeSend(bot, dryRun, chatId, notLinkedReply());
@@ -151,40 +149,41 @@ export function registerHandlers(deps: HandlerDeps): void {
     }
     await touchLastSeen(chatId).catch(() => undefined);
 
-    try {
-      await bot.sendChatAction(chatId, "typing").catch(() => undefined);
-      await safeSend(bot, dryRun, chatId, "حاضر، ثواني…");
-      await handleUserTurn({
-        bot,
-        dryRun,
-        chatId,
-        userId: link.user_id,
-        parts: [{ kind: "text", text }],
-        session,
-        latestText: text,
-        preferVoice: true,
-      });
-    } catch (err) {
-      writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
-      await safeSend(
-        bot,
-        dryRun,
-        chatId,
-        "حصلت مشكلة مؤقتة. جرّب تاني أو صِغ الطلب بشكل أوضح.",
-      );
-    }
+    enqueueTurn(chatId, async () => {
+      const session = await getSession(chatId);
+      try {
+        await bot.sendChatAction(chatId, "typing").catch(() => undefined);
+        await handleUserTurn({
+          bot,
+          dryRun,
+          chatId,
+          userId: link.user_id,
+          parts: [{ kind: "text", text }],
+          session,
+          latestText: text,
+        });
+      } catch (err) {
+        writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
+        await safeSend(bot, dryRun, chatId, "حصلت مشكلة مؤقتة. جرّب تاني كمان شوية.");
+      }
+    });
+  });
+
+  // Leftover inline-keyboard taps from the old confirm flow — just clear the
+  // spinner; there is nothing to confirm in statements-only mode.
+  bot.on("callback_query", async (q) => {
+    await bot.answerCallbackQuery(q.id, { text: "" }).catch(() => undefined);
   });
 
   // Voice notes.
   bot.on("voice", async (msg) => {
     const chatId = msg.chat.id;
     if (!rateLimiter.allow(chatId)) {
-      await safeSend(bot, dryRun, chatId, "Slow down — try again in a minute.");
+      await safeSend(bot, dryRun, chatId, "استنى شوية — كتير أوي في دقيقة.");
       return;
     }
     const voice = msg.voice;
     if (!voice) return;
-    const session = await getSession(chatId);
     const link = await resolveLink(chatId).catch(() => null);
     if (!link) {
       await safeSend(bot, dryRun, chatId, notLinkedReply());
@@ -192,176 +191,39 @@ export function registerHandlers(deps: HandlerDeps): void {
     }
     await touchLastSeen(chatId).catch(() => undefined);
 
-    try {
-      await bot.sendChatAction(chatId, "record_voice").catch(() => undefined);
-      await safeSend(bot, dryRun, chatId, "حاضر، بسمع الرسالة…");
-      const file = await downloadTelegramFile(bot, voice.file_id);
-      await handleUserTurn({
-        bot,
-        dryRun,
-        chatId,
-        userId: link.user_id,
-        parts: [{ kind: "audio", mimeType: file.mimeType, base64: file.bytes.toString("base64") }],
-        session,
-        latestText: "(voice note)",
-        preferVoice: true,
-      });
-    } catch (err) {
-      writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
-      await safeSend(bot, dryRun, chatId, "ما قدرتش أحمل الرسالة الصوتية. ابعت تاني أو اكتب النص.");
-    }
-  });
-
-  // Photos.
-  bot.on("photo", async (msg) => {
-    const chatId = msg.chat.id;
-    if (!rateLimiter.allow(chatId)) {
-      await safeSend(bot, dryRun, chatId, "Slow down — try again in a minute.");
-      return;
-    }
-    const photos = msg.photo ?? [];
-    const biggest = photos[photos.length - 1];
-    if (!biggest) return;
-
-    const session = await getSession(chatId);
-    const link = await resolveLink(chatId).catch(() => null);
-    if (!link) {
-      await safeSend(bot, dryRun, chatId, notLinkedReply());
-      return;
-    }
-    await touchLastSeen(chatId).catch(() => undefined);
-
-    const caption = msg.caption ?? "(photo)";
-
-    try {
-      await bot.sendChatAction(chatId, "typing").catch(() => undefined);
-      const file = await downloadTelegramFile(bot, biggest.file_id);
-      await handleUserTurn({
-        bot,
-        dryRun,
-        chatId,
-        userId: link.user_id,
-        parts: [
-          { kind: "image", mimeType: file.mimeType, base64: file.bytes.toString("base64") },
-          { kind: "text", text: caption },
-        ],
-        session,
-        latestText: caption,
-        preferVoice: true,
-      });
-    } catch (err) {
-      writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
-      await safeSend(bot, dryRun, chatId, "ما قدرتش أحمل الصورة. ابعت تاني.");
-    }
-  });
-
-  // Inline keyboard callbacks.
-  bot.on("callback_query", async (q) => {
-    const data = q.data ?? "";
-    const chatId = q.message?.chat.id;
-    if (chatId === undefined) {
-      await bot.answerCallbackQuery(q.id).catch(() => undefined);
-      return;
-    }
-    const parsed = parseCallbackData(data);
-
-    // Always clear the spinner first.
-    await bot.answerCallbackQuery(q.id, { text: "" }).catch(() => undefined);
-
-    if (parsed.kind === "cancel") {
-      clearPendingFor(chatId);
-      auditClearPending(chatId);
-      await safeSend(bot, dryRun, chatId, "Cancelled.");
-      return;
-    }
-
-    if (parsed.kind !== "confirm") {
-      await safeSend(bot, dryRun, chatId, "Unknown button.");
-      return;
-    }
-
-    const session = await getSession(chatId);
-    const pending = session.pendingConfirmation;
-    if (!pending || pending.nonce !== parsed.nonce || pending.argsHash !== parsed.argsHash) {
-      await safeSend(bot, dryRun, chatId, "That confirmation expired or doesn't match.");
-      return;
-    }
-    if (pending.expiresAt < Date.now()) {
-      clearPendingFor(chatId);
-      auditClearPending(chatId);
-      await safeSend(bot, dryRun, chatId, "Confirmation expired. Please try again.");
-      return;
-    }
-
-    // Deletes require a literal "yes, delete" follow-up text message.
-    if (pending.tool.toLowerCase().startsWith("delete_")) {
-      const lastTurn = session.turns[session.turns.length - 1];
-      const latestRaw =
-        lastTurn && lastTurn.role !== "function" && lastTurn.parts?.[0]?.text
-          ? lastTurn.parts[0].text
-          : "";
-      const latest = latestRaw.trim().toLowerCase();
-      if (!isYesDelete(latest)) {
-        await safeSend(
+    enqueueTurn(chatId, async () => {
+      const session = await getSession(chatId);
+      try {
+        await bot.sendChatAction(chatId, "record_voice").catch(() => undefined);
+        const file = await downloadTelegramFile(bot, voice.file_id);
+        // Transcribe FIRST in a dedicated call, then run the agent on plain
+        // text. This makes intent detection and the statement safety-net
+        // deterministic — the agent can never act (or claim to act) on audio
+        // it silently ignored.
+        const transcript = await getGemini().transcribe(
+          file.mimeType,
+          file.bytes.toString("base64"),
+        );
+        if (!transcript) {
+          await safeSend(bot, dryRun, chatId, "معلش، ما سمعتش كلام واضح. قولها تاني أو اكتبهالي.");
+          return;
+        }
+        logger.info({ chatId, transcript }, "voice note transcribed");
+        await handleUserTurn({
           bot,
           dryRun,
           chatId,
-          `Type \`yes, delete\` to confirm deletion of ${pending.summary}.`,
-        );
-        return;
+          userId: link.user_id,
+          parts: [{ kind: "text", text: transcript }],
+          session,
+          latestText: transcript,
+          voiceReply: true,
+        });
+      } catch (err) {
+        writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
+        await safeSend(bot, dryRun, chatId, "ما قدرتش أسمع الرسالة الصوتية. ابعت تاني أو اكتب النص.");
       }
-    }
-
-    // Execute.
-    const link = await resolveLink(chatId).catch(() => null);
-    if (!link) {
-      await safeSend(bot, dryRun, chatId, notLinkedReply());
-      return;
-    }
-
-    const mcp = getMcpClient(link.user_id, null);
-    const start = Date.now();
-    let ok = true;
-    let error: string | null = null;
-    try {
-      const result = await mcp.callTool(pending.tool, pending.args);
-      ok = !result.isError;
-      if (!ok) error = typeof result.content === "string" ? result.content : JSON.stringify(result.content);
-    } catch (err) {
-      ok = false;
-      error = (err as Error).message;
-    }
-    const duration = Date.now() - start;
-    writeAudit({
-      chatId,
-      userId: link.user_id,
-      toolName: pending.tool,
-      toolKind: "write",
-      argsHash: pending.argsHash,
-      ok,
-      error,
-      durationMs: duration,
     });
-    writeError({
-      source: "mcp",
-      severity: ok ? "info" : "error",
-      message: ok ? `${pending.tool} ok` : `${pending.tool} failed: ${error}`,
-      ctx: { chatId, tool: pending.tool },
-    });
-
-    clearPendingFor(chatId);
-    auditClearPending(chatId);
-
-    if (ok) {
-      await safeSend(
-        bot,
-        dryRun,
-        chatId,
-        `Done — ${pending.tool} completed in ${duration} ms.`,
-      );
-    } else {
-      await safeSend(bot, dryRun, chatId, `Failed — ${error ?? "unknown error"}.`);
-    }
   });
 }
 
@@ -377,6 +239,24 @@ async function safeSend(bot: TelegramBot, dryRun: boolean, chatId: number, text:
   }
 }
 
+// Deliberately narrow: only unambiguous statement requests. «حساب» alone or a
+// bare client name must NOT auto-send a PDF (real users mention clients for
+// balances, chit-chat, etc. — sending unrequested statements destroys trust).
+const STATEMENT_INTENT_RE = /كشف|ستيتمنت|استيتمنت|ستاتمنت|statement|pdf/i;
+
+// The model claiming it sent/will send a statement — used by the truth guard:
+// a claim with no actual PDF delivery is either fulfilled by us or corrected.
+const CLAIMS_SENT_RE = /(بعت|هبعت|ابعت|أرسلت|ارسلت|sent|sending).{0,30}(كشف|statement)|(كشف|statement).{0,30}(بعت|هبعت|أرسلت|ارسلت|sent)/i;
+
+/** Strip statement keywords/filler from the request to guess the client name. */
+function extractClientQuery(text: string): string | null {
+  const cleaned = text
+    .replace(/كشف حساب|كشف|الحساب|حساب|statement|pdf|ابعتلي|ابعت لي|ابعت|هاتلي|هات|اعملي|اعمل|اطلعلي|اطلع|طلعلي|طلع|عايز|عاوز|محتاج|ممكن|لو سمحت|من فضلك|يا حسن|يا باشا|بتاع|بتاعة|please|send|generate|the|for|of/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned.length >= 2 ? cleaned : null;
+}
+
 type HandleArgs = {
   bot: TelegramBot;
   dryRun: boolean;
@@ -385,17 +265,17 @@ type HandleArgs = {
   parts: GeminiInlinePart[];
   session: Session;
   latestText: string;
-  /** When true (default for chat), always try a short voice reply. */
-  preferVoice?: boolean;
+  /** True when the user spoke (voice note) — reply gets a TTS voice too. */
+  voiceReply?: boolean;
 };
 
 async function handleUserTurn(args: HandleArgs): Promise<void> {
-  const { bot, dryRun, chatId, userId, parts, session, latestText, preferVoice = true } = args;
+  const { bot, dryRun, chatId, userId, parts, session, latestText, voiceReply = false } = args;
 
-  // Record the user turn. `session.turns` is text-only (audio/image bytes are
-  // sent inline this round); we MUST keep at least one text part here or the
-  // next conversation round will replay an empty Content and the Gemini SDK
-  // throws "Each Content should have at least one part" at startChat.
+  // Record the user turn. `session.turns` is text-only (audio bytes are sent
+  // inline this round); we MUST keep at least one text part here or the next
+  // conversation round replays an empty Content and the Gemini SDK throws
+  // "Each Content should have at least one part" at startChat.
   const textParts = parts
     .filter((p): p is { kind: "text"; text: string } => p.kind === "text")
     .map((p) => ({ text: p.text }));
@@ -403,142 +283,235 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
     textParts.length > 0 ? textParts : [{ text: latestText || "(non-text input)" }];
   session.turns.push({ role: "user", parts: storedTextParts });
 
-  // Pull MCP tools (cached for the process is fine; auth context is the same).
   let tools;
   try {
     tools = await getMcpClient(userId, null).listTools();
   } catch (err) {
     writeError({ source: "mcp", severity: "error", message: (err as Error).message, ctx: { chatId } });
-    await safeSend(bot, dryRun, chatId, "MCP is unreachable right now. Try again shortly.");
+    await safeSend(bot, dryRun, chatId, "السيرفر مش جاهز دلوقتي. جرّب بعد شوية.");
     return;
   }
 
   const locale = detectLocaleHint(latestText);
   const sessionContext = formatSessionContext(session);
 
+  // Track what list_clients actually returned this turn so the truth guard
+  // below can finish the statement job if the model stalls after listing.
+  let lastClients: Array<{ id: string; name: string | null }> = [];
+  // Set only when a PDF was genuinely delivered to the chat this turn.
+  let pdfSent = false;
+
   let result: Awaited<ReturnType<ReturnType<typeof getGemini>["runLoop"]>>;
   try {
     result = await getGemini().runLoop({
-    locale,
-    tools,
-    sessionContext,
-    history: session.turns.slice(0, -1).map((t): import("../gemini/client.js").GeminiTurn => {
-      if (t.role === "user") {
-        return {
-          role: "user",
-          parts: t.parts.map((p) => ({ kind: "text" as const, text: p.text })),
-        };
-      }
-      if (t.role === "model") {
-        return { role: "model", text: t.parts.map((p) => p.text).join("\n") };
-      }
-      return { role: "function", name: t.name, response: t.response };
-    }),
-    userParts: parts,
-    callMcpTool: async (name, callArgs) => {
-      const h = hashArgs(callArgs);
-      const kind: "read" | "write" = isWriteTool(name) ? "write" : "read";
+      locale,
+      tools,
+      sessionContext,
+      history: session.turns.slice(0, -1).map((t): import("../gemini/client.js").GeminiTurn => {
+        if (t.role === "user") {
+          return {
+            role: "user",
+            parts: t.parts.map((p) => ({ kind: "text" as const, text: p.text })),
+          };
+        }
+        if (t.role === "model") {
+          return { role: "model", text: t.parts.map((p) => p.text).join("\n") };
+        }
+        return { role: "function", name: t.name, response: t.response };
+      }),
+      userParts: parts,
+      callMcpTool: async (name, callArgs) => {
+        const h = hashArgs(callArgs);
+        const start = Date.now();
+        try {
+          const r = await getMcpClient(userId, null).callTool(name, callArgs);
+          const duration = Date.now() - start;
+          writeAudit({
+            chatId,
+            userId,
+            toolName: name,
+            toolKind: "read",
+            argsHash: h,
+            ok: !r.isError,
+            error: r.isError ? String(JSON.stringify(r.content)) : null,
+            durationMs: duration,
+          });
+          if (r.isError) {
+            writeError({
+              source: "mcp",
+              severity: "warn",
+              message: `${name} returned error`,
+              ctx: { chatId, tool: name, duration_ms: duration },
+            });
+          }
 
-      // Writes must be confirmed via the inline keyboard — never call MCP directly.
-      if (kind === "write") {
-        const summary = extractSummary(latestText) ?? `${name} on ${summariseArgs(callArgs)}`;
-        const n = nonce();
-        const expiresAt = Date.now() + 10 * 60_000;
-        session.pendingConfirmation = {
-          tool: name,
-          args: callArgs,
-          argsHash: h,
-          summary,
-          nonce: n,
-          expiresAt,
-        };
-        upsertPending({
-          chatId,
-          userId,
-          toolName: name,
-          argsHash: h,
-          args: callArgs,
-          summary,
-          expiresAt: new Date(expiresAt).toISOString(),
-        });
-        // Return a sentinel so the loop's callTool is "ok" but Gemini doesn't re-call.
-        return { pending_confirmation: true, summary };
-      }
+          // Parse MCP text content into a plain object so Gemini gets a Struct,
+          // and so we can detect signed PDF URLs and deliver them to Telegram.
+          const parsed = parseMcpContent(r.content);
+          if (
+            !r.isError &&
+            name === "list_clients" &&
+            parsed &&
+            typeof parsed === "object" &&
+            Array.isArray((parsed as { clients?: unknown }).clients)
+          ) {
+            // When the query matched nothing, list_clients returns the FULL
+            // list "for disambiguation" (matched_via says so). Those are NOT
+            // candidates — treating them as matches once sent the wrong
+            // client's statement. Only capture genuine matches.
+            const matchedVia = String((parsed as { matched_via?: unknown }).matched_via ?? "");
+            const isGenuineMatch =
+              matchedVia !== "" && matchedVia !== "all" && !matchedVia.startsWith("no exact match");
+            lastClients = !isGenuineMatch
+              ? []
+              : ((parsed as { clients: Array<Record<string, unknown>> }).clients)
+                  .filter((c) => c && (typeof c.id === "string" || typeof c.id === "number"))
+                  .map((c) => ({ id: String(c.id), name: typeof c.name === "string" ? c.name : null }));
+          }
+          if (
+            !r.isError &&
+            !dryRun &&
+            bot &&
+            parsed &&
+            typeof parsed === "object" &&
+            typeof (parsed as { signedUrl?: unknown }).signedUrl === "string"
+          ) {
+            const signedUrl = (parsed as { signedUrl: string }).signedUrl;
+            const filename = `statement-${String((callArgs as { client_id?: unknown }).client_id ?? "file")}.pdf`;
+            await sendPdfToChat(bot, chatId, signedUrl, filename)
+              .then(() => {
+                pdfSent = true;
+              })
+              .catch((err) => {
+                logger.warn({ err }, "sendPdfToChat failed");
+              });
+          }
 
+          return parsed;
+        } catch (err) {
+          const duration = Date.now() - start;
+          writeAudit({
+            chatId,
+            userId,
+            toolName: name,
+            toolKind: "read",
+            argsHash: h,
+            ok: false,
+            error: (err as Error).message,
+            durationMs: duration,
+          });
+          writeError({
+            source: "mcp",
+            severity: "error",
+            message: (err as Error).message,
+            ctx: { chatId, tool: name, duration_ms: duration },
+          });
+          throw err;
+        }
+      },
+    });
+  } catch (err) {
+    writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
+    await safeSend(bot, dryRun, chatId, "ما قدرتش أكمل الطلب دلوقتي. جرّب تاني بعد شوية.");
+    return;
+  }
+
+  let replyText = result.text;
+
+  // TRUTH GUARD: the reply must never claim a statement was sent unless a PDF
+  // actually reached the chat. Triggers when (a) the user explicitly asked for
+  // a statement, or (b) the model CLAIMS it sent one — and no PDF went out.
+  // We then do the job deterministically: resolve the client (using whatever
+  // list_clients returned this turn, or our own lookup from the request text),
+  // generate the statement, and send it. If we can't, we say so honestly.
+  const statementIntent = STATEMENT_INTENT_RE.test(latestText);
+  const claimsSent = CLAIMS_SENT_RE.test(replyText);
+  if (!pdfSent && (statementIntent || claimsSent)) {
+    logger.warn(
+      { chatId, statementIntent, claimsSent, latestText, modelReply: replyText.slice(0, 120) },
+      "TRUTH-GUARD: statement expected but no PDF delivered — taking over",
+    );
+
+    // Resolve candidate clients.
+    let candidates = lastClients;
+    if (candidates.length === 0) {
+      const guess = extractClientQuery(latestText);
+      if (guess) {
+        try {
+          const r = await getMcpClient(userId, null).callTool("list_clients", { q: guess });
+          const parsed = parseMcpContent(r.content);
+          if (
+            !r.isError &&
+            parsed &&
+            typeof parsed === "object" &&
+            Array.isArray((parsed as { clients?: unknown }).clients)
+          ) {
+            const matchedVia = String((parsed as { matched_via?: unknown }).matched_via ?? "");
+            const isGenuineMatch =
+              matchedVia !== "" && matchedVia !== "all" && !matchedVia.startsWith("no exact match");
+            if (isGenuineMatch) {
+              candidates = ((parsed as { clients: Array<Record<string, unknown>> }).clients)
+                .filter((c) => c && (typeof c.id === "string" || typeof c.id === "number"))
+                .map((c) => ({ id: String(c.id), name: typeof c.name === "string" ? c.name : null }));
+            }
+          }
+          logger.info({ chatId, guess, found: candidates.length }, "TRUTH-GUARD: client lookup");
+        } catch (err) {
+          logger.warn({ chatId, err: (err as Error).message }, "TRUTH-GUARD: list_clients failed");
+        }
+      }
+    }
+
+    if (candidates.length > 0) {
+      const target = candidates[0]!;
+      const fbArgs = { client_id: target.id };
       const start = Date.now();
       try {
-        const r = await getMcpClient(userId, null).callTool(name, callArgs);
-        const duration = Date.now() - start;
+        const r = await getMcpClient(userId, null).callTool("generate_client_statement", fbArgs);
+        const parsed = parseMcpContent(r.content);
         writeAudit({
           chatId,
           userId,
-          toolName: name,
-          toolKind: kind,
-          argsHash: h,
+          toolName: "generate_client_statement",
+          toolKind: "read",
+          argsHash: hashArgs(fbArgs),
           ok: !r.isError,
           error: r.isError ? String(JSON.stringify(r.content)) : null,
-          durationMs: duration,
+          durationMs: Date.now() - start,
         });
-        writeError({
-          source: "mcp",
-          severity: r.isError ? "warn" : "info",
-          message: r.isError ? `${name} returned error` : `${name} ok`,
-          ctx: { chatId, tool: name, duration_ms: duration },
-        });
-
-        // Parse MCP text content into a plain object so Gemini gets a Struct,
-        // and so we can detect signed PDF URLs and deliver them to Telegram.
-        const parsed = parseMcpContent(r.content);
         if (
           !r.isError &&
-          !dryRun &&
-          bot &&
           parsed &&
           typeof parsed === "object" &&
           typeof (parsed as { signedUrl?: unknown }).signedUrl === "string"
         ) {
-          const signedUrl = (parsed as { signedUrl: string }).signedUrl;
-          const filename =
-            name === "generate_invoice"
-              ? `invoice-${String((callArgs as { transaction_id?: unknown }).transaction_id ?? "file")}.pdf`
-              : `statement-${String((callArgs as { client_id?: unknown }).client_id ?? "file")}.pdf`;
-          await sendPdfToChat(bot, chatId, signedUrl, filename).catch((err) => {
-            logger.warn({ err }, "sendPdfToChat failed");
-          });
+          if (!dryRun) {
+            await sendPdfToChat(
+              bot,
+              chatId,
+              (parsed as { signedUrl: string }).signedUrl,
+              `statement-${target.id}.pdf`,
+            );
+          }
+          pdfSent = true;
+          replyText = `بعتلك كشف حساب ${target.name ?? `العميل ${target.id}`} ✅`;
+          result.toolCalls.push({ name: "generate_client_statement", args: fbArgs, ok: true });
+          logger.info({ chatId, clientId: target.id }, "TRUTH-GUARD: statement PDF delivered");
         }
-
-        return parsed;
       } catch (err) {
-        const duration = Date.now() - start;
-        writeAudit({
-          chatId,
-          userId,
-          toolName: name,
-          toolKind: kind,
-          argsHash: h,
-          ok: false,
-          error: (err as Error).message,
-          durationMs: duration,
-        });
         writeError({
           source: "mcp",
           severity: "error",
-          message: (err as Error).message,
-          ctx: { chatId, tool: name, duration_ms: duration },
+          message: `truth-guard generate_client_statement failed: ${(err as Error).message}`,
+          ctx: { chatId, clientId: target.id },
         });
-        throw err;
       }
-    },
-  });
-  } catch (err) {
-    writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
-    await safeSend(
-      bot,
-      dryRun,
-      chatId,
-      "ما قدرتش أكمل الطلب دلوقتي. جرّب تاني بعد شوية.\nI couldn't complete that request. Please try again shortly.",
-    );
-    return;
+    }
+
+    // Still nothing sent? Never let a false "sent it" through.
+    if (!pdfSent) {
+      replyText = "معلش، مش لاقي العميل ده — اكتبلي اسمه بالظبط وأنا أبعتلك الكشف على طول.";
+    }
   }
 
   // Remember what the user asked + which tools ran, so follow-ups like
@@ -547,72 +520,28 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
     session.lastToolSummary = result.toolCalls
       .map((tc) => `${tc.name}(${summariseArgs(tc.args)})${tc.ok ? "" : " ERR"}`)
       .join("; ");
-    // Prefer explicit text; for voice notes derive intent from the tools just called.
-    if (latestText && latestText !== "(voice note)" && latestText !== "(non-text input)" && latestText !== "(photo)") {
-      session.lastUserIntent = latestText;
-    } else {
-      session.lastUserIntent = session.lastToolSummary;
-    }
-    // Patch the just-pushed user turn so history isn't stuck on "(voice note)".
-    const lastUser = [...session.turns].reverse().find((t) => t.role === "user");
-    if (
-      lastUser &&
-      lastUser.role === "user" &&
-      lastUser.parts[0]?.text &&
-      (/^\(voice note\)$|^\(non-text input\)$|^\(photo\)$/i.test(lastUser.parts[0].text))
-    ) {
-      lastUser.parts = [{ text: session.lastUserIntent || lastUser.parts[0].text }];
-    }
-  } else if (latestText && latestText !== "(voice note)" && latestText !== "(non-text input)") {
+  }
+  // Keep a human intent string — voice notes are transcribed upstream, so
+  // latestText is always real user words here.
+  if (latestText && latestText !== "(non-text input)") {
     session.lastUserIntent = latestText;
   }
 
-  // After a write tool was requested we asked Gemini to emit a CONFIRM_SUMMARY,
-  // not to actually run the tool. Present the keyboard.
-  const lastPending = session.pendingConfirmation;
-  if (lastPending && result.text.includes("CONFIRM_SUMMARY")) {
-    const cleaned = result.text.replace(/\n?CONFIRM_SUMMARY:.*$/im, "").trim();
-    if (cleaned) await safeSend(bot, dryRun, chatId, cleaned);
-    await safeSend(
-      bot,
-      dryRun,
-      chatId,
-      `Confirm: ${lastPending.summary}`,
-    );
-    if (!dryRun) {
-      await bot
-        .sendMessage(chatId, "Tap to proceed:", {
-          reply_markup: buildConfirmKeyboard(lastPending.tool, lastPending.argsHash, lastPending.nonce),
-        })
-        .catch(async () => {
-          await bot.sendMessage(chatId, "(Buttons couldn't render; tap Confirm in your keyboard.)", {
-            reply_markup: buildCancelKeyboard(lastPending.nonce),
-          });
-        });
-    } else {
-      logger.info(
-        { BOT_DRY_RUN: true, chatId, keyboard: buildConfirmKeyboard(lastPending.tool, lastPending.argsHash, lastPending.nonce) },
-        "BOT_DRY_RUN: would send confirm keyboard",
-      );
-    }
-    session.turns.push({ role: "model", parts: [{ text: cleaned }] });
-    persistSession(session);
-    return;
-  }
-
-  // Plain text (or post-write) reply — keep it short on screen; voice carries the tone.
-  if (result.text) {
-    session.turns.push({ role: "model", parts: [{ text: result.text }] });
-    await safeSend(bot, dryRun, chatId, result.text);
+  // Send the reply — text first, then optional voice.
+  if (replyText) {
+    session.turns.push({ role: "model", parts: [{ text: replyText }] });
+    await safeSend(bot, dryRun, chatId, replyText);
   } else {
     await safeSend(bot, dryRun, chatId, "تمام، خلصت.");
   }
 
-  // Voice-first assistant: always try a short spoken reply unless model said VOICE_REPLY: no.
-  if (preferVoice && result.voiceRequested && result.text && !dryRun && bot) {
+  // Voice in → voice out; text in → text only. Sending a TTS voice note for
+  // every reply made Telegram's autoplay chain older bot voices after each
+  // playback — replying in kind keeps the chat clean.
+  if (voiceReply && result.voiceRequested && replyText && !dryRun && bot) {
     try {
       await bot.sendChatAction(chatId, "record_voice").catch(() => undefined);
-      const audio = await synthesizeSpeech(result.text);
+      const audio = await synthesizeSpeech(replyText);
       if (audio) {
         if (audio.mimeType.includes("ogg")) {
           await bot.sendVoice(chatId, audio.bytes, {}, { filename: audio.filename, contentType: audio.mimeType });
@@ -628,8 +557,8 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
     } catch (err) {
       logger.warn({ err }, "voice reply failed; text only");
     }
-  } else if (preferVoice && result.voiceRequested && dryRun) {
-    logger.info({ BOT_DRY_RUN: true, chatId, text: result.text }, "BOT_DRY_RUN: would send voice");
+  } else if (voiceReply && result.voiceRequested && dryRun) {
+    logger.info({ BOT_DRY_RUN: true, chatId, text: replyText }, "BOT_DRY_RUN: would send voice");
   }
 
   // Roll up tool stats once per loop invocation.
@@ -641,11 +570,6 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
   }
 
   persistSession(session);
-}
-
-function extractSummary(text: string): string | null {
-  const m = text.match(/CONFIRM_SUMMARY:\s*(.+)$/im);
-  return m?.[1]?.trim() ?? null;
 }
 
 /** Turn MCP `content: [{type:'text', text: '...json...'}]` into a plain object for Gemini. */

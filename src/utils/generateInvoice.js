@@ -187,11 +187,14 @@ async function buildInvoiceDocInternal(transaction, options = {}) {
     currency = 'EGP',
     language = 'en',
     payments = [],
+    // Node callers (MCP server) can't fetch('/fonts/…'); they read the TTFs
+    // from disk and inject them here as base64 { regular, bold }.
+    fontData: providedFontData = null,
   } = options
 
   const isAr = language === 'ar'
   const L = labels[isAr ? 'ar' : 'en']
-  const fontData = await loadArabicFont()
+  const fontData = providedFontData ?? await loadArabicFont()
 
   const doc = new jsPDF({ putOnlyUsedFonts: true })
   const hasFont = registerFont(doc, fontData)

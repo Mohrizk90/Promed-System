@@ -60,6 +60,33 @@ export class GeminiClient {
     });
   }
 
+  /**
+   * Transcribe a voice note to verbatim text. Dedicated call with no tools and
+   * no persona — the agent loop then runs on plain text, which makes intent
+   * detection and the statement safety-net deterministic instead of depending
+   * on the model remembering to echo a transcript line.
+   */
+  async transcribe(mimeType: string, base64: string): Promise<string | null> {
+    const model = this.genai.getGenerativeModel({ model: this.modelId });
+    try {
+      const res = await model.generateContent([
+        { inlineData: { mimeType, data: base64 } },
+        {
+          text:
+            "Transcribe this voice message verbatim in the speaker's language (Egyptian Arabic expected). " +
+            "Return ONLY the transcript text — no quotes, no commentary, no translation. " +
+            "If there is no intelligible speech, return exactly: [unintelligible]",
+        },
+      ]);
+      const text = res.response.text().trim();
+      if (!text || /\[unintelligible\]/i.test(text)) return null;
+      return text;
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, "voice transcription failed");
+      return null;
+    }
+  }
+
   /** Run a multi-round generateContent loop with tool-calling. */
   async runLoop(opts: {
     locale?: "en" | "ar" | "auto";
@@ -114,9 +141,16 @@ export class GeminiClient {
         break;
       }
 
-      // Send the model's turn back into the chat, then handle function calls.
-      currentParts = [];
-
+      // Execute every function call, collect the results, and send them back
+      // in ONE message. The next loop iteration consumes the model's reply to
+      // these results — which may be more function calls or the final text.
+      //
+      // (Previous version sent each functionResponse via chat.sendMessage and
+      // DISCARDED the model's reply, then injected an artificial "Continue"
+      // user message. The discarded reply was where the model chained its next
+      // tool call — so it perpetually looked like it "stalled" after the first
+      // tool and answered the nudge with premature success claims.)
+      const responseParts: Part[] = [];
       for (const fc of fnCalls) {
         const { name, args } = fc.functionCall;
         let parsedArgs: Record<string, unknown> = {};
@@ -147,20 +181,12 @@ export class GeminiClient {
             responsePayload === null ? { result: null } : { result: responsePayload };
         }
 
-        // Provide a functionResponse back to Gemini so it can continue the turn.
-        await chat.sendMessage([
-          {
-            functionResponse: {
-              name,
-              response: safeResponse,
-            },
-          } as unknown as Part,
-        ]);
+        responseParts.push({
+          functionResponse: { name, response: safeResponse },
+        } as unknown as Part);
       }
 
-      // Continue the outer loop: next iteration will send an empty "user" message,
-      // which asks the model to summarize after seeing the function responses.
-      currentParts = [{ text: "Continue." } as Part];
+      currentParts = responseParts;
     }
 
     return { text: finalText, voiceRequested, toolCalls };

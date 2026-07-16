@@ -9,8 +9,7 @@ import { requireAuth } from './auth.js';
 import { tools, type ToolName } from './tools/index.js';
 import { writeAudit } from './audit.js';
 import { adminClient } from './supabase/userClient.js';
-
-type AuthedUser = { id: string; jwt: string };
+import { currentRequestUser, requestUserStore, type AuthedUser } from './requestContext.js';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -41,15 +40,17 @@ function registerTools(): void {
       schemaArg,
       async (args: unknown, extra: any) => {
         const start = Date.now();
-        const user: AuthedUser | undefined =
-          extra?.authInfo?.user ?? extra?.user ?? extra?.requestContext?.user;
+        const user: AuthedUser =
+          currentRequestUser(
+            extra?.authInfo?.user ?? extra?.user ?? extra?.requestContext?.user ?? null,
+          );
 
         try {
           const parsed = (def.schema as any).parse(args ?? {});
-          const result = await def.handler(parsed, { user: user ?? { id: 'unknown', jwt: '' } });
+          const result = await def.handler(parsed, { user });
           await writeAudit({
             telegramChatId: null,
-            userId: user?.id ?? 'unknown',
+            userId: user.id,
             toolName: name,
             args: parsed,
             resultStatus: 'ok',
@@ -109,14 +110,15 @@ function createSession(): ServerSession {
     const schemaArg: any = (def.schema as any).shape ?? def.schema;
     localServer.tool(name, def.description, schemaArg, (async (args: unknown, extra: any) => {
       const start = Date.now();
-      const user: AuthedUser | undefined =
-        extra?.authInfo?.user ?? extra?.user ?? extra?.requestContext?.user;
+      const user: AuthedUser = currentRequestUser(
+        extra?.authInfo?.user ?? extra?.user ?? extra?.requestContext?.user ?? null,
+      );
       try {
         const parsed = (def.schema as any).parse(args ?? {});
-        const result = await def.handler(parsed, { user: user ?? { id: 'unknown', jwt: '' } });
+        const result = await def.handler(parsed, { user });
         await writeAudit({
           telegramChatId: null,
-          userId: user?.id ?? 'unknown',
+          userId: user.id,
           toolName: name,
           args: parsed,
           resultStatus: 'ok',
@@ -130,7 +132,7 @@ function createSession(): ServerSession {
         const message = err?.message ?? String(err);
         await writeAudit({
           telegramChatId: null,
-          userId: user?.id ?? 'unknown',
+          userId: user.id,
           toolName: name,
           args,
           resultStatus: 'error',
@@ -179,7 +181,8 @@ function getSession(req: Request): ServerSession | undefined {
 }
 
 async function handlePost(req: Request, res: Response): Promise<void> {
-  (req as any).auth = { user: req.user };
+  const user = req.user ?? { id: 'system', jwt: '' };
+  (req as any).auth = { user };
   let session = getSession(req);
   // No session yet, or server was restarted (sessions cleared on boot) —
   // mint a fresh one for this initialize request. The transport will
@@ -188,17 +191,20 @@ async function handlePost(req: Request, res: Response): Promise<void> {
   if (!session) {
     session = createSession();
   }
-  await session.transport.handleRequest(req as any, res, req.body);
+  await requestUserStore.run(user, () =>
+    session!.transport.handleRequest(req as any, res, req.body),
+  );
 }
 
 async function handleGet(req: Request, res: Response): Promise<void> {
+  const user = req.user ?? { id: 'system', jwt: '' };
   const session = getSession(req);
   if (!session) {
     // Streamable HTTP spec: GET without a valid session ID should 400.
     res.status(400).json({ error: 'missing or unknown mcp-session-id' });
     return;
   }
-  await session.transport.handleRequest(req as any, res);
+  await requestUserStore.run(user, () => session.transport.handleRequest(req as any, res));
 }
 
 app.post('/mcp', requireAuth, (req: Request, res: Response) => {

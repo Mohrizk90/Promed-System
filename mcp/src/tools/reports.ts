@@ -1,9 +1,55 @@
 import { z } from 'zod';
 import path from 'node:path';
+import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adminClient } from '../supabase/userClient.js';
 import { dataClient, requireLinkedUser } from '../supabase/dataClient.js';
 import { logger } from '../logger.js';
+
+/**
+ * The PDF builders load the Amiri Arabic font via browser fetch('/fonts/…'),
+ * which doesn't exist in Node — without it Arabic text falls back to
+ * helvetica and renders as garbage. Read the TTFs from the repo's
+ * public/fonts and inject them as base64 (cached for the process).
+ */
+let _fontCache: { regular: string; bold: string } | null | undefined;
+async function loadFontsFromDisk(): Promise<{ regular: string; bold: string } | null> {
+  if (_fontCache !== undefined) return _fontCache ?? null;
+  try {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const fontsDir = path.resolve(here, '..', '..', '..', 'public', 'fonts');
+    const [regular, bold] = await Promise.all([
+      fs.readFile(path.join(fontsDir, 'Amiri-Regular.ttf')),
+      fs.readFile(path.join(fontsDir, 'Amiri-Bold.ttf')),
+    ]);
+    _fontCache = { regular: regular.toString('base64'), bold: bold.toString('base64') };
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, 'Amiri fonts not found; Arabic PDFs will fall back to helvetica');
+    _fontCache = null;
+  }
+  return _fontCache ?? null;
+}
+
+/**
+ * Company letterhead for generated PDFs. The web app stores these in browser
+ * localStorage which the server can't read — configure them via env on the
+ * MCP service (COMPANY_NAME etc.) to match the system's statements.
+ */
+function companySettings(): {
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail: string;
+  companyTagline: string;
+} {
+  return {
+    companyName: (process.env.COMPANY_NAME || 'Promed').trim(),
+    companyAddress: (process.env.COMPANY_ADDRESS || '').trim(),
+    companyPhone: (process.env.COMPANY_PHONE || '').trim(),
+    companyEmail: (process.env.COMPANY_EMAIL || '').trim(),
+    companyTagline: (process.env.COMPANY_TAGLINE || '').trim(),
+  };
+}
 
 export const generateClientStatementSchema = z.object({
   client_id: z.union([z.string(), z.number()]).transform((v) => String(v)),
@@ -195,18 +241,6 @@ export async function generateClientStatementHandler(
     closing_balance: opening + charges - paymentTotal,
   };
 
-  let mod: any;
-  try {
-    mod = await safeImportBuildStatement();
-  } catch (err: any) {
-    throw new Error(`failed to load PDF builder: ${err?.message ?? err}`);
-  }
-  const buildStatementPdf =
-    mod?.buildStatementPdf ?? mod?.default?.buildStatementPdf ?? mod?.default;
-  if (typeof buildStatementPdf !== 'function') {
-    throw new Error('buildStatementPdf export not found in generateStatement.js');
-  }
-
   const mappedTransactions = transactions.map((t) => ({
     transaction_id: t.transaction_id,
     transaction_date: t.transaction_date,
@@ -232,30 +266,69 @@ export async function generateClientStatementHandler(
     })),
   ];
 
+  const clientPayload = {
+    client_id: client.client_id,
+    client_name: client.client_name,
+    contact_info: client.contact_info,
+    address: client.address,
+    opening_balance: opening,
+  };
+  const pdfOptions = {
+    language: (args.language ?? 'ar') as 'en' | 'ar',
+    dateFrom: args.from ?? null,
+    dateTo: args.to ?? null,
+    openingBalance: opening,
+  };
+
+  // Primary path: render the SAME HTML document the web app prints (Ctrl+P)
+  // with headless Chrome. Fallback: the legacy jsPDF-drawn template, so a
+  // Chrome hiccup degrades the look but never blocks the statement.
   let bytes: Uint8Array;
   try {
-    const out = await buildStatementPdf({
-      client: {
-        client_id: client.client_id,
-        client_name: client.client_name,
-        contact_info: client.contact_info,
-        address: client.address,
-        opening_balance: opening,
-      },
+    const { buildStatementHtml } = await import('../pdf/statementHtml.js');
+    const { htmlToPdf } = await import('../pdf/htmlToPdf.js');
+    const html = await buildStatementHtml({
+      client: clientPayload,
       transactions: mappedTransactions,
       payments: mappedPayments,
-      options: {
-        language: args.language ?? 'ar',
-        dateFrom: args.from ?? null,
-        dateTo: args.to ?? null,
-        openingBalance: opening,
-        currency: 'EGP',
-      },
+      company: companySettings(),
+      options: pdfOptions,
     });
-    bytes = out instanceof Uint8Array ? out : new Uint8Array(out as ArrayBuffer);
-  } catch (err: any) {
-    logger.warn({ err: err?.message }, 'statement pdf generation failed');
-    throw err;
+    bytes = await htmlToPdf(html);
+    logger.info({ client_id: args.client_id }, 'statement rendered via headless chrome (html)');
+  } catch (htmlErr: any) {
+    logger.warn(
+      { err: htmlErr?.message },
+      'html statement rendering failed; falling back to jsPDF template',
+    );
+    let mod: any;
+    try {
+      mod = await safeImportBuildStatement();
+    } catch (err: any) {
+      throw new Error(`failed to load PDF builder: ${err?.message ?? err}`);
+    }
+    const buildStatementPdf =
+      mod?.buildStatementPdf ?? mod?.default?.buildStatementPdf ?? mod?.default;
+    if (typeof buildStatementPdf !== 'function') {
+      throw new Error('buildStatementPdf export not found in generateStatement.js');
+    }
+    try {
+      const out = await buildStatementPdf({
+        client: clientPayload,
+        transactions: mappedTransactions,
+        payments: mappedPayments,
+        options: {
+          ...companySettings(),
+          fontData: await loadFontsFromDisk(),
+          ...pdfOptions,
+          currency: 'EGP',
+        },
+      });
+      bytes = out instanceof Uint8Array ? out : new Uint8Array(out as ArrayBuffer);
+    } catch (err: any) {
+      logger.warn({ err: err?.message }, 'statement pdf generation failed');
+      throw err;
+    }
   }
 
   const filename = `statement-${slugify(client.client_name ?? 'client')}-${args.from ?? 'all'}-${args.to ?? 'all'}.pdf`;
@@ -352,6 +425,8 @@ export async function generateInvoiceHandler(
         clients: embed,
       },
       {
+        ...companySettings(),
+        fontData: await loadFontsFromDisk(),
         language: args.language ?? 'ar',
         currency: 'EGP',
         payments: mappedPayments,
