@@ -10,6 +10,7 @@ import { loadConfig } from "../config.js";
 import { logger } from "../logger.js";
 import { setGeminiOk, setLastError } from "../healthz.js";
 import { buildSystemPrompt } from "./prompt.js";
+import { toGeminiParameters } from "./schemaSanitize.js";
 
 export type GeminiInlinePart =
   | { kind: "text"; text: string }
@@ -45,11 +46,18 @@ export class GeminiClient {
 
   /** Convert MCP tool definitions into Gemini functionDeclarations. */
   static toFunctionDeclarations(tools: McpTool[]): FunctionDeclaration[] {
-    return tools.map((t) => ({
-      name: t.name,
-      description: t.description ?? "",
-      parameters: t.inputSchema as FunctionDeclaration["parameters"],
-    }));
+    return tools.map((t) => {
+      const parameters = toGeminiParameters(t.inputSchema);
+      // Gemini only accepts the four primitive JSON-like types for FunctionDeclaration
+      // parameters; anything else (string-keyed-object with no `type`, etc.) will
+      // 400. We've already coerced the top-level shape to {type:'object',properties:{}}
+      // in toGeminiParameters; just cast for the SDK type.
+      return {
+        name: t.name,
+        description: t.description ?? "",
+        parameters: parameters as unknown as FunctionDeclaration["parameters"],
+      };
+    });
   }
 
   /** Run a multi-round generateContent loop with tool-calling. */
