@@ -317,14 +317,14 @@ export function registerHandlers(deps: HandlerDeps): void {
     }
     const duration = Date.now() - start;
     writeAudit({
-      chat_id: chatId,
-      user_id: link.user_id,
-      tool_name: pending.tool,
-      tool_kind: "write",
-      args_hash: pending.argsHash,
+      chatId,
+      userId: link.user_id,
+      toolName: pending.tool,
+      toolKind: "write",
+      argsHash: pending.argsHash,
       ok,
       error,
-      duration_ms: duration,
+      durationMs: duration,
     });
     writeError({
       source: "mcp",
@@ -428,14 +428,13 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
           expiresAt,
         };
         upsertPending({
-          chat_id: chatId,
-          user_id: userId,
-          nonce: n,
-          tool: name,
-          args_hash: h,
+          chatId,
+          userId,
+          toolName: name,
+          argsHash: h,
           args: callArgs,
           summary,
-          expires_at: new Date(expiresAt).toISOString(),
+          expiresAt: new Date(expiresAt).toISOString(),
         });
         // Return a sentinel so the loop's callTool is "ok" but Gemini doesn't re-call.
         return { pending_confirmation: true, summary };
@@ -446,14 +445,14 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
         const r = await getMcpClient(userId, null).callTool(name, callArgs);
         const duration = Date.now() - start;
         writeAudit({
-          chat_id: chatId,
-          user_id: userId,
-          tool_name: name,
-          tool_kind: kind,
-          args_hash: h,
+          chatId,
+          userId,
+          toolName: name,
+          toolKind: kind,
+          argsHash: h,
           ok: !r.isError,
           error: r.isError ? String(JSON.stringify(r.content)) : null,
-          duration_ms: duration,
+          durationMs: duration,
         });
         writeError({
           source: "mcp",
@@ -465,14 +464,14 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
       } catch (err) {
         const duration = Date.now() - start;
         writeAudit({
-          chat_id: chatId,
-          user_id: userId,
-          tool_name: name,
-          tool_kind: kind,
-          args_hash: h,
+          chatId,
+          userId,
+          toolName: name,
+          toolKind: kind,
+          argsHash: h,
           ok: false,
           error: (err as Error).message,
-          duration_ms: duration,
+          durationMs: duration,
         });
         writeError({
           source: "mcp",
@@ -595,11 +594,11 @@ function writeToolStatsStub(input: { tool_name: string; ok: boolean }): void {
   // (writeToolStats already upserts on bucket+tool.)
   import("../audit.js").then(({ writeToolStats }) => {
     writeToolStats({
-      bucket_5min: bucket,
-      tool_name: input.tool_name,
+      bucketStart: bucket,
+      toolName: input.tool_name,
       calls: 1,
       errors: input.ok ? 0 : 1,
-      avg_duration_ms: null,
+      avgDurationMs: null,
     });
   });
 }

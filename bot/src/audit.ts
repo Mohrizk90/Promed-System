@@ -7,41 +7,45 @@ import { logger } from "./logger.js";
 const WS_RT = NodeWebSocket as unknown as any;
 const WS_GLOBAL = NodeWebSocket as unknown as typeof globalThis.WebSocket;
 
+/** Public API (camelCase). Internal writers translate to the snake_case column
+ *  names defined in Supabase/supabase_bot_audit.sql. */
+
 export type AuditEntry = {
-  chat_id: number;
-  user_id: string | null;
-  tool_name: string;
-  tool_kind: "read" | "write";
-  args_hash: string | null;
+  chatId: number | null;
+  userId: string | null;
+  toolName: string;
+  toolKind: "read" | "write";
+  argsHash: string | null;
   ok: boolean;
   error: string | null;
-  duration_ms: number | null;
+  durationMs: number | null;
 };
 
 export type ToolStatsRollup = {
-  bucket_5min: string; // ISO timestamp truncated to 5 min
-  tool_name: string;
+  bucketStart: string; // ISO timestamp truncated to 5 min
+  toolName: string;
   calls: number;
   errors: number;
-  avg_duration_ms: number | null;
+  avgDurationMs: number | null;
 };
 
+/** `severity` is constrained in the DB to `warn | error`. We map everything
+ *  noisier than `info` to one of those two. */
 export type ErrorEntry = {
-  source: "telegram" | "gemini" | "mcp" | "supabase" | "other";
+  source: "telegram" | "gemini" | "mcp" | "supabase" | "bot" | "other";
   severity: "debug" | "info" | "warn" | "error" | "fatal";
   message: string;
   ctx: Record<string, unknown> | null;
 };
 
 export type PendingConfirmation = {
-  chat_id: number;
-  user_id: string | null;
-  nonce: string;
-  tool: string;
-  args_hash: string;
+  chatId: number;
+  userId: string | null;
+  toolName: string;
+  argsHash: string;
   args: Record<string, unknown>;
   summary: string;
-  expires_at: string; // ISO
+  expiresAt: string; // ISO
 };
 
 let _supabase: SupabaseClient | null = null;
@@ -58,11 +62,27 @@ function db(): SupabaseClient {
   return _supabase;
 }
 
+function severityToDb(s: ErrorEntry["severity"]): "warn" | "error" {
+  if (s === "error" || s === "fatal") return "error";
+  return "warn";
+}
+
 /** Fire-and-forget audit write. Errors are logged but never thrown to the caller. */
 export function writeAudit(entry: AuditEntry): void {
   db()
     .from("bot_audit_log")
-    .insert(entry)
+    .insert({
+      telegram_chat_id: entry.chatId,
+      user_id: entry.userId,
+      tool_name: entry.toolName,
+      // The schema doesn't have a separate tool_kind column. We fold it into
+      // args_json so the dashboard can distinguish read vs write at query time.
+      args_json: { kind: entry.toolKind, args_hash: entry.argsHash },
+      result_status: entry.ok ? "ok" : "error",
+      error_text: entry.error,
+      latency_ms: entry.durationMs,
+      source: "bot",
+    })
     .then(({ error }) => {
       if (error) logger.warn({ err: error.message, entry }, "audit insert failed");
     })
@@ -72,9 +92,28 @@ export function writeAudit(entry: AuditEntry): void {
 }
 
 export function writeToolStats(rollup: ToolStatsRollup): void {
+  // Schema columns: bucket_start (PK), tool_name, calls_total, calls_ok,
+  // calls_error, calls_denied, latency_p50, latency_p95, token_in, token_out,
+  // cost_usd. We only have a single calls/errors avg — assume all non-error
+  // calls were `ok` and bucket `denied` into `error`.
   db()
     .from("bot_tool_stats")
-    .upsert(rollup, { onConflict: "bucket_5min,tool_name" })
+    .upsert(
+      {
+        bucket_start: rollup.bucketStart,
+        tool_name: rollup.toolName,
+        calls_total: rollup.calls,
+        calls_ok: Math.max(0, rollup.calls - rollup.errors),
+        calls_error: rollup.errors,
+        calls_denied: 0,
+        latency_p50: rollup.avgDurationMs,
+        latency_p95: rollup.avgDurationMs,
+        token_in: 0,
+        token_out: 0,
+        cost_usd: 0,
+      },
+      { onConflict: "bucket_start,tool_name" },
+    )
     .then(({ error }) => {
       if (error) logger.warn({ err: error.message, rollup }, "tool stats upsert failed");
     })
@@ -86,7 +125,12 @@ export function writeToolStats(rollup: ToolStatsRollup): void {
 export function writeError(entry: ErrorEntry): void {
   db()
     .from("bot_error_feed")
-    .insert(entry)
+    .insert({
+      source: entry.source,
+      severity: severityToDb(entry.severity),
+      message: entry.message,
+      context_json: entry.ctx ?? {},
+    })
     .then(({ error }) => {
       if (error) logger.warn({ err: error.message, entry }, "error feed insert failed");
     })
@@ -100,19 +144,19 @@ export function upsertPending(p: PendingConfirmation): void {
     .from("bot_pending_confirmations")
     .upsert(
       {
-        chat_id: p.chat_id,
-        user_id: p.user_id,
-        nonce: p.nonce,
-        tool: p.tool,
-        args_hash: p.args_hash,
-        args: p.args,
+        chat_id: p.chatId,
+        user_id: p.userId,
+        tool_name: p.toolName,
+        args_hash: p.argsHash,
+        args_json: p.args,
         summary: p.summary,
-        expires_at: p.expires_at,
+        expires_at: p.expiresAt,
       },
       { onConflict: "chat_id" },
     )
     .then(({ error }) => {
-      if (error) logger.warn({ err: error.message, nonce: p.nonce }, "upsertPending failed");
+      if (error)
+        logger.warn({ err: error.message, chatId: p.chatId }, "upsertPending failed");
     })
     .then(undefined, (err: unknown) => {
       logger.warn({ err }, "upsertPending threw");
@@ -137,10 +181,10 @@ export type HealthSnapshot = {
   ts: string; // ISO, truncated to the minute so consecutive inserts from the
               // same service in the same minute upsert into a single row.
   status: "ok" | "degraded" | "down";
-  uptime_s: number | null;
-  gemini_ok: boolean | null;
-  mcp_ok: boolean | null;
-  telegram_ok: boolean | null;
+  uptimeS: number | null;
+  geminiOk: boolean | null;
+  mcpOk: boolean | null;
+  telegramOk: boolean | null;
 };
 
 /** Truncate to the start of the current minute. Lets multiple writes within
@@ -153,7 +197,18 @@ export function minuteBucket(d: Date = new Date()): string {
 export function writeHealthSnapshot(snap: HealthSnapshot): void {
   db()
     .from("bot_health_snapshots")
-    .upsert(snap, { onConflict: "source,ts" })
+    .upsert(
+      {
+        source: snap.source,
+        ts: snap.ts,
+        status: snap.status,
+        uptime_s: snap.uptimeS,
+        gemini_ok: snap.geminiOk,
+        mcp_ok: snap.mcpOk,
+        telegram_ok: snap.telegramOk,
+      },
+      { onConflict: "source,ts" },
+    )
     .then(({ error }) => {
       if (error) logger.warn({ err: error.message, snap }, "health snapshot upsert failed");
     })

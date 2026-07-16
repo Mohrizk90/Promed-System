@@ -107,10 +107,10 @@ async function main(): Promise<void> {
       source: "bot",
       ts: minuteBucket(),
       status: h.status as "ok" | "degraded" | "down",
-      uptime_s: h.uptime_s,
-      gemini_ok: h.gemini_ok,
-      mcp_ok: h.mcp_ok,
-      telegram_ok: h.telegram_polling_ok,
+      uptimeS: h.uptime_s,
+      geminiOk: h.gemini_ok,
+      mcpOk: h.mcp_ok,
+      telegramOk: h.telegram_polling_ok,
     });
   }
   emitHealthSnapshot(); // immediate snapshot on boot
