@@ -26,9 +26,14 @@ CREATE TABLE IF NOT EXISTS public.telegram_link_codes (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Idempotent column widening for existing installs:
+-- Idempotent column widening for existing installs.
+-- NOTE: information_schema.foreign_keys is a MySQL/SQL Server view — it does
+-- not exist in Postgres. Foreign-key constraints live in pg_constraint, which
+-- is what we use here.
 DO $$
 BEGIN
+    -- Make user_id nullable (the bot must insert codes before a Supabase
+    -- user has been associated with the Telegram chat).
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema='public' AND table_name='telegram_link_codes' AND column_name='user_id'
@@ -36,25 +41,27 @@ BEGIN
            WHERE table_schema='public' AND table_name='telegram_link_codes' AND column_name='user_id') = 'NO' THEN
         ALTER TABLE public.telegram_link_codes ALTER COLUMN user_id DROP NOT NULL;
     END IF;
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema='public' AND table_name='telegram_link_codes' AND column_name='user_id'
-    ) AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='telegram_link_codes_user_id_fkey') THEN
-        ALTER TABLE public.telegram_link_codes DROP CONSTRAINT telegram_link_codes_user_id_fkey;
-    END IF;
+
+    -- Add chat_id BIGINT if it's missing (records which Telegram chat the code
+    -- was issued for, so the RPC can wire up chat_id <-> user_id on claim).
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema='public' AND table_name='telegram_link_codes' AND column_name='chat_id'
     ) THEN
         ALTER TABLE public.telegram_link_codes ADD COLUMN chat_id BIGINT;
     END IF;
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.foreign_keys
-        WHERE constraint_schema='public' AND table_name='telegram_link_codes'
-              AND constraint_name='telegram_link_codes_user_id_fkey'
-    ) AND NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname='telegram_link_codes_user_id_fkey'
-    ) THEN
+
+    -- Drop any pre-existing FK so we can re-add it with ON DELETE SET NULL.
+    -- The original migration declared user_id REFERENCES auth.users(id)
+    -- without an ON DELETE clause (defaulting to NO ACTION), which would
+    -- block deleting a user row that still has live link codes.
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'telegram_link_codes_user_id_fkey') THEN
+        ALTER TABLE public.telegram_link_codes DROP CONSTRAINT telegram_link_codes_user_id_fkey;
+    END IF;
+
+    -- Re-add the FK with ON DELETE SET NULL so a deleted auth.users row
+    -- leaves the (now-orphan) code intact.
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'telegram_link_codes_user_id_fkey') THEN
         ALTER TABLE public.telegram_link_codes
             ADD CONSTRAINT telegram_link_codes_user_id_fkey
             FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
