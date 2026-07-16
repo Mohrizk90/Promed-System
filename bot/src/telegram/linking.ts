@@ -16,11 +16,14 @@ function db(): SupabaseClient {
 
 export type LinkCode = {
   code: string;
+  chat_id: number;
   user_id: string | null;
   expires_at: string;
 };
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // skip 0/O/1/I for legibility
+// Telegram's allowed_codes check at the DB level requires uppercase A-Z + 2-9.
+const ALLOWED_RE = /^[A-HJ-NP-Z2-9]{6}$/;
 
 export function generateCode(length = 6): string {
   let out = "";
@@ -28,17 +31,19 @@ export function generateCode(length = 6): string {
     const idx = Math.floor(Math.random() * ALPHABET.length);
     out += ALPHABET.charAt(idx);
   }
+  // Sanity: never insert a code the DB CHECK would reject.
+  if (!ALLOWED_RE.test(out)) return generateCode(length);
   return out;
 }
 
-export async function createLinkCode(): Promise<LinkCode> {
+export async function createLinkCode(chatId: number): Promise<LinkCode> {
   const code = generateCode(6);
   const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
   const { error } = await db()
     .from("telegram_link_codes")
-    .insert({ code, user_id: null, expires_at: expiresAt });
+    .insert({ code, chat_id: chatId, user_id: null, expires_at: expiresAt });
   if (error) throw new Error(`createLinkCode: ${error.message}`);
-  return { code, user_id: null, expires_at: expiresAt };
+  return { code, chat_id: chatId, user_id: null, expires_at: expiresAt };
 }
 
 export type LinkedUser = {

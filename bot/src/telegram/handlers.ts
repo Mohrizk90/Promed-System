@@ -98,11 +98,11 @@ export function registerHandlers(deps: HandlerDeps): void {
   bot.onText(/^\/link(?:@\w+)?\s*$/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-      const code = await createLinkCode();
+      const code = await createLinkCode(chatId);
       const text =
-        `Open Promed web → Settings → Telegram, paste this code: \`${code}\`. ` +
+        `Open Promed web → Settings → Telegram, paste this code: \`${code.code}\`. ` +
         `Code expires in 15 minutes.\n\n` +
-        `افتح Promed → الإعدادات → Telegram وألصق هذا الرمز: \`${code}\`. ` +
+        `افتح Promed → الإعدادات → Telegram وألصق هذا الرمز: \`${code.code}\`. ` +
         `صالح لمدة 15 دقيقة.`;
       await safeSend(bot, dryRun, chatId, text);
     } catch (err) {

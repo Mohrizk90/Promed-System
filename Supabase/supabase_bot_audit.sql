@@ -39,6 +39,21 @@ CREATE INDEX IF NOT EXISTS idx_bot_audit_log_tool_created
 
 ALTER TABLE public.bot_audit_log ENABLE ROW LEVEL SECURITY;
 
+-- Idempotent widen of bot_error_feed.source to allow 'gemini', 'supabase',
+-- 'other' (the runtime ErrorEntry type uses all of these). Safe to re-apply.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema='public' AND table_name='bot_error_feed') THEN
+        ALTER TABLE public.bot_error_feed
+            DROP CONSTRAINT IF EXISTS bot_error_feed_source_check;
+        ALTER TABLE public.bot_error_feed
+            ADD CONSTRAINT bot_error_feed_source_check
+            CHECK (source IN ('bot','mcp','collector','telegram','gemini','supabase','other'));
+    END IF;
+END
+$$;
+
 DROP POLICY IF EXISTS bot_audit_log_select ON public.bot_audit_log;
 CREATE POLICY bot_audit_log_select
     ON public.bot_audit_log
@@ -94,7 +109,7 @@ CREATE POLICY bot_pending_confirmations_select
 -- Global warning and error events from the bot, MCP, and collectors.
 CREATE TABLE IF NOT EXISTS public.bot_error_feed (
     id BIGSERIAL PRIMARY KEY,
-    source TEXT NOT NULL CHECK (source IN ('bot', 'mcp', 'collector', 'telegram')),
+    source TEXT NOT NULL CHECK (source IN ('bot', 'mcp', 'collector', 'telegram', 'gemini', 'supabase', 'other')),
     severity TEXT NOT NULL CHECK (severity IN ('warn', 'error')),
     message TEXT NOT NULL,
     context_json JSONB,
