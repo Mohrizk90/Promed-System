@@ -1,7 +1,11 @@
-import jsPDF from 'jspdf'
+import jsPDFImport from 'jspdf'
 import 'jspdf-autotable'
 import { getInvoiceLinesFromTransaction } from './invoiceLines.js'
 import { getDisplayInvoiceNumber } from './invoiceService.js'
+
+// Node ESM resolves jspdf as a module namespace; Vite/browser gets the constructor
+// as the default. Normalize so both environments work.
+const jsPDF = jsPDFImport?.default ?? jsPDFImport.jsPDF ?? jsPDFImport
 
 /* ───── Browser-side download helper ───── */
 // Converts raw PDF bytes to a Blob and triggers a browser download.
