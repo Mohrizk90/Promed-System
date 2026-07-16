@@ -52,13 +52,10 @@ function nonce(): string {
 }
 
 function sendText(bot: TelegramBot, chatId: number, text: string): Promise<void> {
-  return bot.sendMessage(chatId, text, { parse_mode: "Markdown" }).then(
-    () => undefined,
-    async (err) => {
-      logger.warn({ err }, "sendMessage markdown failed; retrying plain");
-      await bot.sendMessage(chatId, text);
-    },
-  );
+  // Default to plain text so arbitrary Gemini output (which can contain
+  // Markdown punctuation like _, *, [, ], `, ~) doesn't trigger Telegram's
+  // "can't parse entities" Bad Request mid-conversation.
+  return bot.sendMessage(chatId, text).then(() => undefined);
 }
 
 function notLinkedReply(): string {
@@ -374,13 +371,16 @@ type HandleArgs = {
 async function handleUserTurn(args: HandleArgs): Promise<void> {
   const { bot, dryRun, chatId, userId, parts, session, latestText } = args;
 
-  // Record the user turn.
-  session.turns.push({
-    role: "user",
-    parts: parts
-      .filter((p): p is { kind: "text"; text: string } => p.kind === "text")
-      .map((p) => ({ text: p.text })),
-  });
+  // Record the user turn. `session.turns` is text-only (audio/image bytes are
+  // sent inline this round); we MUST keep at least one text part here or the
+  // next conversation round will replay an empty Content and the Gemini SDK
+  // throws "Each Content should have at least one part" at startChat.
+  const textParts = parts
+    .filter((p): p is { kind: "text"; text: string } => p.kind === "text")
+    .map((p) => ({ text: p.text }));
+  const storedTextParts =
+    textParts.length > 0 ? textParts : [{ text: latestText || "(non-text input)" }];
+  session.turns.push({ role: "user", parts: storedTextParts });
 
   // Pull MCP tools (cached for the process is fine; auth context is the same).
   let tools;

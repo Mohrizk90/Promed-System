@@ -155,15 +155,20 @@ function toGeminiHistory(history: GeminiTurn[]): Content[] {
   const out: Content[] = [];
   for (const t of history) {
     if (t.role === "user") {
-      out.push({
-        role: "user",
-        parts: t.parts.map((p): Part => {
+      const parts = t.parts
+        .map((p): Part => {
           if (p.kind === "text") return { text: p.text };
           return { inlineData: { mimeType: p.mimeType, data: p.base64 } };
-        }),
-      });
+        })
+        // Gemini rejects empty Content; coerce any audio/image-only user turn
+        // into a small text marker so the conversation round replays cleanly.
+        .concat(
+          t.parts.length === 0 ? [{ text: "(non-text input)" }] : [],
+        );
+      if (parts.length === 0) parts.push({ text: "(non-text input)" });
+      out.push({ role: "user", parts });
     } else if (t.role === "model") {
-      out.push({ role: "model", parts: [{ text: t.text }] as Part[] });
+      out.push({ role: "model", parts: [{ text: t.text || "" }] as Part[] });
     }
     // function turns are replayed by runLoop via functionResponse, not via history.
   }

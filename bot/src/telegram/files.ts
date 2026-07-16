@@ -17,7 +17,16 @@ export async function downloadTelegramFile(
     throw new Error("bot token not available for file download");
   }
   const url = `https://api.telegram.org/file/bot${token}/${link.file_path}`;
-  const res = await fetch(url);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } catch (err) {
+    throw new Error(`download threw: ${(err as Error).message}`);
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!res.ok) {
     throw new Error(`download failed: ${res.status} ${res.statusText}`);
   }
