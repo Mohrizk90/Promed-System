@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { WebSocket as NodeWebSocket } from "ws";
 import { loadConfig } from "../config.js";
 
 let _db: SupabaseClient | null = null;
@@ -7,6 +8,8 @@ function db(): SupabaseClient {
   const cfg = loadConfig();
   _db = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
+    realtime: { transport: NodeWebSocket as unknown as any },
+    global: { WebSocket: NodeWebSocket as unknown as typeof globalThis.WebSocket } as any,
   });
   return _db;
 }

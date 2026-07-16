@@ -14,6 +14,7 @@ import { generateInvoice } from '../../utils/generateInvoice'
 import {
   isDraftInvoice,
   isIssuedInvoice,
+  getDisplayInvoiceNumber,
   resolveInvoiceFields,
   buildInvoicePdfOptions,
 } from '../../utils/invoiceService'
@@ -87,6 +88,7 @@ function TransactionPage({ config }) {
     transaction_date: new Date().toISOString().split('T')[0],
     status: 'not_started',
     invoice_number: '',
+    external_invoice_number: '',
     payment_terms: defaultPaymentTerms,
     due_date: '',
     wht_rate: 0,
@@ -518,6 +520,7 @@ function TransactionPage({ config }) {
         transaction_date: formData.transaction_date,
         status: computedStatus,
         invoice_number: invoiceNumber,
+        external_invoice_number: formData.external_invoice_number?.trim() || null,
         payment_terms: formData.payment_terms || 'none',
         due_date: formData.due_date || null,
         ...(invoicingEnabled && invoiceModalMode ? {
@@ -640,6 +643,7 @@ function TransactionPage({ config }) {
         transaction_date: new Date().toISOString().split('T')[0],
         status: 'not_started',
         invoice_number: '',
+        external_invoice_number: '',
         payment_terms: defaultPaymentTerms,
         due_date: '',
         wht_rate: 0,
@@ -675,6 +679,7 @@ function TransactionPage({ config }) {
         ? transaction.unit_price.toString()
         : (transaction.products?.unit_price !== undefined && transaction.products?.unit_price !== null ? transaction.products.unit_price.toString() : (transaction.quantity ? (parseFloat(transaction.total_amount) / transaction.quantity).toFixed(2) : '')),
       invoice_number: transaction.invoice_number || '',
+      external_invoice_number: transaction.external_invoice_number || '',
       payment_terms: transaction.payment_terms || 'none',
       due_date: transaction.due_date || '',
       wht_rate: Number(transaction.wht_rate) || 0,
@@ -1440,6 +1445,7 @@ function TransactionPage({ config }) {
       transaction_date: new Date().toISOString().split('T')[0],
       status: 'not_started',
       invoice_number: '',
+      external_invoice_number: '',
       payment_terms: defaultPaymentTerms,
       due_date: '',
       wht_rate: 0,
@@ -1679,8 +1685,8 @@ function TransactionPage({ config }) {
                     <tr className="hover:bg-gray-50 transition-colors">
                       <td className="px-2 py-1 whitespace-nowrap text-gray-900">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
                       <td className="px-2 py-1 whitespace-nowrap text-gray-600 text-xs">
-                        {transaction.invoice_number ? (
-                          <span className="font-medium text-gray-800">{transaction.invoice_number}</span>
+                        {getDisplayInvoiceNumber(transaction) ? (
+                          <span className="font-medium text-gray-800">{getDisplayInvoiceNumber(transaction)}</span>
                         ) : invoicingEnabled && isDraftInvoice(transaction) ? (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">
                             {t('clientTransactions.invoiceDraft')}
@@ -2316,7 +2322,9 @@ function TransactionPage({ config }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.invoiceNumber')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {invoiceModalMode ? t('common.internalInvoiceNumber') : t('common.invoiceNumber')}
+                  </label>
                   {invoiceModalMode ? (
                     formData.invoice_number ? (
                       <input
@@ -2340,6 +2348,16 @@ function TransactionPage({ config }) {
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.externalInvoiceNumber')}</label>
+                  <input
+                    type="text"
+                    value={formData.external_invoice_number}
+                    onChange={(e) => setFormData({ ...formData, external_invoice_number: e.target.value })}
+                    placeholder={t('common.externalInvoiceNumberPlaceholder')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.paymentTerms')}</label>

@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { getCompanySettings } from '../utils/companySettings'
 import { getInvoiceSettings } from '../utils/invoiceSettings'
 import { getInvoiceLinesFromTransaction } from '../utils/invoiceLines'
+import { getDisplayInvoiceNumber } from '../utils/invoiceService'
 
 function parseDate(value) {
   if (!value) return null
@@ -86,7 +87,7 @@ export default function InvoiceModal({ isOpen, onClose, transaction, payments = 
       : 'bg-amber-100 text-amber-800 border-amber-300'
 
   const invoiceNumber =
-    transaction.invoice_number ||
+    getDisplayInvoiceNumber(transaction) ||
     `${invoiceSettings.invoicePrefix || 'INV'}-${String(transaction.transaction_id || 0).padStart(5, '0')}`
 
   const entityName =

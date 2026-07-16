@@ -15,6 +15,13 @@ export function isIssuedInvoice(transaction) {
   return Boolean(transaction?.invoice_number?.trim())
 }
 
+/** Customer-facing number when set; otherwise the internal system number. */
+export function getDisplayInvoiceNumber(transaction) {
+  const external = (transaction?.external_invoice_number || '').trim()
+  if (external) return external
+  return (transaction?.invoice_number || '').trim()
+}
+
 export function invoiceWorkflowStatus(transaction) {
   if (isIssuedInvoice(transaction)) return 'issued'
   if (isDraftInvoice(transaction)) return 'draft'

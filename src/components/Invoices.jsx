@@ -7,7 +7,7 @@ import LoadingSpinner from './LoadingSpinner'
 import Dropdown from './ui/Dropdown'
 import { FileText, MoreVertical, Plus } from './ui/Icons'
 import InvoiceModal from './InvoiceModal'
-import { isDraftInvoice, isIssuedInvoice } from '../utils/invoiceService'
+import { isDraftInvoice, isIssuedInvoice, getDisplayInvoiceNumber } from '../utils/invoiceService'
 import { allocateNextInvoiceNumber } from '../utils/invoiceSettings'
 import { nextStatusAfterPaymentChange } from '../utils/transactionStatus'
 import {
@@ -65,9 +65,10 @@ export default function Invoices() {
     if (q) {
       rows = rows.filter((tx) => {
         const client = tx.clients?.client_name?.toLowerCase() || ''
-        const inv = tx.invoice_number?.toLowerCase() || ''
+        const inv = getDisplayInvoiceNumber(tx).toLowerCase()
+        const invInternal = tx.invoice_number?.toLowerCase() || ''
         const product = tx.products?.product_name?.toLowerCase() || ''
-        return client.includes(q) || inv.includes(q) || product.includes(q)
+        return client.includes(q) || inv.includes(q) || invInternal.includes(q) || product.includes(q)
       })
     }
     return rows
@@ -195,7 +196,7 @@ export default function Invoices() {
                 return (
                   <tr key={tx.transaction_id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">
-                      {tx.invoice_number || (
+                      {getDisplayInvoiceNumber(tx) || (
                         <span className="text-amber-700 text-xs font-semibold uppercase">{t('clientTransactions.invoiceDraft')}</span>
                       )}
                     </td>

@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { getInvoiceLinesFromTransaction } from './invoiceLines'
+import { getDisplayInvoiceNumber } from './invoiceService'
 
 /* ───── Browser-side download helper ───── */
 // Converts raw PDF bytes to a Blob and triggers a browser download.
@@ -241,8 +242,8 @@ async function buildInvoiceDocInternal(transaction, options = {}) {
     txt(L.invoice, rX, 22, { align: 'right' })
   }
 
-  // Invoice number under title
-  const invoiceNum = transaction.invoice_number ||
+  // Invoice number under title (prefer external / customer-facing number)
+  const invoiceNum = getDisplayInvoiceNumber(transaction) ||
     `${invoicePrefix}-${String(transaction.transaction_id).padStart(5, '0')}`
   setFont('normal', 11)
   doc.setTextColor(200, 220, 255)

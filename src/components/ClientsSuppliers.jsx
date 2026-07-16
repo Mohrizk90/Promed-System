@@ -14,6 +14,7 @@ import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs
 import ClientStatementModal from './ClientStatementModal'
 import { recordClientAccountPayment, deleteClientAccountPayment } from '../utils/clientAccountPayments'
 import { getClientAccountSummary, allocateEntityInvoices } from '../utils/paymentAllocation'
+import { getDisplayInvoiceNumber } from '../utils/invoiceService'
 
 const matchSearch = (text, query) => {
   if (!query.trim()) return true
@@ -819,7 +820,7 @@ function ClientsSuppliers() {
                 {[...detailTransactions].sort((a, b) => String(b.transaction_date).localeCompare(String(a.transaction_date))).map((tx) => (
                   <tr key={tx.transaction_id} className="hover:bg-gray-50">
                     <td className="px-2 py-1 text-gray-700 whitespace-nowrap">{tx.transaction_date}</td>
-                    <td className="px-2 py-1 text-gray-600 whitespace-nowrap">{tx.invoice_number || '—'}</td>
+                    <td className="px-2 py-1 text-gray-600 whitespace-nowrap">{getDisplayInvoiceNumber(tx) || '—'}</td>
                     <td className="px-2 py-1 text-gray-800 max-w-[140px] truncate" title={tx.products?.product_name || '—'}>{tx.products?.product_name || '—'}{tx.products?.model ? ` (${tx.products.model})` : ''}</td>
                     <td className="px-2 py-1 text-right tabular-nums font-medium text-gray-900">{formatCurrency(tx.total_amount)}</td>
                     <td className="px-2 py-1 text-right tabular-nums text-green-700">{formatCurrency(effectivePaid(tx))}</td>

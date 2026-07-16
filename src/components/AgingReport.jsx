@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { getDisplayInvoiceNumber } from '../utils/invoiceService'
 
 const BUCKETS = [
   { key: 'current', min: -Infinity, max: 0 },
@@ -126,7 +127,7 @@ export default function AgingReport() {
       const days = daysPastDue(tx.due_date, tx.transaction_date)
       return {
         [t('aging.entity')]: tx[entityRelation]?.[entityNameField] || '',
-        [t('common.invoiceNumber')]: tx.invoice_number || '',
+        [t('common.invoiceNumber')]: getDisplayInvoiceNumber(tx),
         [t('aging.transactionDate')]: tx.transaction_date,
         [t('common.dueDate')]: tx.due_date || '',
         [t('aging.total')]: tx.total_amount,
@@ -233,7 +234,7 @@ export default function AgingReport() {
                 return (
                   <tr key={tx.transaction_id || tx.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 font-medium text-gray-900">{tx[entityRelation]?.[entityNameField] || '—'}</td>
-                    <td className="px-3 py-2 text-gray-600">{tx.invoice_number || '—'}</td>
+                    <td className="px-3 py-2 text-gray-600">{getDisplayInvoiceNumber(tx) || '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{new Date(tx.transaction_date).toLocaleDateString()}</td>
                     <td className="px-3 py-2 text-gray-600">{tx.due_date ? new Date(tx.due_date).toLocaleDateString() : '—'}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(tx.total_amount)}</td>

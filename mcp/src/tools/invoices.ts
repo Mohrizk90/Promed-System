@@ -22,9 +22,20 @@ type InvoiceRow = {
   amount: number | string | null;
   status: string | null;
   invoice_number: string | null;
+  external_invoice_number?: string | null;
   due_date: string | null;
   created_at: string | null;
 };
+
+function displayInvoiceNumber(row: {
+  external_invoice_number?: string | null;
+  invoice_number?: string | null;
+}): string | null {
+  const external = (row.external_invoice_number || '').trim();
+  if (external) return external;
+  const internal = (row.invoice_number || '').trim();
+  return internal || null;
+}
 
 function normalizeAmount(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined) return null;
@@ -46,6 +57,7 @@ export async function listInvoicesHandler(
     amount: number | null;
     status: string | null;
     invoice_number: string | null;
+    external_invoice_number: string | null;
     due_date: string | null;
   }>;
 }> {
@@ -55,7 +67,7 @@ export async function listInvoicesHandler(
   let query = supa
     .from('client_transactions')
     .select(
-      'id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, due_date, created_at, clients:client_id ( client_name )',
+      'id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, external_invoice_number, due_date, created_at, clients:client_id ( client_name )',
     )
     .eq('user_id', ctx.user.id)
     .or('status.eq.invoiced,invoice_number.not.is.null')
@@ -80,7 +92,8 @@ export async function listInvoicesHandler(
       description: r.description,
       amount: normalizeAmount(r.amount),
       status: r.status,
-      invoice_number: r.invoice_number,
+      invoice_number: displayInvoiceNumber(r),
+      external_invoice_number: r.external_invoice_number?.trim() || null,
       due_date: r.due_date,
     };
   });
@@ -116,7 +129,7 @@ export async function getClientTransactionHandler(
   const { data: txRow, error: txErr } = await supa
     .from('client_transactions')
     .select(
-      'id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, due_date, created_at, clients:client_id ( client_name )',
+      'id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, external_invoice_number, due_date, created_at, clients:client_id ( client_name )',
     )
     .eq('id', args.id)
     .eq('user_id', ctx.user.id)
@@ -133,7 +146,12 @@ export async function getClientTransactionHandler(
   if (payErr) throw new Error(`get_client_transaction payments failed: ${payErr.message}`);
 
   return {
-    transaction: { ...txR, client_name: txR.clients?.[0]?.client_name ?? null },
+    transaction: {
+      ...txR,
+      client_name: txR.clients?.[0]?.client_name ?? null,
+      invoice_number: displayInvoiceNumber(txR),
+      external_invoice_number: txR.external_invoice_number?.trim() || null,
+    },
     payments: (paymentRows ?? []).map((row) => {
       const r = row as PaymentRow;
       return {

@@ -483,6 +483,9 @@ export const translations = {
       // Invoice & due date
       invoiceNumber: 'Invoice #',
       invoiceNumberPlaceholder: 'e.g. INV-001',
+      internalInvoiceNumber: 'Internal invoice #',
+      externalInvoiceNumber: 'External invoice #',
+      externalInvoiceNumberPlaceholder: 'e.g. 152',
       dueDate: 'Due Date',
       overdue: 'Overdue',
       paymentTerms: 'Payment Terms',
@@ -1681,6 +1684,9 @@ export const translations = {
       // Invoice & due date
       invoiceNumber: 'رقم الفاتورة',
       invoiceNumberPlaceholder: 'مثال: INV-001',
+      internalInvoiceNumber: 'رقم الفاتورة الداخلي',
+      externalInvoiceNumber: 'رقم الفاتورة الخارجي',
+      externalInvoiceNumberPlaceholder: 'مثال: 152',
       dueDate: 'تاريخ الاستحقاق',
       overdue: 'متأخر',
       paymentTerms: 'شروط الدفع',

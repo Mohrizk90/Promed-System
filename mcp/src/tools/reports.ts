@@ -36,8 +36,19 @@ type TransactionRow = {
   total_amount?: number | string | null;
   status: string | null;
   invoice_number: string | null;
+  external_invoice_number?: string | null;
   user_id: string;
 };
+
+function displayInvoiceNumber(row: {
+  external_invoice_number?: string | null;
+  invoice_number?: string | null;
+}): string | null {
+  const external = (row.external_invoice_number || '').trim();
+  if (external) return external;
+  const internal = (row.invoice_number || '').trim();
+  return internal || null;
+}
 
 type PaymentRow = {
   id: string;
@@ -116,7 +127,7 @@ export async function generateClientStatementHandler(
   // 2) Fetch transactions in the date window.
   let txQuery = supa
     .from('client_transactions')
-    .select('id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, user_id')
+    .select('id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, external_invoice_number, user_id')
     .eq('client_id', args.client_id)
     .eq('user_id', ctx.user.id)
     .order('transaction_date', { ascending: true });
@@ -187,6 +198,7 @@ export async function generateClientStatementHandler(
       transaction_date: t.transaction_date,
       total_amount: num(t.amount),
       invoice_number: t.invoice_number,
+      external_invoice_number: t.external_invoice_number,
       description: t.description,
       status: t.status,
     }));
@@ -266,7 +278,7 @@ export async function generateInvoiceHandler(
   const { data: txRow, error: txErr } = await supa
     .from('client_transactions')
     .select(
-      'id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, user_id, clients:client_id ( client_name, contact_info, address )',
+      'id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, external_invoice_number, user_id, clients:client_id ( client_name, contact_info, address )',
     )
     .eq('id', args.transaction_id)
     .eq('user_id', ctx.user.id)
@@ -344,6 +356,6 @@ export async function generateInvoiceHandler(
     path: storagePath,
     signedUrl: signed.signedUrl,
     expires_at: expiresAt,
-    invoice_number: transaction.invoice_number ?? null,
+    invoice_number: displayInvoiceNumber(transaction),
   };
 }

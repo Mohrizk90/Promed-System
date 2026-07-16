@@ -8,7 +8,7 @@ import {
   peekNextInvoiceNumber,
   allocateNextInvoiceNumber,
 } from './invoiceSettings'
-import { isDraftInvoice, isIssuedInvoice, resolveInvoiceFields } from './invoiceService'
+import { isDraftInvoice, isIssuedInvoice, resolveInvoiceFields, getDisplayInvoiceNumber } from './invoiceService'
 
 describe('invoiceSettings', () => {
   beforeEach(() => {
@@ -71,5 +71,12 @@ describe('invoiceService', () => {
     })
     expect(fields.invoice_number).toBeNull()
     expect(fields.status).toBe('in_progress')
+  })
+
+  it('prefers external invoice number for display', () => {
+    expect(getDisplayInvoiceNumber({ invoice_number: 'INV-00001', external_invoice_number: '152' })).toBe('152')
+    expect(getDisplayInvoiceNumber({ invoice_number: 'INV-00001', external_invoice_number: '' })).toBe('INV-00001')
+    expect(getDisplayInvoiceNumber({ invoice_number: '154' })).toBe('154')
+    expect(getDisplayInvoiceNumber({})).toBe('')
   })
 })

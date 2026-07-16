@@ -77,8 +77,19 @@ type TransactionRow = {
   amount: number | string | null;
   status: string | null;
   invoice_number: string | null;
+  external_invoice_number?: string | null;
   created_at: string | null;
 };
+
+function displayInvoiceNumber(row: {
+  external_invoice_number?: string | null;
+  invoice_number?: string | null;
+}): string | null {
+  const external = (row.external_invoice_number || '').trim();
+  if (external) return external;
+  const internal = (row.invoice_number || '').trim();
+  return internal || null;
+}
 
 export async function getClientHandler(
   args: z.infer<typeof getClientSchema>,
@@ -93,6 +104,7 @@ export async function getClientHandler(
     amount: number | null;
     status: string | null;
     invoice_number: string | null;
+    external_invoice_number: string | null;
   }>;
 }> {
   const supa = userClient(ctx.user.id, ctx.user.jwt);
@@ -107,7 +119,7 @@ export async function getClientHandler(
 
   const { data: txRows, error: txErr } = await supa
     .from('client_transactions')
-    .select('id, transaction_date, transaction_type, description, amount, status, invoice_number, created_at')
+    .select('id, transaction_date, transaction_type, description, amount, status, invoice_number, external_invoice_number, created_at')
     .eq('client_id', args.id)
     .eq('user_id', ctx.user.id)
     .order('transaction_date', { ascending: false })
@@ -127,7 +139,8 @@ export async function getClientHandler(
         description: r.description,
         amount: amount === null || amount === undefined || Number.isNaN(amount) ? null : amount,
         status: r.status,
-        invoice_number: r.invoice_number,
+        invoice_number: displayInvoiceNumber(r),
+        external_invoice_number: r.external_invoice_number?.trim() || null,
       };
     }),
   };

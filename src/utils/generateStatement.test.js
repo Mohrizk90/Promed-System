@@ -105,6 +105,45 @@ describe('buildStatementRows', () => {
     expect(summary.creditBalance).toBe(500)
     expect(summary.amountDue).toBe(0)
   })
+
+  it('prefers external invoice number on statement rows when set', () => {
+    const txs = [
+      { transaction_id: 1, transaction_date: '2026-01-08', invoice_number: '152', total_amount: 100 },
+      {
+        transaction_id: 2,
+        transaction_date: '2026-03-01',
+        invoice_number: 'INV-00010',
+        external_invoice_number: '160',
+        total_amount: 200,
+      },
+      {
+        transaction_id: 3,
+        transaction_date: '2026-03-15',
+        invoice_number: 'INV-00011',
+        total_amount: 300,
+      },
+    ]
+    const rows = buildStatementRows(txs, [])
+    const invoiceRows = rows.filter((r) => r.type === 'invoice')
+
+    expect(invoiceRows[0].invoiceNumber).toBe('152')
+    expect(invoiceRows[1].invoiceNumber).toBe('160')
+    expect(invoiceRows[2].invoiceNumber).toBe('INV-00011')
+  })
+
+  it('falls back to internal invoice number when external is empty', () => {
+    const txs = [
+      {
+        transaction_id: 1,
+        transaction_date: '2026-01-08',
+        invoice_number: 'INV-00005',
+        external_invoice_number: '  ',
+        total_amount: 50,
+      },
+    ]
+    const rows = buildStatementRows(txs, [])
+    expect(rows[0].invoiceNumber).toBe('INV-00005')
+  })
 })
 
 describe('formatStatementPeriod', () => {

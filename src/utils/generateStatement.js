@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import { getDisplayInvoiceNumber } from './invoiceService'
 
 /* ───── Browser-side download helper ───── */
 // Converts raw PDF bytes to a Blob and triggers a browser download.
@@ -203,7 +204,7 @@ export function buildStatementRows(transactions = [], payments = [], options = {
       rows.push({
         date: event.tx.transaction_date,
         type: 'invoice',
-        invoiceNumber: event.tx.invoice_number || '',
+        invoiceNumber: getDisplayInvoiceNumber(event.tx),
         wht: '—',
         invAmount: amount,
         payment: '',
@@ -218,7 +219,7 @@ export function buildStatementRows(transactions = [], payments = [], options = {
     rows.push({
       date: event.payment.payment_date,
       type: isAccount ? 'accountPayment' : 'payment',
-      invoiceNumber: isAccount ? '' : (event.tx?.invoice_number || ''),
+      invoiceNumber: isAccount ? '' : getDisplayInvoiceNumber(event.tx),
       wht: '—',
       invAmount: '',
       payment: amount,

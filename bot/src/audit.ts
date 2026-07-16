@@ -1,6 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { WebSocket as NodeWebSocket } from "ws";
 import { loadConfig } from "./config.js";
 import { logger } from "./logger.js";
+
+// See mcp/src/supabase/userClient.ts for the cast rationale.
+const WS_RT = NodeWebSocket as unknown as any;
+const WS_GLOBAL = NodeWebSocket as unknown as typeof globalThis.WebSocket;
 
 export type AuditEntry = {
   chat_id: number;
@@ -45,6 +50,10 @@ function db(): SupabaseClient {
   const cfg = loadConfig();
   _supabase = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
+    // See mcp/src/supabase/userClient.ts — Supabase 2.110+ requires a
+    // user-provided WebSocket on Node <22 even though we never subscribe.
+    realtime: { transport: WS_RT },
+    global: { WebSocket: WS_GLOBAL } as any,
   });
   return _supabase;
 }
