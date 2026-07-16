@@ -56,7 +56,7 @@ export default function Settings() {
     try {
       const { data, error } = await supabase
         .from('telegram_links')
-        .select('telegram_chat_id, telegram_username, linked_at')
+        .select('chat_id, telegram_username, linked_at')
         .maybeSingle()
       if (error) throw error
       setTelegramLink(data || null)
@@ -424,7 +424,7 @@ export default function Settings() {
             <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-lg">
               <span className="w-2 h-2 rounded-full bg-green-500" />
               <span className="text-sm text-green-800">
-                {t('settings.telegram.linked')}: <span className="font-mono font-semibold">{telegramLink.telegram_chat_id}</span>
+                {t('settings.telegram.linked')}: <span className="font-mono font-semibold">{telegramLink.chat_id}</span>
                 {telegramLink.telegram_username ? ` (@${telegramLink.telegram_username})` : ''}
               </span>
             </div>

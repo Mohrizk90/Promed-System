@@ -358,7 +358,7 @@ export default function AgentMonitoring() {
           .limit(1000),
         supabase
           .from('telegram_links')
-          .select('telegram_chat_id', { count: 'exact', head: false })
+          .select('chat_id', { count: 'exact', head: false })
           .eq('is_active', true),
       ])
 
@@ -479,7 +479,7 @@ export default function AgentMonitoring() {
     try {
       const { data, error } = await supabase
         .from('telegram_links')
-        .select('telegram_chat_id, telegram_username, linked_at, last_seen_at, is_active')
+        .select('chat_id, telegram_username, linked_at, last_seen_at, is_active')
         .order('linked_at', { ascending: false })
       if (error) throw error
       setLinkedUsers(data || [])
@@ -813,8 +813,8 @@ export default function AgentMonitoring() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {linkedUsers.map((u) => (
-                    <tr key={u.telegram_chat_id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-3 py-2 text-xs font-mono text-gray-700 whitespace-nowrap">{u.telegram_chat_id}</td>
+                    <tr key={u.chat_id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-3 py-2 text-xs font-mono text-gray-700 whitespace-nowrap">{u.chat_id}</td>
                       <td className="px-3 py-2 text-xs text-gray-900 whitespace-nowrap">{u.telegram_username || '—'}</td>
                       <td className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">{formatDateTime(u.linked_at)}</td>
                       <td className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap">{formatRelative(u.last_seen_at)}</td>
