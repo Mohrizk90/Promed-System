@@ -15,6 +15,7 @@ import {
   User as UserIcon,
   ChevronDown,
   Shield,
+  Activity,
 } from './ui/Icons'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useLanguage } from '../context/LanguageContext'
@@ -45,6 +46,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/products', label: t('nav.inventory'), icon: Package, shortcut: 'i', color: 'teal' },
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
     { path: '/compliance', label: t('nav.compliance'), icon: Shield, shortcut: 'm', color: 'rose' },
+    { path: '/monitoring/agent', label: t('nav.monitoring'), icon: Activity, shortcut: null, color: 'slate' },
   ].filter((item) => !isComplianceOnlyUser(user) || item.path === '/compliance')
 
   const iconColors = {
@@ -56,6 +58,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     teal: { inactive: 'bg-teal-500/90 text-white', active: 'bg-teal-100 text-teal-600' },
     amber: { inactive: 'bg-amber-500/90 text-white', active: 'bg-amber-100 text-amber-700' },
     rose: { inactive: 'bg-rose-500/90 text-white', active: 'bg-rose-100 text-rose-600' },
+    slate: { inactive: 'bg-slate-500/90 text-white', active: 'bg-slate-100 text-slate-600' },
   }
 
   const handleNavClick = () => { if (onClose) onClose() }

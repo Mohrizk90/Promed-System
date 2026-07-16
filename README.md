@@ -143,6 +143,27 @@ The `vercel.json` in the repo configures:
 - Real-time updates are enabled via Supabase Realtime subscriptions
 - Make sure Row Level Security (RLS) policies are configured appropriately in Supabase if you need authentication
 
+## Telegram AI Agent (Phase 1)
+
+Three new services live alongside the React frontend:
+
+| Path | What it does | Docs |
+|---|---|---|
+| `mcp/` | Node MCP server exposing typed ERP verbs (read tools + PDF generation). | [docs/TELEGRAM_BOT.md](docs/TELEGRAM_BOT.md) |
+| `bot/` | Telegram orchestrator: Gemini multimodal, MCP client, voice replies. | [docs/TELEGRAM_BOT.md](docs/TELEGRAM_BOT.md) |
+| `vps-collector/` | SSH-into-`smops` collector for CPU/mem/disk/process metrics. | [docs/SMOPS_COLLECTOR.md](docs/SMOPS_COLLECTOR.md) |
+| `src/components/AgentMonitoring.jsx` | In-ERP dashboard at `/monitoring/agent`. | [docs/TELEGRAM_BOT.md](docs/TELEGRAM_BOT.md) |
+
+To get the agent end-to-end you also need to apply 5 SQL migrations in `Supabase/`:
+
+1. `supabase_telegram_links.sql`
+2. `supabase_telegram_link_codes.sql`
+3. `supabase_bot_audit.sql` (creates five tables: `bot_audit_log`, `bot_tool_stats`, `bot_pending_confirmations`, `bot_error_feed`, `bot_health_snapshots`)
+4. `supabase_vps_metrics.sql`
+5. `supabase_generated_files_bucket.sql`
+
+Then create a Telegram bot via @BotFather, generate a Gemini API key at https://aistudio.google.com/apikey, and fill the `.env.example` files in `mcp/`, `bot/`, `vps-collector/`.
+
 ## Troubleshooting
 
 ### Real-time updates not working

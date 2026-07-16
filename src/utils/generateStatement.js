@@ -1,9 +1,28 @@
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
+/* ───── Browser-side download helper ───── */
+// Converts raw PDF bytes to a Blob and triggers a browser download.
+// Intentionally a no-op from Node — the MCP server uses buildInvoicePdf /
+// buildStatementPdf directly and never calls this helper.
+// (Duplicated from generateInvoice.js to keep the change surface minimal —
+// no new shared module was introduced.)
+function savePdfBytes(bytes, filename) {
+  const blob = new Blob([bytes], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 /* ───── Font cache (loaded once, reused) ───── */
 let _fontCache = null
 
+// When called from Node, the global `fetch` is unavailable. The MCP server wraps this with its own Node-aware font loader.
 async function loadArabicFont() {
   if (_fontCache) return _fontCache
   try {
@@ -307,10 +326,25 @@ const COLORS = {
   header: [55, 65, 81],
 }
 
+/* ───── Private builder — pure, no browser side effects ───── */
+
 /**
- * Generate a professional client account statement PDF.
+ * Internal: build the jsPDF document for a statement and return its bytes
+ * plus a suggested filename. This contains the full document construction
+ * logic and is intentionally pure — it never calls `doc.save()` and never
+ * touches the DOM. Both the browser-facing `generateStatement` (which routes
+ * the bytes through `savePdfBytes` to trigger a download) and the Node-MCP
+ * `buildStatementPdf` (which returns the raw bytes for upload to Supabase
+ * Storage) are thin wrappers around this function.
+ *
+ * @param {Object} input
+ * @param {Object} input.client - The client info
+ * @param {Array}  input.transactions - Client transactions
+ * @param {Array}  input.payments - Client payments
+ * @param {Object} input.options - Settings (currency, language, company info, period, openingBalance)
+ * @returns {Promise<{ bytes: Uint8Array, filename: string }>}
  */
-export async function generateStatement({ client, transactions = [], payments = [], options = {} }) {
+async function buildStatementDocInternal({ client, transactions = [], payments = [], options = {} }) {
   const {
     companyName = 'Promed',
     companyAddress = '',
@@ -512,8 +546,60 @@ export async function generateStatement({ client, transactions = [], payments = 
   setFont('normal', 8)
   doc.text(L.generatedBy, pw / 2, footerY, { align: 'center' })
 
+  /* ═══════════════════════════════════════════
+     EXTRACT BYTES (no doc.save() — caller decides what to do with them)
+     ═══════════════════════════════════════════ */
   const safeName = clientName.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 40) || 'client'
   const fileName = `statement-${safeName}-${new Date().toISOString().slice(0, 10)}.pdf`
-  doc.save(fileName)
-  return fileName
+  const ab = doc.output('arraybuffer')
+  const bytes = new Uint8Array(ab)
+  return { bytes, filename: fileName }
+}
+
+/* ───── Public API ───── */
+
+/**
+ * Build the raw PDF bytes for a client statement (Node-MCP friendly).
+ * Does not call `doc.save()` and does not touch the DOM — the returned
+ * `Uint8Array` can be uploaded directly to Supabase Storage from the Node
+ * MCP server.
+ *
+ * @param {Object} input
+ * @param {Object} input.client - The client info
+ * @param {Array}  input.transactions - Client transactions
+ * @param {Array}  input.payments - Client payments
+ * @param {Object} input.options - Settings (currency, language, company info, period, openingBalance)
+ * @returns {Promise<Uint8Array>} the raw PDF bytes
+ */
+export async function buildStatementPdf(input) {
+  const { bytes } = await buildStatementDocInternal(input)
+  return bytes
+}
+
+/**
+ * Generate a professional client account statement PDF (browser — triggers download).
+ *
+ * Thin async wrapper over `buildStatementDocInternal`: builds the PDF, then
+ * hands the bytes to `savePdfBytes` which creates a Blob and triggers a
+ * browser download. Returns the filename of the saved PDF.
+ *
+ * NOTE on `async`: this function is async so existing `await generateStatement(...)`
+ * call sites keep working unchanged. Callers that previously did
+ * `const f = generateStatement(...)` without `await` will still see the file
+ * download (the side effect runs synchronously inside the async function
+ * before the returned Promise resolves), but `f` will now be a `Promise<string>`
+ * instead of a `string`. All call sites in this repo use `await`, so this
+ * change is safe.
+ *
+ * @param {Object} input
+ * @param {Object} input.client - The client info
+ * @param {Array}  input.transactions - Client transactions
+ * @param {Array}  input.payments - Client payments
+ * @param {Object} input.options - Settings (currency, language, company info, period, openingBalance)
+ * @returns {Promise<string>} the filename that was saved
+ */
+export async function generateStatement(input) {
+  const { bytes, filename } = await buildStatementDocInternal(input)
+  savePdfBytes(bytes, filename)
+  return filename
 }

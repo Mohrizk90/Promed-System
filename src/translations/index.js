@@ -12,7 +12,8 @@ export const translations = {
       inventory: 'Inventory',
       reports: 'Reports',
       invoices: 'Invoices',
-      compliance: 'Compliance'
+      compliance: 'Compliance',
+      monitoring: 'Monitoring'
     },
     // Clients & Suppliers page
     entities: {
@@ -539,7 +540,16 @@ export const translations = {
       invoiceNextNumber: 'Next invoice number',
       invoicePadWidth: 'Number padding (digits)',
       saveInvoiceNumbering: 'Save invoice numbering',
-      invoiceNextPreview: 'Next invoice will be'
+      invoiceNextPreview: 'Next invoice will be',
+      // Telegram Bot link
+      telegram: {
+        title: 'Telegram Bot',
+        description: 'Link your Telegram account to use the Promed AI assistant. Open Telegram, message the bot, and send /link to receive a 6-character code. Paste it here.',
+        codePlaceholder: '6-character code',
+        linkButton: 'Link',
+        linked: 'Linked',
+        unlinkButton: 'Unlink',
+      }
     },
     // Aging Report
     aging: {
@@ -1200,7 +1210,8 @@ export const translations = {
       inventory: 'المخزون',
       reports: 'التقارير',
       invoices: 'الفواتير',
-      compliance: 'الامتثال'
+      compliance: 'الامتثال',
+      monitoring: 'المراقبة'
     },
     // Clients & Suppliers page
     entities: {
@@ -1727,7 +1738,16 @@ export const translations = {
       invoiceNextNumber: 'رقم الفاتورة التالي',
       invoicePadWidth: 'عدد خانات الرقم',
       saveInvoiceNumbering: 'حفظ ترقيم الفواتير',
-      invoiceNextPreview: 'الفاتورة التالية ستكون'
+      invoiceNextPreview: 'الفاتورة التالية ستكون',
+      // Telegram Bot link
+      telegram: {
+        title: 'بوت تليجرام',
+        description: 'اربط حساب تليجرام لاستخدام مساعد Promed الذكي. افتح تليجرام، راسل البوت، وأرسل /link للحصول على كود من 6 أحرف. الصقه هنا.',
+        codePlaceholder: 'كود من 6 أحرف',
+        linkButton: 'ربط',
+        linked: 'مربوط',
+        unlinkButton: 'إلغاء الربط',
+      }
     },
     // Aging Report
     aging: {

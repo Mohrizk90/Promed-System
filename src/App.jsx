@@ -20,6 +20,7 @@ const ComplianceOrphanReview = lazy(() => import('./components/Compliance/Compli
 const ComplianceMobileLayout = lazy(() => import('./components/Compliance/ComplianceMobileLayout'))
 const ComplianceMobileApp = lazy(() => import('./components/Compliance/ComplianceMobileApp'))
 const ComplianceMobileQueue = lazy(() => import('./components/Compliance/ComplianceMobileQueue'))
+const AgentMonitoring = lazy(() => import('./components/AgentMonitoring'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
@@ -189,6 +190,7 @@ function AppContent() {
               <Route path="/products" element={<ProtectedRoute><ComplianceOnlyGuard><ProductInventory /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/reports/aging" element={<ProtectedRoute><ComplianceOnlyGuard><AgingReport /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/reports/pnl" element={<ProtectedRoute><ComplianceOnlyGuard><ProfitLossReport /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/monitoring/agent" element={<ProtectedRoute><ComplianceOnlyGuard><AgentMonitoring /></ComplianceOnlyGuard></ProtectedRoute>} />
 
               {/* Compliance & Regulatory Management (worker runs for all sub-routes) */}
               <Route path="/compliance" element={<ProtectedRoute><ComplianceLayout /></ProtectedRoute>}>

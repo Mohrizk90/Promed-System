@@ -2,9 +2,26 @@ import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { getInvoiceLinesFromTransaction } from './invoiceLines'
 
+/* ───── Browser-side download helper ───── */
+// Converts raw PDF bytes to a Blob and triggers a browser download.
+// Intentionally a no-op from Node — the MCP server uses buildInvoicePdf /
+// buildStatementPdf directly and never calls this helper.
+function savePdfBytes(bytes, filename) {
+  const blob = new Blob([bytes], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 /* ───── Font cache (loaded once, reused) ───── */
 let _fontCache = null
 
+// When called from Node, the global `fetch` is unavailable. The MCP server wraps this with its own Node-aware font loader.
 async function loadArabicFont() {
   if (_fontCache) return _fontCache
   try {
@@ -140,14 +157,22 @@ const COLORS = {
   amber: [217, 119, 6],         // amber-600
 }
 
-/* ───── Main function ───── */
+/* ───── Private builder — pure, no browser side effects ───── */
 
 /**
- * Generate a professional bilingual PDF invoice
+ * Internal: build the jsPDF document for an invoice and return its bytes
+ * plus a suggested filename. This contains the full document construction
+ * logic and is intentionally pure — it never calls `doc.save()` and never
+ * touches the DOM. Both the browser-facing `generateInvoice` (which routes
+ * the bytes through `savePdfBytes` to trigger a download) and the Node-MCP
+ * `buildInvoicePdf` (which returns the raw bytes for upload to Supabase
+ * Storage) are thin wrappers around this function.
+ *
  * @param {Object} transaction - The transaction data
  * @param {Object} options - Settings (currency, language, company info, payments)
+ * @returns {Promise<{ bytes: Uint8Array, filename: string }>}
  */
-export async function generateInvoice(transaction, options = {}) {
+async function buildInvoiceDocInternal(transaction, options = {}) {
   const {
     companyName = 'Promed',
     companyAddress = '',
@@ -573,15 +598,60 @@ export async function generateInvoice(transaction, options = {}) {
   txt(L.generatedBy, pw / 2, footerY + 13, { align: 'center' })
 
   /* ═══════════════════════════════════════════
-     SAVE
+     EXTRACT BYTES (no doc.save() — caller decides what to do with them)
      ═══════════════════════════════════════════ */
   const fileName = `invoice-${invoiceNum}.pdf`
-  doc.save(fileName)
-  return fileName
+  const ab = doc.output('arraybuffer')
+  const bytes = new Uint8Array(ab)
+  return { bytes, filename: fileName }
+}
+
+/* ───── Public API ───── */
+
+/**
+ * Build the raw PDF bytes for an invoice (Node-MCP friendly).
+ * Does not call `doc.save()` and does not touch the DOM — the returned
+ * `Uint8Array` can be uploaded directly to Supabase Storage from the Node
+ * MCP server, or piped through `savePdfBytes` to trigger a browser download.
+ *
+ * @param {Object} transaction - The transaction data
+ * @param {Object} options - Settings (currency, language, company info, payments)
+ * @returns {Promise<Uint8Array>} the raw PDF bytes
+ */
+export async function buildInvoicePdf(transaction, options = {}) {
+  const { bytes } = await buildInvoiceDocInternal(transaction, options)
+  return bytes
 }
 
 /**
- * Generate invoices for multiple transactions
+ * Generate a professional bilingual PDF invoice (browser — triggers download).
+ *
+ * Thin async wrapper over `buildInvoiceDocInternal`: builds the PDF, then
+ * hands the bytes to `savePdfBytes` which creates a Blob and triggers a
+ * browser download. Returns the filename of the saved PDF.
+ *
+ * NOTE on `async`: this function is async so existing `await generateInvoice(...)`
+ * call sites keep working unchanged. Callers that previously did
+ * `const f = generateInvoice(...)` without `await` will still see the file
+ * download (the side effect runs synchronously inside the async function
+ * before the returned Promise resolves), but `f` will now be a `Promise<string>`
+ * instead of a `string`. All call sites in this repo use `await`, so this
+ * change is safe.
+ *
+ * @param {Object} transaction - The transaction data
+ * @param {Object} options - Settings (currency, language, company info, payments)
+ * @returns {Promise<string>} the filename that was saved
+ */
+export async function generateInvoice(transaction, options = {}) {
+  const { bytes, filename } = await buildInvoiceDocInternal(transaction, options)
+  savePdfBytes(bytes, filename)
+  return filename
+}
+
+/**
+ * Generate invoices for multiple transactions.
+ * Calls `generateInvoice` per transaction so each one is downloaded
+ * individually (same behavior as before the refactor).
  */
 export async function generateBulkInvoices(transactions, options = {}) {
   for (const transaction of transactions) {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -16,6 +16,7 @@ import {
   Mail,
   Spinner,
   FileText,
+  MessageSquare,
 } from './ui/Icons'
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -46,6 +47,66 @@ export default function Settings() {
     }
   })
   const [exporting, setExporting] = useState(false)
+  const [telegramCode, setTelegramCode] = useState('')
+  const [telegramLink, setTelegramLink] = useState(null)
+  const [telegramLinking, setTelegramLinking] = useState(false)
+  const [telegramUnlinking, setTelegramUnlinking] = useState(false)
+
+  const fetchTelegramLink = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('telegram_links')
+        .select('telegram_chat_id, telegram_username, linked_at')
+        .maybeSingle()
+      if (error) throw error
+      setTelegramLink(data || null)
+    } catch (err) {
+      // Table might not exist yet; keep silent
+      setTelegramLink(null)
+    }
+  }
+
+  useEffect(() => {
+    fetchTelegramLink()
+  }, [])
+
+  const handleLinkTelegram = async (e) => {
+    e?.preventDefault?.()
+    const code = telegramCode.trim().toUpperCase()
+    if (!/^[A-Z0-9]{6}$/.test(code)) {
+      showError('Code must be 6 characters (A-Z, 0-9)')
+      return
+    }
+    setTelegramLinking(true)
+    try {
+      const { error } = await supabase.rpc('claim_telegram_link', { p_code: code })
+      if (error) throw error
+      success('Telegram linked')
+      setTelegramCode('')
+      await fetchTelegramLink()
+    } catch (err) {
+      showError(err.message || 'Failed to link Telegram')
+    } finally {
+      setTelegramLinking(false)
+    }
+  }
+
+  const handleUnlinkTelegram = async () => {
+    setTelegramUnlinking(true)
+    try {
+      const { error } = await supabase
+        .from('telegram_links')
+        .delete()
+        .eq('user_id', user?.id)
+      if (error) throw error
+      success('Telegram unlinked')
+      setTelegramLink(null)
+    } catch (err) {
+      showError(err.message || 'Failed to unlink Telegram')
+    } finally {
+      setTelegramUnlinking(false)
+    }
+  }
 
   const handlePaymentTermsChange = (value) => {
     setDefaultPaymentTerms(value)
@@ -345,6 +406,63 @@ export default function Settings() {
           {exporting ? <Spinner size="sm" /> : <Download size={18} />}
           {exporting ? t('settings.exporting') : t('settings.exportAll')}
         </button>
+      </div>
+
+      {/* Telegram Bot */}
+      <div className="card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center">
+            <MessageSquare size={20} className="text-sky-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">{t('settings.telegram.title')}</h2>
+            <p className="text-sm text-gray-500">{t('settings.telegram.description')}</p>
+          </div>
+        </div>
+        {telegramLink ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="text-sm text-green-800">
+                {t('settings.telegram.linked')}: <span className="font-mono font-semibold">{telegramLink.telegram_chat_id}</span>
+                {telegramLink.telegram_username ? ` (@${telegramLink.telegram_username})` : ''}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleUnlinkTelegram}
+              disabled={telegramUnlinking}
+              className="btn btn-secondary w-full"
+            >
+              {telegramUnlinking ? <Spinner size="sm" /> : <LogOut size={18} />}
+              {t('settings.telegram.unlinkButton')}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleLinkTelegram} className="space-y-3">
+            <div>
+              <label className="label">{t('settings.telegram.codePlaceholder')}</label>
+              <input
+                type="text"
+                className="input font-mono uppercase tracking-widest"
+                value={telegramCode}
+                onChange={(e) => setTelegramCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                placeholder={t('settings.telegram.codePlaceholder')}
+                maxLength={6}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={telegramLinking || telegramCode.length !== 6}
+              className="btn btn-primary w-full"
+            >
+              {telegramLinking ? <Spinner size="sm" /> : <MessageSquare size={18} />}
+              {t('settings.telegram.linkButton')}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Sign Out */}
