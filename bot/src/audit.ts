@@ -123,6 +123,36 @@ export function clearPending(chatId: number): void {
     });
 }
 
+export type HealthSnapshot = {
+  source: "bot" | "mcp";
+  ts: string; // ISO, truncated to the minute so consecutive inserts from the
+              // same service in the same minute upsert into a single row.
+  status: "ok" | "degraded" | "down";
+  uptime_s: number | null;
+  gemini_ok: boolean | null;
+  mcp_ok: boolean | null;
+  telegram_ok: boolean | null;
+};
+
+/** Truncate to the start of the current minute. Lets multiple writes within
+ *  the same minute collapse into a single row keyed by (source, ts). */
+export function minuteBucket(d: Date = new Date()): string {
+  const t = Math.floor(d.getTime() / 60_000) * 60_000;
+  return new Date(t).toISOString();
+}
+
+export function writeHealthSnapshot(snap: HealthSnapshot): void {
+  db()
+    .from("bot_health_snapshots")
+    .upsert(snap, { onConflict: "source,ts" })
+    .then(({ error }) => {
+      if (error) logger.warn({ err: error.message, snap }, "health snapshot upsert failed");
+    })
+    .then(undefined, (err: unknown) => {
+      logger.warn({ err }, "health snapshot threw");
+    });
+}
+
 /**
  * Truncate an ISO timestamp to the start of its 5-minute bucket.
  * Used to key rollups so multiple rows for the same tool collapse into one.

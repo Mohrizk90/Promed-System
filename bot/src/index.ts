@@ -13,6 +13,8 @@ import { registerHandlers } from "./telegram/handlers.js";
 import { getGemini } from "./gemini/client.js";
 import { getMcpClient, closeAllMcpClients } from "./mcp/client.js";
 import { activeSessionCount } from "./session/store.js";
+import { writeHealthSnapshot, minuteBucket } from "./audit.js";
+import { getHealthSnapshot } from "./healthz.js";
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
@@ -65,8 +67,17 @@ async function main(): Promise<void> {
         logger.info({ url: cfg.TELEGRAM_WEBHOOK_URL }, "telegram webhook set");
         setTelegramPollingOk(true);
       } else {
+        // Mark polling as OK as soon as startPolling resolves; install a
+        // long-lived listener that flips it back off + records an error if
+        // Telegram emits a polling_error later. Previously this code awaited
+        // a `polling_error` listener that would never resolve on the happy
+        // path, so telegram_polling_ok stayed false forever.
+        bot.on("polling_error", (err) => {
+          setTelegramPollingOk(false);
+          setLastError(`telegram polling: ${(err as Error).message}`);
+          logger.warn({ err }, "telegram polling error");
+        });
         await bot.startPolling();
-        await new Promise<void>((resolve) => bot!.once("polling_error", () => resolve()));
         setTelegramPollingOk(true);
         logger.info("telegram polling started");
       }
@@ -87,6 +98,23 @@ async function main(): Promise<void> {
   setInterval(() => {
     logger.info({ active_sessions: activeSessionCount() }, "session heartbeat");
   }, 5 * 60_000).unref();
+
+  // Snapshot our health into Supabase every minute so the monitoring
+  // dashboard can render a live timeline even when no tool calls are firing.
+  function emitHealthSnapshot(): void {
+    const h = getHealthSnapshot();
+    writeHealthSnapshot({
+      source: "bot",
+      ts: minuteBucket(),
+      status: h.status as "ok" | "degraded" | "down",
+      uptime_s: h.uptime_s,
+      gemini_ok: h.gemini_ok,
+      mcp_ok: h.mcp_ok,
+      telegram_ok: h.telegram_polling_ok,
+    });
+  }
+  emitHealthSnapshot(); // immediate snapshot on boot
+  setInterval(emitHealthSnapshot, 60_000).unref();
 
   // Graceful shutdown.
   const shutdown = async (signal: string): Promise<void> => {

@@ -164,6 +164,12 @@ To get the agent end-to-end you also need to apply 5 SQL migrations in `Supabase
 
 Then create a Telegram bot via @BotFather, generate a Gemini API key at https://aistudio.google.com/apikey, and fill the `.env.example` files in `mcp/`, `bot/`, `vps-collector/`.
 
+The bot is **multimodal** (text, voice notes, images via Gemini 2.x), speaks in English or Arabic, requires explicit confirmation for destructive actions, and uploads generated PDFs to the `generated-files` storage bucket before sending them back on Telegram.
+
+### Verified smoke test (2026-07-16)
+
+The three services were booted locally against the live Supabase project `fzbefrisiatshbckxhkq` to confirm end-to-end wiring. The Telegram bot reported `status: ok` on `/healthz` with `gemini_ok`, `mcp_ok`, and `telegram_polling_ok` all `true`. Bugs found and fixed during the smoke test are documented in `docs/TELEGRAM_BOT.md` ("Smoke-test notes" section) — these are now part of the codebase.
+
 ## Troubleshooting
 
 ### Real-time updates not working

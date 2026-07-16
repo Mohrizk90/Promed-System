@@ -43,6 +43,10 @@ function snapshot() {
   };
 }
 
+export function getHealthSnapshot(): ReturnType<typeof snapshot> {
+  return snapshot();
+}
+
 export function startHealthServer(port: number): http.Server {
   const server = http.createServer((req, res) => {
     if (!req.url) {

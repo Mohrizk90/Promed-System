@@ -18,8 +18,8 @@
 -- Individual bot and MCP tool executions.
 CREATE TABLE IF NOT EXISTS public.bot_audit_log (
     id BIGSERIAL PRIMARY KEY,
-    telegram_chat_id BIGINT NOT NULL,
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    telegram_chat_id BIGINT,                -- NULL when the call came from MCP (no Telegram chat)
+    user_id TEXT,                            -- free-form: a Supabase auth.uid() when linked, otherwise the synthetic id forwarded via x-user-id
     tool_name TEXT NOT NULL,
     args_json JSONB,
     result_status TEXT NOT NULL CHECK (result_status IN ('ok', 'error', 'denied')),
@@ -133,3 +133,40 @@ CREATE POLICY bot_health_snapshots_select
     FOR SELECT
     TO authenticated
     USING (TRUE);
+
+-- =============================================================================
+-- Idempotent in-place migrations for projects that applied the original
+-- (stricter) schema. New installs already have the relaxed column types from
+-- the CREATE TABLE statements above.
+-- =============================================================================
+
+-- bot_audit_log: telegram_chat_id was NOT NULL, now nullable (MCP calls have no chat)
+ALTER TABLE public.bot_audit_log ALTER COLUMN telegram_chat_id DROP NOT NULL;
+
+-- bot_audit_log: user_id was UUID + FK to auth.users, now free-form TEXT
+-- (we record pre-link synthetic ids forwarded from the bot before a Supabase
+-- account is associated with the Telegram user).
+--
+-- Three things must come down before the ALTER COLUMN TYPE:
+--   1. The RLS policy, because Postgres refuses to alter a column type while
+--      a policy depends on it.
+--   2. The foreign key constraint to auth.users(id), because changing TEXT
+--      ↔ UUID violates the FK contract.
+--   3. The existing index, because its column signature changes.
+-- The policy, index, and column are all recreated/rebuilt below. The FK is
+-- intentionally NOT re-added: audit rows may legitimately reference users
+-- that have been deleted from auth.users (we keep history), or synthetic
+-- ids that never had an auth.users row at all.
+DROP POLICY IF EXISTS bot_audit_log_select ON public.bot_audit_log;
+ALTER TABLE public.bot_audit_log DROP CONSTRAINT IF EXISTS bot_audit_log_user_id_fkey;
+ALTER TABLE public.bot_audit_log
+    ALTER COLUMN user_id TYPE TEXT USING user_id::TEXT,
+    ALTER COLUMN user_id DROP NOT NULL;
+CREATE POLICY bot_audit_log_select
+    ON public.bot_audit_log
+    FOR SELECT
+    TO authenticated
+    USING (auth.uid()::text = user_id);
+DROP INDEX IF EXISTS idx_bot_audit_log_user_created;
+CREATE INDEX IF NOT EXISTS idx_bot_audit_log_user_created
+    ON public.bot_audit_log(user_id, created_at DESC);

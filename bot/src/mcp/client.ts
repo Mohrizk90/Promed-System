@@ -30,7 +30,7 @@ export class MCPStreamableHttpClient {
     this.connectPromise = (async () => {
       const url = new URL(this.url);
       const headers: Record<string, string> = {
-        "x-shared-secret": this.secret,
+        "x-mcp-secret": this.secret,
       };
       if (this.userId) headers["x-user-id"] = this.userId;
       if (this.userJwt) headers["x-user-jwt"] = this.userJwt;

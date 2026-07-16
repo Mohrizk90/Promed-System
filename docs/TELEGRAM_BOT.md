@@ -78,11 +78,22 @@ See `docs/SMOPS_COLLECTOR.md` for the SSH/SNMP side and the systemd units for ea
 - **Phase 2:** write tools with confirmation, real SSH+SNMP, multimodal images.
 - **Phase 3:** VPS deployment, webhook transport, IDE MCP clients.
 
+## Smoke-test notes (applied while bringing the stack online)
+
+A few real bugs surfaced when the three services were booted against the live Supabase project. They're fixed in the current code; recording them here so anyone re-running the smoke test doesn't think they're new.
+
+1. **`x-mcp-secret` vs `x-shared-secret`** — the MCP auth middleware reads `x-mcp-secret` (server is the authority). The original bot client sent `x-shared-secret`. Aligned to `x-mcp-secret` in `bot/src/mcp/client.ts`.
+2. **`req.auth` vs `req.authInfo`** — `@modelcontextprotocol/sdk` v1.29 reads `req.auth` (line 131 of `dist/esm/server/streamableHttp.js`) to forward the authenticated user into the tool handler's `extra` context. The MCP server was setting `req.authInfo`, which the SDK silently ignored, so every tool call audited as user `unknown`. Fixed to `req.auth` in `mcp/src/server.ts`.
+3. **`telegram_polling_ok` never flipped true on happy path** — original code `await bot.once("polling_error", () => resolve())` waits for an error that never fires. Replaced with a long-lived `bot.on("polling_error", ...)` and an immediate `setTelegramPollingOk(true)` after `startPolling()` resolves.
+4. **`pino-pretty` missing** — dev logger referenced it but it wasn't installed. Now a soft fallback: uses pretty logs when `pino-pretty` resolves, plain JSON otherwise.
+5. **Audit row schema** — original `bot_audit_log` had `telegram_chat_id BIGINT NOT NULL` and `user_id UUID REFERENCES auth.users(id)`. MCP-direct calls have neither, so inserts silently failed (and the catch in `writeAudit` swallowed the error). Migration file now ships with relaxed columns (`telegram_chat_id` nullable, `user_id` free-form TEXT) and includes an `ALTER` block for projects that already applied the stricter schema — re-run `supabase_bot_audit.sql` to upgrade in place.
+   - **Heads-up when re-running:** the upgrade path drops and recreates the `bot_audit_log_select` RLS policy because Postgres refuses to alter a column type while a policy depends on it. The replacement policy uses `auth.uid()::text = user_id`, which behaves identically to the original `auth.uid() = user_id` thanks to an implicit `uuid → text` cast.
+
 ## Manual steps checklist
 
 After cloning and before first run:
 
-1. Apply the SQL migrations in `Supabase/` in order: `supabase_telegram_links.sql`, `supabase_telegram_link_codes.sql`, `supabase_bot_audit.sql`, `supabase_vps_metrics.sql`, `supabase_generated_files_bucket.sql`.
+1. Apply the SQL migrations in `Supabase/` in order: `supabase_telegram_links.sql`, `supabase_telegram_link_codes.sql`, `supabase_bot_audit.sql`, `supabase_vps_metrics.sql`, `supabase_generated_files_bucket.sql`. Re-running `supabase_bot_audit.sql` is a no-op for fresh installs and upgrades existing schemas.
 2. Create a Telegram bot via @BotFather, copy the token into `bot/.env` as `TELEGRAM_BOT_TOKEN`.
 3. Create a Gemini API key at https://aistudio.google.com/apikey, copy into `bot/.env`.
 4. From Supabase dashboard → Settings → API, copy `URL` and `service_role` key into each service's `.env`.
