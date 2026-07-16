@@ -58,11 +58,26 @@ async function main(): Promise<void> {
   } else {
     const useWebhook = cfg.TELEGRAM_WEBHOOK_URL.length > 0;
     bot = useWebhook
-      ? new TelegramBot(cfg.TELEGRAM_BOT_TOKEN)
+      ? new TelegramBot(cfg.TELEGRAM_BOT_TOKEN, {
+          // node-telegram-bot-api expects `webHook: true` or an options object.
+          // We bind only to loopback; nginx frontends us with TLS on the public host.
+          webHook: {
+            port: cfg.TELEGRAM_WEBHOOK_PORT,
+            host: "127.0.0.1",
+          },
+        })
       : new TelegramBot(cfg.TELEGRAM_BOT_TOKEN, { polling: { autoStart: false } });
 
     try {
       if (useWebhook) {
+        // Order matters: open the local listener FIRST, then tell Telegram where
+        // to send updates. If we set the webhook before a server is listening,
+        // Telegram's first attempt will get ECONNREFUSED and back off.
+        await bot.openWebHook();
+        logger.info(
+          { port: cfg.TELEGRAM_WEBHOOK_PORT, url: cfg.TELEGRAM_WEBHOOK_URL },
+          "telegram webhook listener open",
+        );
         await bot.setWebHook(`${cfg.TELEGRAM_WEBHOOK_URL}/bot${cfg.TELEGRAM_BOT_TOKEN}`);
         logger.info({ url: cfg.TELEGRAM_WEBHOOK_URL }, "telegram webhook set");
         setTelegramPollingOk(true);
@@ -83,8 +98,8 @@ async function main(): Promise<void> {
       }
     } catch (err) {
       setTelegramPollingOk(false);
-      setLastError(`telegram polling: ${(err as Error).message}`);
-      logger.error({ err }, "telegram polling failed");
+      setLastError(`telegram polling/webhook: ${(err as Error).message}`);
+      logger.error({ err }, "telegram init failed");
     }
   }
 
@@ -121,10 +136,13 @@ async function main(): Promise<void> {
     logger.info({ signal }, "shutting down");
     try {
       if (bot) {
+        // Close whichever mode we're in. closeWebHook is a no-op in polling mode
+        // and vice versa (both are awaitable in node-telegram-bot-api 0.66+).
+        await bot.closeWebHook().catch(() => undefined);
         await bot.stopPolling().catch(() => undefined);
       }
     } catch (err) {
-      logger.warn({ err }, "stopPolling error");
+      logger.warn({ err }, "stopPolling/closeWebHook error");
     }
     await closeAllMcpClients().catch(() => undefined);
     process.exit(0);
