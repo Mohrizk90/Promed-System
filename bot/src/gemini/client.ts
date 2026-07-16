@@ -67,9 +67,10 @@ export class GeminiClient {
     history: GeminiTurn[];
     userParts: GeminiInlinePart[];
     callMcpTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+    sessionContext?: string;
   }): Promise<GeminiLoopResult> {
-    const { tools, history, userParts, callMcpTool, locale = "auto" } = opts;
-    const sysPrompt = buildSystemPrompt(locale);
+    const { tools, history, userParts, callMcpTool, locale = "auto", sessionContext } = opts;
+    const sysPrompt = buildSystemPrompt(locale, sessionContext);
     const declarations = GeminiClient.toFunctionDeclarations(tools);
 
     const model = this.genai.getGenerativeModel({

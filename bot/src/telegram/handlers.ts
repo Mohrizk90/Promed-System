@@ -12,7 +12,7 @@ import {
 import { getMcpClient } from "../mcp/client.js";
 import { getGemini, type GeminiInlinePart } from "../gemini/client.js";
 import { buildToolList } from "../gemini/prompt.js";
-import { getSession, clearPendingFor, type Session } from "../session/store.js";
+import { getSession, clearPendingFor, persistSession, formatSessionContext, type Session } from "../session/store.js";
 import {
   buildConfirmKeyboard,
   buildCancelKeyboard,
@@ -143,7 +143,7 @@ export function registerHandlers(deps: HandlerDeps): void {
       return;
     }
 
-    const session = getSession(chatId);
+    const session = await getSession(chatId);
     const link = await resolveLink(chatId).catch(() => null);
     if (!link) {
       await safeSend(bot, dryRun, chatId, notLinkedReply());
@@ -184,7 +184,7 @@ export function registerHandlers(deps: HandlerDeps): void {
     }
     const voice = msg.voice;
     if (!voice) return;
-    const session = getSession(chatId);
+    const session = await getSession(chatId);
     const link = await resolveLink(chatId).catch(() => null);
     if (!link) {
       await safeSend(bot, dryRun, chatId, notLinkedReply());
@@ -223,7 +223,7 @@ export function registerHandlers(deps: HandlerDeps): void {
     const biggest = photos[photos.length - 1];
     if (!biggest) return;
 
-    const session = getSession(chatId);
+    const session = await getSession(chatId);
     const link = await resolveLink(chatId).catch(() => null);
     if (!link) {
       await safeSend(bot, dryRun, chatId, notLinkedReply());
@@ -280,7 +280,7 @@ export function registerHandlers(deps: HandlerDeps): void {
       return;
     }
 
-    const session = getSession(chatId);
+    const session = await getSession(chatId);
     const pending = session.pendingConfirmation;
     if (!pending || pending.nonce !== parsed.nonce || pending.argsHash !== parsed.argsHash) {
       await safeSend(bot, dryRun, chatId, "That confirmation expired or doesn't match.");
@@ -414,12 +414,14 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
   }
 
   const locale = detectLocaleHint(latestText);
+  const sessionContext = formatSessionContext(session);
 
   let result: Awaited<ReturnType<ReturnType<typeof getGemini>["runLoop"]>>;
   try {
     result = await getGemini().runLoop({
     locale,
     tools,
+    sessionContext,
     history: session.turns.slice(0, -1).map((t): import("../gemini/client.js").GeminiTurn => {
       if (t.role === "user") {
         return {
@@ -539,6 +541,32 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
     return;
   }
 
+  // Remember what the user asked + which tools ran, so follow-ups like
+  // «نفس الطلب» / «اللي فات» work even after restarts / voice-only turns.
+  if (result.toolCalls.length > 0) {
+    session.lastToolSummary = result.toolCalls
+      .map((tc) => `${tc.name}(${summariseArgs(tc.args)})${tc.ok ? "" : " ERR"}`)
+      .join("; ");
+    // Prefer explicit text; for voice notes derive intent from the tools just called.
+    if (latestText && latestText !== "(voice note)" && latestText !== "(non-text input)" && latestText !== "(photo)") {
+      session.lastUserIntent = latestText;
+    } else {
+      session.lastUserIntent = session.lastToolSummary;
+    }
+    // Patch the just-pushed user turn so history isn't stuck on "(voice note)".
+    const lastUser = [...session.turns].reverse().find((t) => t.role === "user");
+    if (
+      lastUser &&
+      lastUser.role === "user" &&
+      lastUser.parts[0]?.text &&
+      (/^\(voice note\)$|^\(non-text input\)$|^\(photo\)$/i.test(lastUser.parts[0].text))
+    ) {
+      lastUser.parts = [{ text: session.lastUserIntent || lastUser.parts[0].text }];
+    }
+  } else if (latestText && latestText !== "(voice note)" && latestText !== "(non-text input)") {
+    session.lastUserIntent = latestText;
+  }
+
   // After a write tool was requested we asked Gemini to emit a CONFIRM_SUMMARY,
   // not to actually run the tool. Present the keyboard.
   const lastPending = session.pendingConfirmation;
@@ -568,6 +596,7 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
       );
     }
     session.turns.push({ role: "model", parts: [{ text: cleaned }] });
+    persistSession(session);
     return;
   }
 
@@ -610,6 +639,8 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
       ok: tc.ok,
     });
   }
+
+  persistSession(session);
 }
 
 function extractSummary(text: string): string | null {

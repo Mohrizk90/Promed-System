@@ -2,13 +2,26 @@ import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
 
 export type Locale = "en" | "ar" | "auto";
 
-export function buildSystemPrompt(locale: Locale = "auto"): string {
+export function buildSystemPrompt(
+  locale: Locale = "auto",
+  sessionContext?: string,
+): string {
   const langLine =
     locale === "ar"
       ? "Always reply in Arabic (Egyptian dialect is fine when casual)."
       : locale === "en"
         ? "Always reply in English."
         : "Reply in the same language as the user's latest message. Default to Arabic when unsure.";
+
+  const historyBlock = sessionContext?.trim()
+    ? [
+        "",
+        "Conversation memory (use this — do NOT say you forgot or have no last request):",
+        sessionContext.trim(),
+        "- If the user says «نفس الطلب» / «اللي فات» / «again» / «last request», reuse LAST_USER_INTENT + LAST_TOOL_SUMMARY.",
+        "- Voice notes may appear as «(voice note)» in history; prefer LAST_USER_INTENT for what they meant.",
+      ].join("\n")
+    : "";
 
   return [
     "You are «مساعد بروميد» — a helpful Promed ERP voice assistant.",
@@ -31,6 +44,7 @@ export function buildSystemPrompt(locale: Locale = "auto"): string {
     "- After generate_client_statement / generate_invoice: say the PDF was sent + one-line totals.",
     "- Always end normal replies with: VOICE_REPLY: yes",
     "- Currency EGP. Prefer short spoken-friendly wording (the bot will also send a voice note).",
+    historyBlock,
     "",
     "Available tools are provided by the runtime.",
   ].join("\n");
