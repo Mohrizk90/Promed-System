@@ -9,31 +9,30 @@ export type WhoamiResult = {
 };
 
 /**
- * Report the authenticated Supabase user. The bot forwards an end-user ID + JWT
- * for audit/RBAC context, but `auth.getUser(jwt)` only works with the user's
- * own JWT — it fails for the service-role fallback. So when we have a real
- * linking context we resolve via `getUser(jwt)`; otherwise (boot probes /
- * system calls) we fall back to `getUserById`, which is service-role-friendly.
+ * Report the linked Supabase user. The Telegram bot forwards a user id but
+ * never an end-user JWT (service-role only), so we resolve via admin.getUserById.
  */
 export async function whoamiHandler(
   _args: z.infer<typeof whoamiSchema>,
   ctx: { user: { id: string; jwt: string } },
 ): Promise<WhoamiResult> {
-  if (!ctx.user.id || ctx.user.id === 'system' || !ctx.user.jwt) {
-    // Boot/system probe — there's no real user to look up.
+  if (!ctx.user.id || ctx.user.id === 'system' || ctx.user.id === 'unknown') {
     return { user_id: ctx.user.id ?? 'system', email: null };
   }
-  const { data, error } = await adminClient().auth.getUser(ctx.user.jwt);
-  if (error || !data?.user) {
-    // JWT may be stale; try getUserById as a degradation path (service-role ok).
-    const { data: byId } = await adminClient().auth.admin.getUserById(ctx.user.id);
-    return {
-      user_id: ctx.user.id,
-      email: byId?.user?.email ?? null,
-    };
+
+  if (ctx.user.jwt) {
+    const { data, error } = await adminClient().auth.getUser(ctx.user.jwt);
+    if (!error && data?.user) {
+      return { user_id: ctx.user.id, email: data.user.email ?? null };
+    }
+  }
+
+  const { data: byId, error: byIdErr } = await adminClient().auth.admin.getUserById(ctx.user.id);
+  if (byIdErr) {
+    return { user_id: ctx.user.id, email: null };
   }
   return {
     user_id: ctx.user.id,
-    email: data.user?.email,
+    email: byId?.user?.email ?? null,
   };
 }

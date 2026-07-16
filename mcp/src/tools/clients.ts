@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { userClient } from '../supabase/userClient.js';
+import { dataClient, requireLinkedUser } from '../supabase/dataClient.js';
 
 export const listClientsSchema = z.object({
   q: z.string().trim().min(1).optional(),
@@ -7,11 +7,12 @@ export const listClientsSchema = z.object({
 });
 
 export const getClientSchema = z.object({
+  // Live schema PK is SERIAL `client_id` (number). Accept string|number.
   id: z.union([z.string(), z.number()]).transform((v) => String(v)),
 });
 
 type ClientRow = {
-  id: string;
+  client_id: number | string;
   client_name: string | null;
   contact_info: string | null;
   address: string | null;
@@ -34,7 +35,7 @@ function toSummary(row: ClientRow): ClientSummary {
       ? Number(row.opening_balance)
       : row.opening_balance;
   return {
-    id: row.id,
+    id: String(row.client_id),
     name: row.client_name,
     phone: row.contact_info,
     address: row.address,
@@ -43,22 +44,30 @@ function toSummary(row: ClientRow): ClientSummary {
   };
 }
 
+/** Scope to the linked user OR legacy rows with null user_id (single-tenant installs). */
+function scopeByUser<T extends { eq: Function; or: Function }>(query: T, userId: string): T {
+  return query.or(`user_id.eq.${userId},user_id.is.null`) as T;
+}
+
 export async function listClientsHandler(
   args: z.infer<typeof listClientsSchema>,
   ctx: { user: { id: string; jwt: string } },
 ): Promise<{ clients: ClientSummary[] }> {
-  const supa = userClient(ctx.user.id, ctx.user.jwt);
+  requireLinkedUser(ctx.user);
+  const supa = dataClient(ctx.user);
   const limit = args.limit ?? 50;
 
-  let query = supa
-    .from('clients')
-    .select('id, client_name, contact_info, address, opening_balance, created_at')
-    .eq('user_id', ctx.user.id)
-    .order('client_name', { ascending: true })
-    .limit(limit);
+  let query = scopeByUser(
+    supa
+      .from('clients')
+      .select('client_id, client_name, contact_info, address, opening_balance, created_at')
+      .order('client_name', { ascending: true })
+      .limit(limit),
+    ctx.user.id,
+  );
 
   if (args.q) {
-    const escaped = args.q.replace(/[%_]/g, (m) => `\\${m}`);
+    const escaped = args.q.replace(/[%_,]/g, (m) => `\\${m}`);
     const pattern = `%${escaped}%`;
     query = query.or(`client_name.ilike.${pattern},contact_info.ilike.${pattern}`);
   }
@@ -70,11 +79,10 @@ export async function listClientsHandler(
 }
 
 type TransactionRow = {
-  id: string;
+  transaction_id: number | string;
   transaction_date: string | null;
-  transaction_type: string | null;
   description: string | null;
-  amount: number | string | null;
+  total_amount: number | string | null;
   status: string | null;
   invoice_number: string | null;
   external_invoice_number?: string | null;
@@ -99,7 +107,6 @@ export async function getClientHandler(
   recent_transactions: Array<{
     id: string;
     transaction_date: string | null;
-    transaction_type: string | null;
     description: string | null;
     amount: number | null;
     status: string | null;
@@ -107,23 +114,30 @@ export async function getClientHandler(
     external_invoice_number: string | null;
   }>;
 }> {
-  const supa = userClient(ctx.user.id, ctx.user.jwt);
+  requireLinkedUser(ctx.user);
+  const supa = dataClient(ctx.user);
 
-  const { data: clientRow, error: clientErr } = await supa
-    .from('clients')
-    .select('id, client_name, contact_info, address, opening_balance, created_at')
-    .eq('id', args.id)
-    .eq('user_id', ctx.user.id)
-    .single();
+  const { data: clientRow, error: clientErr } = await scopeByUser(
+    supa
+      .from('clients')
+      .select('client_id, client_name, contact_info, address, opening_balance, created_at')
+      .eq('client_id', args.id),
+    ctx.user.id,
+  ).maybeSingle();
   if (clientErr) throw new Error(`get_client failed: ${clientErr.message}`);
+  if (!clientRow) throw new Error(`client not found: ${args.id}`);
 
-  const { data: txRows, error: txErr } = await supa
-    .from('client_transactions')
-    .select('id, transaction_date, transaction_type, description, amount, status, invoice_number, external_invoice_number, created_at')
-    .eq('client_id', args.id)
-    .eq('user_id', ctx.user.id)
-    .order('transaction_date', { ascending: false })
-    .limit(10);
+  const { data: txRows, error: txErr } = await scopeByUser(
+    supa
+      .from('client_transactions')
+      .select(
+        'transaction_id, transaction_date, total_amount, status, invoice_number, external_invoice_number, created_at',
+      )
+      .eq('client_id', args.id)
+      .order('transaction_date', { ascending: false })
+      .limit(10),
+    ctx.user.id,
+  );
   if (txErr) throw new Error(`get_client transactions failed: ${txErr.message}`);
 
   return {
@@ -131,12 +145,11 @@ export async function getClientHandler(
     recent_transactions: (txRows ?? []).map((row) => {
       const r = row as TransactionRow;
       const amount =
-        typeof r.amount === 'string' ? Number(r.amount) : r.amount;
+        typeof r.total_amount === 'string' ? Number(r.total_amount) : r.total_amount;
       return {
-        id: r.id,
+        id: String(r.transaction_id),
         transaction_date: r.transaction_date,
-        transaction_type: r.transaction_type,
-        description: r.description,
+        description: r.description ?? null,
         amount: amount === null || amount === undefined || Number.isNaN(amount) ? null : amount,
         status: r.status,
         invoice_number: displayInvoiceNumber(r),

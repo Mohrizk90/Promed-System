@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adminClient, userClient } from '../supabase/userClient.js';
+import { adminClient } from '../supabase/userClient.js';
+import { dataClient, requireLinkedUser } from '../supabase/dataClient.js';
 import { logger } from '../logger.js';
 
 export const generateClientStatementSchema = z.object({
-  client_id: z.string().min(1),
+  client_id: z.union([z.string(), z.number()]).transform((v) => String(v)),
   from: z.string().optional(),
   to: z.string().optional(),
   language: z.enum(['en', 'ar']).optional(),
@@ -17,27 +18,50 @@ export const generateInvoiceSchema = z.object({
 });
 
 type ClientRow = {
-  id: string;
+  client_id: number | string;
   client_name: string | null;
   contact_info: string | null;
   address: string | null;
   opening_balance: number | string | null;
-  user_id: string;
+  user_id: string | null;
 };
 
 type TransactionRow = {
-  id: string;
-  transaction_id?: string;
-  client_id: string | null;
+  transaction_id: number | string;
+  client_id: number | string | null;
   transaction_date: string | null;
-  transaction_type: string | null;
-  description: string | null;
-  amount: number | string | null;
-  total_amount?: number | string | null;
+  total_amount: number | string | null;
+  paid_amount?: number | string | null;
+  remaining_amount?: number | string | null;
   status: string | null;
   invoice_number: string | null;
   external_invoice_number?: string | null;
-  user_id: string;
+  due_date?: string | null;
+  payment_terms?: string | null;
+  quantity?: number | null;
+  unit_price?: number | string | null;
+  user_id: string | null;
+  products?: { product_name?: string | null; model?: string | null } | null;
+  clients?: {
+    client_name: string | null;
+    contact_info: string | null;
+    address: string | null;
+  } | Array<{
+    client_name: string | null;
+    contact_info: string | null;
+    address: string | null;
+  }> | null;
+};
+
+type PaymentRow = {
+  payment_id: number | string;
+  transaction_id: number | string | null;
+  client_id: number | string | null;
+  payment_date: string | null;
+  payment_amount: number | string | null;
+  payment_method: string | null;
+  reference_number: string | null;
+  user_id: string | null;
 };
 
 function displayInvoiceNumber(row: {
@@ -50,18 +74,6 @@ function displayInvoiceNumber(row: {
   return internal || null;
 }
 
-type PaymentRow = {
-  id: string;
-  transaction_id: string | null;
-  client_id: string | null;
-  payment_date: string | null;
-  amount: number | string | null;
-  payment_amount?: number | string | null;
-  payment_method: string | null;
-  notes: string | null;
-  user_id: string;
-};
-
 function num(v: unknown): number {
   if (v === null || v === undefined) return 0;
   const n = typeof v === 'string' ? Number(v) : (v as number);
@@ -72,32 +84,32 @@ function slugify(input: string): string {
   return input.replace(/\W+/g, '_').replace(/^_+|_+$/g, '').toLowerCase() || 'client';
 }
 
+function scopeByUser<T extends { or: Function }>(query: T, userId: string): T {
+  return query.or(`user_id.eq.${userId},user_id.is.null`) as T;
+}
+
+function asClientEmbed(clients: TransactionRow['clients']) {
+  if (!clients) return null;
+  if (Array.isArray(clients)) return clients[0] ?? null;
+  return clients;
+}
+
+function pathToFileUrl(p: string): string {
+  let normalized = p.replace(/\\/g, '/');
+  if (!normalized.startsWith('/')) normalized = '/' + normalized;
+  return 'file://' + encodeURI(normalized).replace(/#/g, '%23');
+}
+
 function safeImportBuildStatement(): Promise<any> {
-  // Resolve relative to this file regardless of cwd.
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const candidate = path.resolve(
-    here,
-    '..', '..', '..', '..', 'src', 'utils', 'generateStatement.js',
-  );
-  const url = pathToFileUrl(candidate);
-  return import(url);
+  const candidate = path.resolve(here, '..', '..', '..', 'src', 'utils', 'generateStatement.js');
+  return import(pathToFileUrl(candidate));
 }
 
 function safeImportBuildInvoice(): Promise<any> {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const candidate = path.resolve(
-    here,
-    '..', '..', '..', '..', 'src', 'utils', 'generateInvoice.js',
-  );
-  const url = pathToFileUrl(candidate);
-  return import(url);
-}
-
-function pathToFileUrl(p: string): string {
-  // Cross-platform file URL: encode spaces + drive letters.
-  let normalized = p.replace(/\\/g, '/');
-  if (!normalized.startsWith('/')) normalized = '/' + normalized;
-  return 'file://' + encodeURI(normalized).replace(/#/g, '%23');
+  const candidate = path.resolve(here, '..', '..', '..', 'src', 'utils', 'generateInvoice.js');
+  return import(pathToFileUrl(candidate));
 }
 
 export async function generateClientStatementHandler(
@@ -108,76 +120,81 @@ export async function generateClientStatementHandler(
   signedUrl: string;
   expires_at: string;
   totals: { opening_balance: number; charges: number; payments: number; closing_balance: number };
+  client_name: string | null;
 }> {
-  const supa = userClient(ctx.user.id, ctx.user.jwt);
+  requireLinkedUser(ctx.user);
+  const supa = dataClient(ctx.user);
   const admin = adminClient();
 
-  // 1) Fetch the client (scoped to this user).
-  const { data: clientRow, error: clientErr } = await supa
-    .from('clients')
-    .select('id, client_name, contact_info, address, opening_balance, user_id')
-    .eq('id', args.client_id)
-    .eq('user_id', ctx.user.id)
-    .single();
+  const { data: clientRow, error: clientErr } = await scopeByUser(
+    supa
+      .from('clients')
+      .select('client_id, client_name, contact_info, address, opening_balance, user_id')
+      .eq('client_id', args.client_id),
+    ctx.user.id,
+  ).maybeSingle();
   if (clientErr || !clientRow) {
     throw new Error(`client not found: ${clientErr?.message ?? args.client_id}`);
   }
   const client = clientRow as ClientRow;
 
-  // 2) Fetch transactions in the date window.
-  let txQuery = supa
-    .from('client_transactions')
-    .select('id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, external_invoice_number, user_id')
-    .eq('client_id', args.client_id)
-    .eq('user_id', ctx.user.id)
-    .order('transaction_date', { ascending: true });
+  let txQuery = scopeByUser(
+    supa
+      .from('client_transactions')
+      .select(
+        'transaction_id, client_id, transaction_date, total_amount, status, invoice_number, external_invoice_number, user_id',
+      )
+      .eq('client_id', args.client_id)
+      .order('transaction_date', { ascending: true }),
+    ctx.user.id,
+  );
   if (args.from) txQuery = txQuery.gte('transaction_date', args.from);
-  else txQuery = txQuery.gte('transaction_date', '1900-01-01');
   if (args.to) txQuery = txQuery.lte('transaction_date', args.to);
-  else txQuery = txQuery.lte('transaction_date', '2999-12-31');
   const { data: txRows, error: txErr } = await txQuery;
   if (txErr) throw new Error(`statement transactions failed: ${txErr.message}`);
   const transactions = (txRows ?? []) as TransactionRow[];
 
-  // 3) Fetch payments linked to those transactions.
-  const txIds = transactions.map((t) => t.id).filter(Boolean);
+  const txIds = transactions.map((t) => t.transaction_id).filter(Boolean);
   let payments: PaymentRow[] = [];
   if (txIds.length > 0) {
-    const { data: pRows, error: pErr } = await supa
-      .from('payments')
-      .select('id, transaction_id, client_id, payment_date, amount, payment_method, notes, user_id')
-      .in('transaction_id', txIds)
-      .eq('user_id', ctx.user.id);
+    const { data: pRows, error: pErr } = await scopeByUser(
+      supa
+        .from('payments')
+        .select(
+          'payment_id, transaction_id, client_id, payment_date, payment_amount, payment_method, reference_number, user_id',
+        )
+        .in('transaction_id', txIds),
+      ctx.user.id,
+    );
     if (pErr) throw new Error(`statement payments failed: ${pErr.message}`);
     payments = (pRows ?? []) as PaymentRow[];
   }
 
-  // 4) Fetch account-level payments (no transaction) for this client.
-  const { data: apRows, error: apErr } = await supa
-    .from('payments')
-    .select('id, transaction_id, client_id, payment_date, amount, payment_method, notes, user_id')
-    .eq('client_id', args.client_id)
-    .is('transaction_id', null)
-    .eq('user_id', ctx.user.id);
+  const { data: apRows, error: apErr } = await scopeByUser(
+    supa
+      .from('payments')
+      .select(
+        'payment_id, transaction_id, client_id, payment_date, payment_amount, payment_method, reference_number, user_id',
+      )
+      .eq('client_id', args.client_id)
+      .is('transaction_id', null),
+    ctx.user.id,
+  );
   if (apErr) throw new Error(`statement account payments failed: ${apErr.message}`);
   const accountPayments = (apRows ?? []) as PaymentRow[];
 
-  // 5) Running balance.
-  let balance = num(client.opening_balance);
-  const lines = transactions.map((t) => {
-    const charge = t.transaction_type === 'payment' ? 0 : num(t.amount);
-    const payment = t.transaction_type === 'payment' ? num(t.amount) : 0;
-    balance += charge - payment;
-    return { ...t, charge, payment, balance };
-  });
+  const opening = num(client.opening_balance);
+  const charges = transactions.reduce((s, t) => s + num(t.total_amount), 0);
+  const paymentTotal =
+    payments.reduce((s, p) => s + num(p.payment_amount), 0) +
+    accountPayments.reduce((s, p) => s + num(p.payment_amount), 0);
   const totals = {
-    opening_balance: num(client.opening_balance),
-    charges: lines.reduce((s, l) => s + l.charge, 0),
-    payments: lines.reduce((s, l) => s + l.payment, 0),
-    closing_balance: balance,
+    opening_balance: opening,
+    charges,
+    payments: paymentTotal,
+    closing_balance: opening + charges - paymentTotal,
   };
 
-  // 6) Dynamic import of the shared PDF builder.
   let mod: any;
   try {
     mod = await safeImportBuildStatement();
@@ -190,52 +207,54 @@ export async function generateClientStatementHandler(
     throw new Error('buildStatementPdf export not found in generateStatement.js');
   }
 
+  const mappedTransactions = transactions.map((t) => ({
+    transaction_id: t.transaction_id,
+    transaction_date: t.transaction_date,
+    total_amount: num(t.total_amount),
+    invoice_number: t.invoice_number,
+    external_invoice_number: t.external_invoice_number,
+    status: t.status,
+  }));
+  const mappedPayments = [
+    ...payments.map((p) => ({
+      transaction_id: p.transaction_id,
+      payment_date: p.payment_date,
+      payment_amount: num(p.payment_amount),
+      payment_method: p.payment_method,
+      notes: p.reference_number,
+    })),
+    ...accountPayments.map((p) => ({
+      transaction_id: null,
+      payment_date: p.payment_date,
+      payment_amount: num(p.payment_amount),
+      payment_method: p.payment_method,
+      notes: p.reference_number,
+    })),
+  ];
+
   let bytes: Uint8Array;
   try {
-    // Map our rows to the shape generateStatement expects: transaction_id, total_amount, etc.
-    const mappedTransactions = transactions.map((t) => ({
-      transaction_id: t.id,
-      transaction_date: t.transaction_date,
-      total_amount: num(t.amount),
-      invoice_number: t.invoice_number,
-      external_invoice_number: t.external_invoice_number,
-      description: t.description,
-      status: t.status,
-    }));
-    const mappedPayments = [
-      ...payments.map((p) => ({
-        transaction_id: p.transaction_id,
-        payment_date: p.payment_date,
-        payment_amount: num(p.amount),
-        payment_method: p.payment_method,
-        notes: p.notes,
-      })),
-      ...accountPayments.map((p) => ({
-        transaction_id: null,
-        payment_date: p.payment_date,
-        payment_amount: num(p.amount),
-        payment_method: p.payment_method,
-        notes: p.notes,
-      })),
-    ];
     const out = await buildStatementPdf({
-      client,
+      client: {
+        client_id: client.client_id,
+        client_name: client.client_name,
+        contact_info: client.contact_info,
+        address: client.address,
+        opening_balance: opening,
+      },
       transactions: mappedTransactions,
       payments: mappedPayments,
       options: {
-        language: args.language ?? 'en',
+        language: args.language ?? 'ar',
         dateFrom: args.from ?? null,
         dateTo: args.to ?? null,
-        openingBalance: num(client.opening_balance),
+        openingBalance: opening,
         currency: 'EGP',
       },
     });
     bytes = out instanceof Uint8Array ? out : new Uint8Array(out as ArrayBuffer);
   } catch (err: any) {
-    // The browser-targeted builder may try to fetch web fonts; we already
-    // expected it to fail in Node. If the only failure is font loading,
-    // the resulting PDF bytes are still produced and we proceed.
-    logger.warn({ err: err?.message }, 'statement pdf generation warning');
+    logger.warn({ err: err?.message }, 'statement pdf generation failed');
     throw err;
   }
 
@@ -253,13 +272,13 @@ export async function generateClientStatementHandler(
   if (sigErr || !signed?.signedUrl) {
     throw new Error(`statement signed url failed: ${sigErr?.message ?? 'no url'}`);
   }
-  const expiresAt = new Date(Date.now() + 600 * 1000).toISOString();
 
   return {
     path: storagePath,
     signedUrl: signed.signedUrl,
-    expires_at: expiresAt,
+    expires_at: new Date(Date.now() + 600_000).toISOString(),
     totals,
+    client_name: client.client_name,
   };
 }
 
@@ -272,40 +291,40 @@ export async function generateInvoiceHandler(
   expires_at: string;
   invoice_number: string | null;
 }> {
-  const supa = userClient(ctx.user.id, ctx.user.jwt);
+  requireLinkedUser(ctx.user);
+  const supa = dataClient(ctx.user);
   const admin = adminClient();
 
-  const { data: txRow, error: txErr } = await supa
-    .from('client_transactions')
-    .select(
-      'id, client_id, transaction_date, transaction_type, description, amount, status, invoice_number, external_invoice_number, user_id, clients:client_id ( client_name, contact_info, address )',
-    )
-    .eq('id', args.transaction_id)
-    .eq('user_id', ctx.user.id)
-    .single();
+  const { data: txRow, error: txErr } = await scopeByUser(
+    supa
+      .from('client_transactions')
+      .select(
+        `transaction_id, client_id, transaction_date, total_amount, paid_amount, remaining_amount,
+         status, invoice_number, external_invoice_number, due_date, payment_terms,
+         quantity, unit_price, user_id,
+         clients:client_id ( client_name, contact_info, address ),
+         products:product_id ( product_name, model )`,
+      )
+      .eq('transaction_id', args.transaction_id),
+    ctx.user.id,
+  ).maybeSingle();
   if (txErr || !txRow) {
     throw new Error(`transaction not found: ${txErr?.message ?? args.transaction_id}`);
   }
-  const transaction = txRow as unknown as TransactionRow & {
-    clients: Array<{ client_name: string | null; contact_info: string | null; address: string | null }> | null;
-  };
+  const transaction = txRow as unknown as TransactionRow;
+  const embed = asClientEmbed(transaction.clients);
 
-  const { data: paymentRows, error: payErr } = await supa
-    .from('payments')
-    .select('id, transaction_id, client_id, payment_date, amount, payment_method, notes, user_id')
-    .eq('transaction_id', args.transaction_id)
-    .eq('user_id', ctx.user.id);
+  const { data: paymentRows, error: payErr } = await scopeByUser(
+    supa
+      .from('payments')
+      .select(
+        'payment_id, transaction_id, client_id, payment_date, payment_amount, payment_method, reference_number, user_id',
+      )
+      .eq('transaction_id', args.transaction_id),
+    ctx.user.id,
+  );
   if (payErr) throw new Error(`invoice payments failed: ${payErr.message}`);
   const payments = (paymentRows ?? []) as PaymentRow[];
-
-  const client: ClientRow = {
-    id: transaction.clients?.[0]?.client_name ? transaction.client_id ?? '' : '',
-    client_name: transaction.clients?.[0]?.client_name ?? null,
-    contact_info: transaction.clients?.[0]?.contact_info ?? null,
-    address: transaction.clients?.[0]?.address ?? null,
-    opening_balance: 0,
-    user_id: ctx.user.id,
-  };
 
   let mod: any;
   try {
@@ -323,18 +342,24 @@ export async function generateInvoiceHandler(
   try {
     const mappedPayments = payments.map((p) => ({
       payment_date: p.payment_date,
-      payment_amount: num(p.amount),
+      payment_amount: num(p.payment_amount),
       payment_method: p.payment_method,
-      notes: p.notes,
+      notes: p.reference_number,
     }));
-    const out = await buildInvoicePdf(transaction, {
-      language: args.language ?? 'en',
-      currency: 'EGP',
-      payments: mappedPayments,
-    });
+    const out = await buildInvoicePdf(
+      {
+        ...transaction,
+        clients: embed,
+      },
+      {
+        language: args.language ?? 'ar',
+        currency: 'EGP',
+        payments: mappedPayments,
+      },
+    );
     bytes = out instanceof Uint8Array ? out : new Uint8Array(out as ArrayBuffer);
   } catch (err: any) {
-    logger.warn({ err: err?.message }, 'invoice pdf generation warning');
+    logger.warn({ err: err?.message }, 'invoice pdf generation failed');
     throw err;
   }
 
@@ -350,12 +375,11 @@ export async function generateInvoiceHandler(
   if (sigErr || !signed?.signedUrl) {
     throw new Error(`invoice signed url failed: ${sigErr?.message ?? 'no url'}`);
   }
-  const expiresAt = new Date(Date.now() + 600 * 1000).toISOString();
 
   return {
     path: storagePath,
     signedUrl: signed.signedUrl,
-    expires_at: expiresAt,
+    expires_at: new Date(Date.now() + 600_000).toISOString(),
     invoice_number: displayInvoiceNumber(transaction),
   };
 }

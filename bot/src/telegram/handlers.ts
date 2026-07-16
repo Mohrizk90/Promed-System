@@ -20,7 +20,7 @@ import {
   isYesDelete,
 } from "./keyboards.js";
 import { createLinkCode, resolveLink, touchLastSeen, relativeTime } from "./linking.js";
-import { downloadTelegramFile } from "./files.js";
+import { downloadTelegramFile, sendPdfToChat } from "./files.js";
 
 const WELCOME =
   "Welcome to Promed ERP Assistant. /link to connect your account. /help for commands.\n\n" +
@@ -150,15 +150,25 @@ export function registerHandlers(deps: HandlerDeps): void {
     }
     await touchLastSeen(chatId).catch(() => undefined);
 
-    await handleUserTurn({
-      bot,
-      dryRun,
-      chatId,
-      userId: link.user_id,
-      parts: [{ kind: "text", text }],
-      session,
-      latestText: text,
-    });
+    try {
+      await handleUserTurn({
+        bot,
+        dryRun,
+        chatId,
+        userId: link.user_id,
+        parts: [{ kind: "text", text }],
+        session,
+        latestText: text,
+      });
+    } catch (err) {
+      writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
+      await safeSend(
+        bot,
+        dryRun,
+        chatId,
+        "حصلت مشكلة مؤقتة. جرّب تاني أو صِغ الطلب بشكل أوضح.\nSomething went wrong — please try again.",
+      );
+    }
   });
 
   // Voice notes.
@@ -394,7 +404,9 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
 
   const locale = detectLocaleHint(latestText);
 
-  const result = await getGemini().runLoop({
+  let result: Awaited<ReturnType<ReturnType<typeof getGemini>["runLoop"]>>;
+  try {
+    result = await getGemini().runLoop({
     locale,
     tools,
     history: session.turns.slice(0, -1).map((t): import("../gemini/client.js").GeminiTurn => {
@@ -460,7 +472,29 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
           message: r.isError ? `${name} returned error` : `${name} ok`,
           ctx: { chatId, tool: name, duration_ms: duration },
         });
-        return r.content;
+
+        // Parse MCP text content into a plain object so Gemini gets a Struct,
+        // and so we can detect signed PDF URLs and deliver them to Telegram.
+        const parsed = parseMcpContent(r.content);
+        if (
+          !r.isError &&
+          !dryRun &&
+          bot &&
+          parsed &&
+          typeof parsed === "object" &&
+          typeof (parsed as { signedUrl?: unknown }).signedUrl === "string"
+        ) {
+          const signedUrl = (parsed as { signedUrl: string }).signedUrl;
+          const filename =
+            name === "generate_invoice"
+              ? `invoice-${String((callArgs as { transaction_id?: unknown }).transaction_id ?? "file")}.pdf`
+              : `statement-${String((callArgs as { client_id?: unknown }).client_id ?? "file")}.pdf`;
+          await sendPdfToChat(bot, chatId, signedUrl, filename).catch((err) => {
+            logger.warn({ err }, "sendPdfToChat failed");
+          });
+        }
+
+        return parsed;
       } catch (err) {
         const duration = Date.now() - start;
         writeAudit({
@@ -483,6 +517,16 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
       }
     },
   });
+  } catch (err) {
+    writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
+    await safeSend(
+      bot,
+      dryRun,
+      chatId,
+      "ما قدرتش أكمل الطلب دلوقتي. جرّب تاني بعد شوية.\nI couldn't complete that request. Please try again shortly.",
+    );
+    return;
+  }
 
   // After a write tool was requested we asked Gemini to emit a CONFIRM_SUMMARY,
   // not to actually run the tool. Present the keyboard.
@@ -566,6 +610,24 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
 function extractSummary(text: string): string | null {
   const m = text.match(/CONFIRM_SUMMARY:\s*(.+)$/im);
   return m?.[1]?.trim() ?? null;
+}
+
+/** Turn MCP `content: [{type:'text', text: '...json...'}]` into a plain object for Gemini. */
+function parseMcpContent(content: unknown): unknown {
+  if (!Array.isArray(content)) return content ?? { ok: true };
+  const texts = content
+    .filter((c): c is { type?: string; text: string } => !!c && typeof c === "object" && typeof (c as { text?: unknown }).text === "string")
+    .map((c) => c.text);
+  if (texts.length === 0) return { ok: true, content };
+  if (texts.length === 1) {
+    const only = texts[0] ?? "";
+    try {
+      return JSON.parse(only);
+    } catch {
+      return { text: only };
+    }
+  }
+  return { texts };
 }
 
 function summariseArgs(args: Record<string, unknown>): string {
