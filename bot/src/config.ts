@@ -5,6 +5,9 @@ const RawEnv = z.object({
   TELEGRAM_BOT_TOKEN: z.string().trim().default(""),
   GEMINI_API_KEY: z.string().trim().min(1, "GEMINI_API_KEY is required"),
   GEMINI_MODEL: z.string().trim().default("gemini-2.5-flash"),
+  /** Dedicated Gemini TTS model (speech output). Uses the same GEMINI_API_KEY. */
+  GEMINI_TTS_MODEL: z.string().trim().default("gemini-2.5-flash-preview-tts"),
+  GEMINI_TTS_VOICE: z.string().trim().default("Kore"),
   SUPABASE_URL: z.string().url("SUPABASE_URL must be a valid URL"),
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
   MCP_SERVER_URL: z.string().url("MCP_SERVER_URL must be a valid URL"),

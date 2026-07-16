@@ -1,9 +1,6 @@
 import { loadConfig } from "../config.js";
 import { logger } from "../logger.js";
 
-const TTS_MODEL = "gemini-2.5-flash-preview-tts";
-const VOICE_NAME = "Kore"; // clear multilingual voice; works for Arabic
-
 export type TtsResult = {
   bytes: Buffer;
   mimeType: string;
@@ -11,15 +8,17 @@ export type TtsResult = {
 };
 
 /**
- * Synthesize a short spoken reply via Gemini TTS.
- * Returns WAV bytes suitable for Telegram `sendAudio` / `sendVoice` fallbacks.
+ * Synthesize a short spoken reply via **Gemini TTS** using `GEMINI_API_KEY`
+ * (same key as chat). Model: `GEMINI_TTS_MODEL` (default gemini-2.5-flash-preview-tts).
  */
 export async function synthesizeSpeech(text: string): Promise<TtsResult | null> {
   const spoken = prepareSpokenText(text);
   if (!spoken) return null;
 
   const cfg = loadConfig();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent?key=${encodeURIComponent(cfg.GEMINI_API_KEY)}`;
+  const model = cfg.GEMINI_TTS_MODEL;
+  const voiceName = cfg.GEMINI_TTS_VOICE;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(cfg.GEMINI_API_KEY)}`;
 
   const body = {
     contents: [{ parts: [{ text: spoken }] }],
@@ -27,11 +26,13 @@ export async function synthesizeSpeech(text: string): Promise<TtsResult | null> 
       responseModalities: ["AUDIO"],
       speechConfig: {
         voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: VOICE_NAME },
+          prebuiltVoiceConfig: { voiceName },
         },
       },
     },
   };
+
+  logger.info({ model, voiceName, chars: spoken.length }, "gemini tts request");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);
@@ -44,7 +45,7 @@ export async function synthesizeSpeech(text: string): Promise<TtsResult | null> 
       signal: controller.signal,
     });
   } catch (err) {
-    logger.warn({ err }, "tts fetch failed");
+    logger.warn({ err }, "gemini tts fetch failed");
     return null;
   } finally {
     clearTimeout(timeout);
@@ -52,7 +53,7 @@ export async function synthesizeSpeech(text: string): Promise<TtsResult | null> 
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
-    logger.warn({ status: res.status, errText: errText.slice(0, 400) }, "tts http error");
+    logger.warn({ status: res.status, errText: errText.slice(0, 400), model }, "gemini tts http error");
     return null;
   }
 
@@ -64,12 +65,13 @@ export async function synthesizeSpeech(text: string): Promise<TtsResult | null> 
   const part = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
   const b64 = part?.inlineData?.data;
   if (!b64) {
-    logger.warn("tts returned no audio part");
+    logger.warn({ model }, "gemini tts returned no audio part");
     return null;
   }
 
   const raw = Buffer.from(b64, "base64");
   const mime = part?.inlineData?.mimeType ?? "audio/L16;rate=24000";
+  logger.info({ model, mime, bytes: raw.length }, "gemini tts ok");
 
   // Gemini TTS usually returns raw PCM (L16). Wrap as WAV for Telegram sendAudio.
   if (/L16|pcm|raw/i.test(mime) || !/ogg|mpeg|mp3|wav|webm/i.test(mime)) {
