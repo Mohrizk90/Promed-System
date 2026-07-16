@@ -29,6 +29,17 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   // dashboard hit MCP for "whoami"-style reads without an end-user JWT.
   const id = req.header('x-user-id');
   const jwt = req.header('x-user-jwt');
-  req.user = id && jwt ? { id, jwt } : { id: 'system', jwt: '' };
+  // Preserve an end-user ID even when no JWT is supplied (the bot forwards
+  // the linked-user UUID for audit/RBAC context but never holds the user's
+  // actual JWT — only the service-role is held by the bot/MCP). We only
+  // synthesise the 'system' identity when the caller sends nothing at all
+  // (boot-time liveness probes).
+  if (id && jwt) {
+    req.user = { id, jwt };
+  } else if (id) {
+    req.user = { id, jwt: '' };
+  } else {
+    req.user = { id: 'system', jwt: '' };
+  }
   next();
 }
