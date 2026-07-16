@@ -21,6 +21,7 @@ import {
 } from "./keyboards.js";
 import { createLinkCode, resolveLink, touchLastSeen, relativeTime } from "./linking.js";
 import { downloadTelegramFile, sendPdfToChat } from "./files.js";
+import { synthesizeSpeech } from "../gemini/tts.js";
 
 const WELCOME =
   "Welcome to Promed ERP Assistant. /link to connect your account. /help for commands.\n\n" +
@@ -151,6 +152,8 @@ export function registerHandlers(deps: HandlerDeps): void {
     await touchLastSeen(chatId).catch(() => undefined);
 
     try {
+      await bot.sendChatAction(chatId, "typing").catch(() => undefined);
+      await safeSend(bot, dryRun, chatId, "حاضر، ثواني…");
       await handleUserTurn({
         bot,
         dryRun,
@@ -159,6 +162,7 @@ export function registerHandlers(deps: HandlerDeps): void {
         parts: [{ kind: "text", text }],
         session,
         latestText: text,
+        preferVoice: true,
       });
     } catch (err) {
       writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
@@ -166,7 +170,7 @@ export function registerHandlers(deps: HandlerDeps): void {
         bot,
         dryRun,
         chatId,
-        "حصلت مشكلة مؤقتة. جرّب تاني أو صِغ الطلب بشكل أوضح.\nSomething went wrong — please try again.",
+        "حصلت مشكلة مؤقتة. جرّب تاني أو صِغ الطلب بشكل أوضح.",
       );
     }
   });
@@ -189,6 +193,8 @@ export function registerHandlers(deps: HandlerDeps): void {
     await touchLastSeen(chatId).catch(() => undefined);
 
     try {
+      await bot.sendChatAction(chatId, "record_voice").catch(() => undefined);
+      await safeSend(bot, dryRun, chatId, "حاضر، بسمع الرسالة…");
       const file = await downloadTelegramFile(bot, voice.file_id);
       await handleUserTurn({
         bot,
@@ -198,10 +204,11 @@ export function registerHandlers(deps: HandlerDeps): void {
         parts: [{ kind: "audio", mimeType: file.mimeType, base64: file.bytes.toString("base64") }],
         session,
         latestText: "(voice note)",
+        preferVoice: true,
       });
     } catch (err) {
       writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
-      await safeSend(bot, dryRun, chatId, "Couldn't download that voice note.");
+      await safeSend(bot, dryRun, chatId, "ما قدرتش أحمل الرسالة الصوتية. ابعت تاني أو اكتب النص.");
     }
   });
 
@@ -227,6 +234,7 @@ export function registerHandlers(deps: HandlerDeps): void {
     const caption = msg.caption ?? "(photo)";
 
     try {
+      await bot.sendChatAction(chatId, "typing").catch(() => undefined);
       const file = await downloadTelegramFile(bot, biggest.file_id);
       await handleUserTurn({
         bot,
@@ -239,10 +247,11 @@ export function registerHandlers(deps: HandlerDeps): void {
         ],
         session,
         latestText: caption,
+        preferVoice: true,
       });
     } catch (err) {
       writeError({ source: "telegram", severity: "error", message: (err as Error).message, ctx: { chatId } });
-      await safeSend(bot, dryRun, chatId, "Couldn't download that photo.");
+      await safeSend(bot, dryRun, chatId, "ما قدرتش أحمل الصورة. ابعت تاني.");
     }
   });
 
@@ -376,10 +385,12 @@ type HandleArgs = {
   parts: GeminiInlinePart[];
   session: Session;
   latestText: string;
+  /** When true (default for chat), always try a short voice reply. */
+  preferVoice?: boolean;
 };
 
 async function handleUserTurn(args: HandleArgs): Promise<void> {
-  const { bot, dryRun, chatId, userId, parts, session, latestText } = args;
+  const { bot, dryRun, chatId, userId, parts, session, latestText, preferVoice = true } = args;
 
   // Record the user turn. `session.turns` is text-only (audio/image bytes are
   // sent inline this round); we MUST keep at least one text part here or the
@@ -560,41 +571,35 @@ async function handleUserTurn(args: HandleArgs): Promise<void> {
     return;
   }
 
-  // Plain text (or post-write) reply.
+  // Plain text (or post-write) reply — keep it short on screen; voice carries the tone.
   if (result.text) {
     session.turns.push({ role: "model", parts: [{ text: result.text }] });
     await safeSend(bot, dryRun, chatId, result.text);
   } else {
-    await safeSend(bot, dryRun, chatId, "(No response from the assistant.)");
+    await safeSend(bot, dryRun, chatId, "تمام، خلصت.");
   }
 
-  // Optional voice note.
-  if (result.voiceRequested && !dryRun) {
+  // Voice-first assistant: always try a short spoken reply unless model said VOICE_REPLY: no.
+  if (preferVoice && result.voiceRequested && result.text && !dryRun && bot) {
     try {
-      const { getGemini } = await import("../gemini/client.js");
-      const cfg = (await import("../config.js")).loadConfig();
-      const ttsModel = getGemini();
-      // NOTE: Phase 1 uses the same model with audio output modality.
-      // The `responseModalities` field is forward-compat only in this SDK version, so we
-      // cast the generationConfig to `any` to keep things compiling. If the underlying
-      // model doesn't support audio output, the request will throw and we swallow it.
-      const tts = await ttsModel["genai"].getGenerativeModel({
-        model: cfg.GEMINI_MODEL,
-        systemInstruction: "You are a concise TTS engine. Read the following reply aloud naturally.",
-        generationConfig: { responseModalities: ["AUDIO"] },
-      } as never);
-      const ttsRes = await tts.generateContent(result.text);
-      const part = ttsRes.response.candidates?.[0]?.content?.parts?.find(
-        (p: { inlineData?: { data?: string; mimeType?: string } }) => p.inlineData?.data,
-      ) as { inlineData?: { data: string; mimeType?: string } } | undefined;
-      if (part?.inlineData?.data) {
-        const buf = Buffer.from(part.inlineData.data, "base64");
-        await bot.sendVoice(chatId, buf, {}, { contentType: part.inlineData.mimeType ?? "audio/ogg" });
+      await bot.sendChatAction(chatId, "record_voice").catch(() => undefined);
+      const audio = await synthesizeSpeech(result.text);
+      if (audio) {
+        if (audio.mimeType.includes("ogg")) {
+          await bot.sendVoice(chatId, audio.bytes, {}, { filename: audio.filename, contentType: audio.mimeType });
+        } else {
+          await bot.sendAudio(
+            chatId,
+            audio.bytes,
+            { title: "Promed", performer: "مساعد بروميد" },
+            { filename: audio.filename, contentType: audio.mimeType },
+          );
+        }
       }
     } catch (err) {
       logger.warn({ err }, "voice reply failed; text only");
     }
-  } else if (result.voiceRequested && dryRun) {
+  } else if (preferVoice && result.voiceRequested && dryRun) {
     logger.info({ BOT_DRY_RUN: true, chatId, text: result.text }, "BOT_DRY_RUN: would send voice");
   }
 

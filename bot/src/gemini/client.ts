@@ -199,12 +199,14 @@ function toGeminiParts(parts: GeminiInlinePart[]): Part[] {
 }
 
 function detectVoiceRequest(text: string): boolean {
-  const m = text.match(/^VOICE_REPLY:\s*(yes|no)/im);
-  return Boolean(m && m[1]?.toLowerCase() === "yes");
+  const m = text.match(/VOICE_REPLY:\s*(yes|no)/im);
+  // Default ON — the Promed assistant is voice-first; only skip when model says no.
+  if (!m) return true;
+  return m[1]?.toLowerCase() === "yes";
 }
 
 function stripVoiceMarker(text: string): string {
-  return text.replace(/\n?VOICE_REPLY:\s*(yes|no)\s*$/im, "").trim();
+  return text.replace(/\n?VOICE_REPLY:\s*(yes|no)\s*$/gim, "").trim();
 }
 
 let _gemini: GeminiClient | null = null;
