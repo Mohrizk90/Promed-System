@@ -84,27 +84,148 @@ function registerTools(): void {
 
 registerTools();
 
-// Stateful transport (per Streamable HTTP spec). Clients must capture the
-// `Mcp-Session-Id` response header from initialize and resend it on every
-// subsequent request. The bot's MCP client (`bot/src/mcp/client.ts`) handles
-// that, and curl smoke tests are documented in the README.
-const transport = new StreamableHTTPServerTransport({
-  sessionIdGenerator: () => randomUUID(),
-});
-await server.connect(transport);
+// Per-session transports. Sharing a single `StreamableHTTPServerTransport`
+// across requests fails when the client retries `initialize` — the transport
+// has an internal `_initialized` flag that flips to true after the first
+// successful init and then refuses all subsequent ones with HTTP 400
+// "Server already initialized". The reference Streamable HTTP example in
+// the MCP SDK spawns a fresh transport per session and keeps it in a Map
+// keyed by the `mcp-session-id` header. We do the same here.
+type ServerSession = {
+  server: McpServer;
+  transport: StreamableHTTPServerTransport;
+};
+const sessions = new Map<string, ServerSession>();
 
-app.post('/mcp', requireAuth, async (req: Request, res: Response) => {
-  // The StreamableHTTPServerTransport reads `req.auth` to forward an
-  // authenticated principal into the tool handler's `extra` context (see
-  // sdk/dist/esm/server/streamableHttp.js:131). The earlier code set
-  // `req.authInfo` instead, which the SDK ignored — tool handlers then saw
-  // `user.id === 'unknown'` and writes were audited as the system user.
+function createSession(): ServerSession {
+  // Each session gets its own McpServer + transport so its `_initialized`
+  // flag is independent. Tool handlers capture shared module state (Supabase
+  // admin client, audit writer) by closure, not by `this`, so this is safe.
+  const localServer = new McpServer(
+    { name: 'promed-mcp', version: '0.1.0' },
+    { capabilities: { tools: {} } },
+  );
+  for (const [name, def] of Object.entries(tools) as [ToolName, (typeof tools)[ToolName]][]) {
+    const schemaArg: any = (def.schema as any).shape ?? def.schema;
+    localServer.tool(name, def.description, schemaArg, (async (args: unknown, extra: any) => {
+      const start = Date.now();
+      const user: AuthedUser | undefined =
+        extra?.authInfo?.user ?? extra?.user ?? extra?.requestContext?.user;
+      try {
+        const parsed = (def.schema as any).parse(args ?? {});
+        const result = await def.handler(parsed, { user: user ?? { id: 'unknown', jwt: '' } });
+        await writeAudit({
+          telegramChatId: null,
+          userId: user?.id ?? 'unknown',
+          toolName: name,
+          args: parsed,
+          resultStatus: 'ok',
+          latencyMs: Date.now() - start,
+          source: 'mcp',
+        });
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+        };
+      } catch (err: any) {
+        const message = err?.message ?? String(err);
+        await writeAudit({
+          telegramChatId: null,
+          userId: user?.id ?? 'unknown',
+          toolName: name,
+          args,
+          resultStatus: 'error',
+          errorText: message,
+          latencyMs: Date.now() - start,
+          source: 'mcp',
+        });
+        logger.error({ tool: name, err: message }, 'tool call failed');
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ error: message }) }],
+          isError: true,
+        };
+      }
+    }) as any);
+  }
+
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+    onsessioninitialized: (sid: string) => {
+      sessions.set(sid, { server: localServer, transport });
+      logger.info({ session_id: sid }, 'mcp session initialised');
+    },
+  });
+  // Free the slot when the client closes the session.
+  transport.onclose = () => {
+    const sid = transport.sessionId;
+    if (sid && sessions.has(sid)) {
+      sessions.delete(sid);
+      logger.info({ session_id: sid }, 'mcp session closed');
+    }
+  };
+
+  void localServer.connect(transport).then(() => {
+    logger.debug('local mcp server connected to transport');
+  });
+
+  return { server: localServer, transport };
+}
+
+function getSession(req: Request): ServerSession | undefined {
+  const sid = req.headers['mcp-session-id'];
+  if (typeof sid === 'string' && sid.length > 0) {
+    return sessions.get(sid);
+  }
+  return undefined;
+}
+
+async function handlePost(req: Request, res: Response): Promise<void> {
   (req as any).auth = { user: req.user };
-  await transport.handleRequest(req as any, res, req.body);
+  let session = getSession(req);
+  // No session yet, or server was restarted (sessions cleared on boot) —
+  // mint a fresh one for this initialize request. The transport will
+  // register itself via `onsessioninitialized` once it sees the `initialize`
+  // JSON-RPC method.
+  if (!session) {
+    session = createSession();
+  }
+  await session.transport.handleRequest(req as any, res, req.body);
+}
+
+async function handleGet(req: Request, res: Response): Promise<void> {
+  const session = getSession(req);
+  if (!session) {
+    // Streamable HTTP spec: GET without a valid session ID should 400.
+    res.status(400).json({ error: 'missing or unknown mcp-session-id' });
+    return;
+  }
+  await session.transport.handleRequest(req as any, res);
+}
+
+app.post('/mcp', requireAuth, (req: Request, res: Response) => {
+  handlePost(req, res).catch((err) => {
+    logger.error({ err }, 'mcp POST handler failed');
+    if (!res.headersSent) res.status(500).json({ error: (err as Error).message });
+  });
 });
 
-app.get('/mcp', requireAuth, async (req: Request, res: Response) => {
-  await transport.handleRequest(req as any, res);
+app.get('/mcp', requireAuth, (req: Request, res: Response) => {
+  handleGet(req, res).catch((err) => {
+    logger.error({ err }, 'mcp GET handler failed');
+    if (!res.headersSent) res.status(500).json({ error: (err as Error).message });
+  });
+});
+
+// DELETE /mcp closes a session per the Streamable HTTP spec.
+app.delete('/mcp', requireAuth, (req: Request, res: Response) => {
+  const session = getSession(req);
+  if (!session) {
+    res.status(400).json({ error: 'missing or unknown mcp-session-id' });
+    return;
+  }
+  session.transport
+    .close()
+    .then(() => res.status(200).json({ ok: true }))
+    .catch((err) => res.status(500).json({ error: (err as Error).message }));
 });
 
 app.get('/healthz', (_req: Request, res: Response) => {
