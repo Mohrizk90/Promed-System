@@ -963,7 +963,39 @@ function Dashboard() {
       {/* Top Products Table */}
       <div className="card p-3 sm:p-4">
         <h2 className="text-base font-semibold text-gray-900 mb-3">{t('dashboard.topProductsPerformance')}</h2>
-        <div className="overflow-x-auto overflow-y-visible">
+        {/* Phone: ranked product cards */}
+        <ol className="sm:hidden space-y-2">
+          {paginatedProductsData.map((product, index) => {
+            const margin = product.revenue > 0 ? (product.profit / product.revenue) * 100 : null
+            const rank = (effectiveProductsPage - 1) * productsPageSize + index + 1
+            return (
+              <li key={index} className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
+                <div className="flex items-start gap-2.5">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">{rank}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm leading-snug break-words">{product.name}</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{t('dashboard.qtySold')}: {product.sold} · {t('dashboard.qtyPurchased')}: {product.purchased}</p>
+                  </div>
+                  {margin != null && (
+                    <span className={`flex-shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${margin >= 20 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{margin.toFixed(1)}%</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-2 ps-9">
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">{t('dashboard.revenue')}</p>
+                    <p className="text-sm font-semibold tabular-nums text-blue-600 truncate">{formatCurrencyDetailed(product.revenue)}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">{t('dashboard.profit')}</p>
+                    <p className={`text-sm font-semibold tabular-nums truncate ${product.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrencyDetailed(product.profit)}</p>
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+          {topProductsData.length === 0 && <li className="py-6 text-center text-gray-500 text-sm">{t('dashboard.noProductData')}</li>}
+        </ol>
+        <div className="hidden sm:block print:block overflow-x-auto overflow-y-visible">
           <table className="min-w-full divide-y divide-gray-200 sm:table-fixed">
             <thead className="bg-gray-50">
               <tr>

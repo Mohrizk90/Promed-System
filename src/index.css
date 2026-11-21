@@ -784,3 +784,16 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Phones: never let a squeezed table column break words letter-by-letter.
+   Cells keep whole words and a sensible minimum width; the table scrolls sideways instead. */
+@media (max-width: 767px) {
+  .table-cell-wrap {
+    word-break: normal !important;
+    overflow-wrap: break-word;
+    min-width: 7.5rem;
+  }
+  td, th {
+    word-break: normal;
+  }
+}
