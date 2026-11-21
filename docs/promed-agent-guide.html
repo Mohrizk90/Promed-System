@@ -1,0 +1,276 @@
+<title>Promed Agent Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; voice-note "bubbles" carry the examples, each with the outcome the agent gives. */
+:root {
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --ink: #0b2a55;
+  --muted: #55688a;
+  --line: #dbe3f0;
+  --accent: #1d4ed8;
+  --accent-soft: #e6edff;
+  --bubble: #1d4ed8;
+  --bubble-ink: #ffffff;
+  --ok: #047857; --ok-soft: #e3f6ee;
+  --wait: #a35a00; --wait-soft: #fff3dc;
+  --risk: #b4233c; --risk-soft: #fde8ec;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-ar: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0b1424; --surface: #111d33; --ink: #e4ecfb; --muted: #97a8c8; --line: #23324f;
+  --accent: #7ea2ff; --accent-soft: #1a2a4d; --bubble: #2f5fe0; --bubble-ink: #ffffff;
+  --ok: #4fd1a0; --ok-soft: #0f2e27; --wait: #f2b04f; --wait-soft: #33260f; --risk: #ff8297; --risk-soft: #3a1620;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0b1424; --surface: #111d33; --ink: #e4ecfb; --muted: #97a8c8; --line: #23324f;
+  --accent: #7ea2ff; --accent-soft: #1a2a4d; --bubble: #2f5fe0; --bubble-ink: #ffffff;
+  --ok: #4fd1a0; --ok-soft: #0f2e27; --wait: #f2b04f; --wait-soft: #33260f; --risk: #ff8297; --risk-soft: #3a1620;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--font-body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 44px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 42px); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 23px; font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-size: 16px; font-weight: 600; }
+p { margin: 0; max-width: 66ch; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.muted { color: var(--muted); }
+.eyebrow { font: 500 12px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+section { display: grid; gap: 16px; min-width: 0; }
+.ar { font-family: var(--font-ar); direction: rtl; unicode-bidi: isolate; }
+code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+code { background: var(--accent-soft); padding: 1px 6px; border-radius: 5px; }
+
+/* Opening */
+.head { display: grid; gap: 14px; }
+.live { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 16px; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; }
+.live a { font: 600 17px var(--font-mono); text-decoration: none; word-break: break-all; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); flex: none; }
+
+/* How it decides */
+.rule { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.rule > div { padding: 14px 16px; border-radius: 12px; display: grid; gap: 6px; align-content: start; }
+.rule .ok { background: var(--ok-soft); }
+.rule .wait { background: var(--wait-soft); }
+.rule .undo { background: var(--accent-soft); }
+.rule b { font-size: 15px; }
+.rule .ok b { color: var(--ok); } .rule .wait b { color: var(--wait); } .rule .undo b { color: var(--accent); }
+.rule p { font-size: 14px; }
+
+/* Steps */
+ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: s; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; }
+ol.steps li::before { content: counter(s); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 600 14px var(--font-mono); }
+
+/* Examples */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button { font: 500 14px var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--bubble-ink); }
+.examples { display: grid; gap: 12px; }
+.ex { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.ex:last-child { border-bottom: 0; }
+.say { justify-self: end; max-width: 100%; background: var(--bubble); color: var(--bubble-ink); padding: 9px 14px; border-radius: 18px 18px 4px 18px; font: 500 16px/1.5 var(--font-ar); direction: rtl; }
+.say.en { font-family: var(--font-body); direction: ltr; }
+.result { display: grid; gap: 4px; font-size: 14px; min-width: 0; }
+.pill { justify-self: start; font: 500 11.5px var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.wait { background: var(--wait-soft); color: var(--wait); }
+.pill.read { background: var(--accent-soft); color: var(--accent); }
+
+/* Pages + facts */
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.card p { font-size: 14.5px; }
+.path { font: 500 13px var(--font-mono); color: var(--accent); }
+
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font: 500 12px var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ok); }
+
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 70ch; }
+.note { border-left: 3px solid var(--wait); background: var(--wait-soft); padding: 12px 16px; border-radius: 0 10px 10px 0; display: grid; gap: 6px; }
+.cmd { display: grid; gap: 6px; }
+.cmd div { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.cmd code { white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .rule { grid-template-columns: 1fr; }
+  .ex { grid-template-columns: 1fr; }
+  .say { justify-self: stretch; }
+}
+@media (prefers-reduced-motion: no-preference) { .tabs button { transition: background .15s, color .15s; } }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow">Promed · Owner guide · 21 Nov 2026</div>
+    <h1>Promed Agent</h1>
+    <p>Your assistant inside the Promed app. Speak in Egyptian Arabic or type, and it records expenses, income, payments, sales and purchases, links each one to the right project, edits anything, exports files and answers questions. Only your owner account can see it.</p>
+    <div class="live">
+      <span class="dot" aria-hidden="true"></span>
+      <a href="https://promed-system.vercel.app" target="_blank" rel="noopener">promed-system.vercel.app</a>
+      <span class="muted">Live now. Sign in as usual, then tap the blue sparkle button.</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Start in 30 seconds</h2>
+    <ol class="steps">
+      <li><p>Open the app and sign in. The round blue <b>sparkle button</b> sits in the bottom corner (on a phone, just above the tab bar). On a computer, <code>Ctrl + J</code> also opens it.</p></li>
+      <li><p>Tap the <b>microphone</b>, speak, and tap it again to send. Or type. Use the paperclip to attach a photo or a PDF (a receipt, an invoice, a licence).</p></li>
+      <li><p>Read the card the agent shows. Small, clear entries are already saved. Anything else waits for your <b>Confirm</b>.</p></li>
+      <li><p>Changed your mind? Press <b>Undo</b> on the card, or say <span class="ar">"الغي آخر حاجة"</span>. Undo works for 30 days.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>When it saves on its own</h2>
+    <div class="rule">
+      <div class="ok"><b>Saves straight away</b><p>New, clear entries under <b>5,000 EGP</b>: an expense, an income, a payment in or out, a sale, a purchase.</p></div>
+      <div class="wait"><b>Waits for Confirm</b><p>5,000 EGP or more, any edit or delete, and anything where it had to guess (an unknown person, an unclear project).</p></div>
+      <div class="undo"><b>Always undoable</b><p>Every change is logged row by row. If you edited the record afterwards, Undo warns you first.</p></div>
+    </div>
+    <p class="muted">Change the 5,000 limit on the <b>Agent activity</b> page. Set it to 0 to approve everything yourself.</p>
+  </section>
+
+  <section>
+    <h2>What to say</h2>
+    <div class="tabs" role="tablist" aria-label="Example groups">
+      <button role="tab" id="t-money" aria-selected="true" aria-controls="p-money">Money</button>
+      <button role="tab" id="t-projects" aria-selected="false" aria-controls="p-projects">Projects</button>
+      <button role="tab" id="t-edit" aria-selected="false" aria-controls="p-edit">Edit &amp; undo</button>
+      <button role="tab" id="t-ask" aria-selected="false" aria-controls="p-ask">Questions &amp; files</button>
+      <button role="tab" id="t-docs" aria-selected="false" aria-controls="p-docs">Legal documents</button>
+    </div>
+
+    <div class="examples" role="tabpanel" id="p-money" aria-labelledby="t-money">
+      <div class="ex"><div class="say">دفعت 350 بنزين للعربية</div><div class="result"><span class="pill ok">Saved</span>Fuel, 350 EGP, cash box, linked to the Company car project.</div></div>
+      <div class="ex"><div class="say">صرفت 200 أكل و 1500 للمخلص على شحنة الصين</div><div class="result"><span class="pill ok">Saved</span>Two lines in one go, both linked to the China shipment.</div></div>
+      <div class="ex"><div class="say">الريتاج دفعوا 3000 كاش</div><div class="result"><span class="pill ok">Saved</span>Client payment, spread over their oldest open invoices.</div></div>
+      <div class="ex"><div class="say">حولت 12 ألف إيجار المكتب من البنك</div><div class="result"><span class="pill wait">Confirm</span>Over the limit, so it shows the card and waits.</div></div>
+      <div class="ex"><div class="say">سجل فاتورة بيع جهازين لمستشفى السلام بـ 15 ألف للواحد</div><div class="result"><span class="pill wait">Confirm</span>Sale with VAT worked out, ready to confirm.</div></div>
+      <div class="ex"><div class="say en">Paid 2,500 shipping for the office</div><div class="result"><span class="pill ok">Saved</span>English works the same way.</div></div>
+    </div>
+    <div class="examples" role="tabpanel" id="p-projects" aria-labelledby="t-projects" hidden>
+      <div class="ex"><div class="say">اعمل مشروع شحنة ألمانيا رقم 24</div><div class="result"><span class="pill ok">Saved</span>New shipment project. Later entries can say "على شحنة ألمانيا".</div></div>
+      <div class="ex"><div class="say">شحن عينات 1800، ستين في المية للمناقصة والباقي للجهاز</div><div class="result"><span class="pill ok">Saved</span>One cost split 60/40 across two projects.</div></div>
+      <div class="ex"><div class="say">المناقصة دي كسبانة ولا خسرانة؟</div><div class="result"><span class="pill read">Answer</span>Income, costs and net for that project, by category.</div></div>
+      <div class="ex"><div class="say">افتحلي صفحة المشروع</div><div class="result"><span class="pill read">Opens</span>The app jumps to the project page.</div></div>
+    </div>
+    <div class="examples" role="tabpanel" id="p-edit" aria-labelledby="t-edit" hidden>
+      <div class="ex"><div class="say">عدّل سعر الجهاز Mindray DC-70 لـ مليون و 250</div><div class="result"><span class="pill wait">Confirm</span>Shows old price → new price before changing anything.</div></div>
+      <div class="ex"><div class="say">امسح قيد التاكسي بتاع امبارح</div><div class="result"><span class="pill wait">Confirm</span>Deletes always ask first.</div></div>
+      <div class="ex"><div class="say">الغي آخر حاجة سجلتها</div><div class="result"><span class="pill ok">Undone</span>Restores exactly what was there before.</div></div>
+      <div class="ex"><div class="say">افتكر إن "أبو أحمد" هو المخلص بتاعنا</div><div class="result"><span class="pill ok">Remembered</span>Next time it knows who you mean.</div></div>
+    </div>
+    <div class="examples" role="tabpanel" id="p-ask" aria-labelledby="t-ask" hidden>
+      <div class="ex"><div class="say">مين أكتر عميل عليه فلوس؟</div><div class="result"><span class="pill read">Answer</span>Uses the same invoice matching as the Clients page.</div></div>
+      <div class="ex"><div class="say">مصاريف الشهر ده متقسمة على التصنيفات وطلعهالي PDF</div><div class="result"><span class="pill read">Table + chart</span>The PDF downloads; a CSV button is on the table too.</div></div>
+      <div class="ex"><div class="say">كشف حساب دار الفؤاد آخر 3 شهور</div><div class="result"><span class="pill read">Table</span>Invoices and payments with the balance.</div></div>
+      <div class="ex"><div class="say">نسبة ضريبة القيمة المضافة في مصر كام؟</div><div class="result"><span class="pill read">Web search</span>General questions are answered, with sources for current facts.</div></div>
+    </div>
+    <div class="examples" role="tabpanel" id="p-docs" aria-labelledby="t-docs" hidden>
+      <div class="ex"><div class="say">(attach a licence photo) احفظ الرخصة دي</div><div class="result"><span class="pill ok">Filed</span>Goes to the Compliance inbox and is scanned, same as the Compliance upload.</div></div>
+      <div class="ex"><div class="say">إيه الرخص اللي هتخلص الشهرين الجايين؟</div><div class="result"><span class="pill read">Answer</span>Expiring, expired, and documents waiting for review.</div></div>
+      <div class="ex"><div class="say">(attach a fuel receipt) سجل الإيصال ده</div><div class="result"><span class="pill ok">Saved</span>Receipts become expenses, not legal documents.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>New in the app</h2>
+    <div class="grid2">
+      <div class="card"><span class="path">/money</span><h3>Money</h3><p>Every expense and income with category, account and project. Filters, quick add, CSV and PDF export.</p></div>
+      <div class="card"><span class="path">/projects</span><h3>Projects</h3><p>Deals, shipments, devices, cost centres. Each shows income, costs, net and budget use. Add your own project types with custom fields.</p></div>
+      <div class="card"><span class="path">/agent</span><h3>Agent activity</h3><p>Everything the agent changed, grouped by day, with what you said, Confirm for waiting items, Undo, and the auto-save limit.</p></div>
+      <div class="card"><span class="path">voice replies</span><h3>Spoken answers</h3><p>The speaker icon in the panel header makes the agent read its answer aloud after a voice note.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What was tested</h2>
+    <p class="muted">All tests use your real data and run inside a database transaction that is rolled back, so nothing was kept.</p>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Check</th><th>Result</th><th>What it covers</th></tr></thead>
+        <tbody>
+          <tr><td>Database tests</td><td class="num">14 / 14</td><td>Every write operation, undo with conflict check, permissions, outsiders locked out, dry runs.</td></tr>
+          <tr><td>Agent with Gemini</td><td class="num">12 / 12</td><td>Fuel, several items, rent over the limit, client payment, top debtor, sale, undo, an unknown person, English, reports. Average 11.9 s per answer.</td></tr>
+          <tr><td>Voice notes</td><td class="num">6 / 6</td><td>Egyptian Arabic recordings transcribed with the right amounts and names, about 2 s each.</td></tr>
+          <tr><td>Full HTTP path</td><td class="num">12 / 12</td><td>The real chat server streaming an answer, auto-save, saved conversation, Undo and Confirm buttons.</td></tr>
+          <tr><td>App unit tests</td><td class="num">93 / 93</td><td>Existing app tests plus the agent rules, screens text in both languages, audio encoding.</td></tr>
+          <tr><td>Screens</td><td class="num">checked</td><td>Agent panel, Money, Projects, Project page and Agent activity, on phone and desktop, Arabic and English.</td></tr>
+          <tr><td>Nightly backup</td><td class="num">ran once</td><td>Encrypted backup made and stored in GitHub, then the database tests passed there too.</td></tr>
+          <tr><td>Live site</td><td class="num">up</td><td>Pages load with no errors; the agent refuses anyone who is not signed in.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <h3>Not tested yet</h3>
+      <p>I did not sign in to the live app as you, so your first message there is the first real live conversation. The microphone was not tried on a real iPhone. If anything looks off, tell me what you said and what the card showed.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Good to know</h2>
+    <ul class="plain">
+      <li>Answers take about 5 to 20 seconds; questions that need several lookups take longer.</li>
+      <li>Voice transcription allows about 10 voice notes per minute on the current Gemini plan. If you hit that, it switches to a backup model automatically.</li>
+      <li>Always glance at the card before confirming. The agent sometimes mishears a word; the card shows exactly what will be saved.</li>
+      <li>If a person or project is new, it says so on the card (marked <b>new</b>) and waits for you.</li>
+      <li>Your database is backed up every night at 2:30 am Cairo time, encrypted, and kept for 30 days in GitHub. The password for the backups is <code>BACKUP_PASSPHRASE</code> in your <code>.env.local</code> file. Keep a copy somewhere safe; without it the backups cannot be opened.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Recommended next</h2>
+    <ul class="plain">
+      <li><b>Supabase Pro</b> adds point-in-time recovery, on top of the nightly backups.</li>
+      <li><b>A stronger database password.</b> The current one is short and was shared in chat.</li>
+      <li><b>Vercel Pro.</b> The free Hobby plan is meant for non-commercial use.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>For a developer</h2>
+    <div class="cmd">
+      <div><code>npm run db:test</code><span class="muted">database tests, rolled back</span></div>
+      <div><code>npm run agent:eval</code><span class="muted">12 real agent conversations with Gemini</span></div>
+      <div><code>npm run voice:eval</code><span class="muted">voice transcription check</span></div>
+      <div><code>npm run agent:e2e</code><span class="muted">full HTTP chat, undo and confirm</span></div>
+      <div><code>npm run db:migrate</code><span class="muted">apply new files in db/migrations</span></div>
+    </div>
+    <p class="muted">Models: Gemini 3.8 Flash for the agent, Gemini 3.5 Transcribe for voice, Gemini 3.8 Flash TTS for spoken replies. The code avoids Vercel- or Supabase-only features so it can move to your own server later.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  const show = (tab) => {
+    tabs.forEach((t) => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => show(t));
+    t.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      next.focus(); show(next);
+    });
+  });
+})();
+</script>
