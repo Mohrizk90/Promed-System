@@ -75,10 +75,20 @@ export async function speak(text) {
   return res.blob()
 }
 
+/**
+ * Supabase Storage only accepts plain ASCII object keys ("Invalid key" otherwise), so Arabic
+ * or other non-Latin file names become underscores. The real name is still shown and sent to the agent.
+ */
+export function storageSafeName(name = '') {
+  const dot = name.lastIndexOf('.')
+  const ext = dot > 0 ? name.slice(dot + 1).replace(/[^A-Za-z0-9]/g, '').slice(0, 10).toLowerCase() : ''
+  const base = (dot > 0 ? name.slice(0, dot) : name).replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(-60) || 'file'
+  return ext ? `${base}.${ext}` : base
+}
+
 /** Upload an attachment to the owner's private folder; returns a short-lived link for the model. */
 export async function uploadAttachment(file, userId) {
-  const safe = file.name.replace(/[^\w.\-؀-ۿ]+/g, '_').slice(-80)
-  const path = `${userId}/agent/${Date.now()}_${safe}`
+  const path = `${userId}/agent/${Date.now()}_${storageSafeName(file.name)}`
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false, contentType: file.type || undefined })
   if (error) throw error
   const { data, error: signErr } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60)

@@ -78,3 +78,14 @@ describe('agentErrorText', () => {
     expect(agentErrorText(new Error('Recording was too short'), t)).toBe('Recording was too short')
   })
 })
+
+describe('storageSafeName', () => {
+  it('keeps storage keys plain ASCII (Supabase rejects Arabic)', async () => {
+    const { storageSafeName } = await import('../../lib/agentApi')
+    expect(storageSafeName('مخزن بروميد ptl.pdf')).toBe('ptl.pdf')
+    expect(storageSafeName('فاتورة.PDF')).toBe('file.pdf')
+    expect(storageSafeName('scan 2026 (1).jpg')).toBe('scan_2026_1.jpg')
+    expect(storageSafeName('noext')).toBe('noext')
+    for (const n of ['مخزن بروميد ptl.pdf', 'إيصال ١٢.png', 'a b.c.d.docx']) expect(storageSafeName(n)).toMatch(/^[A-Za-z0-9_.-]+$/)
+  })
+})
