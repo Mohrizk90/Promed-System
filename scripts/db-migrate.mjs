@@ -50,7 +50,8 @@ async function main() {
     let ran = 0
     for (const f of files) {
       const sql = fs.readFileSync(path.join(dir, f), 'utf8')
-      const sum = crypto.createHash('sha256').update(sql).digest('hex').slice(0, 16)
+      // Line endings differ between Windows checkouts and CI; hash the normalized text.
+      const sum = crypto.createHash('sha256').update(sql.replace(/\r\n/g, '\n')).digest('hex').slice(0, 16)
       if (applied.has(f)) {
         if (applied.get(f) !== sum) console.warn(`! ${f} changed after it was applied (not re-run)`)
         else if (statusOnly) console.log(`  applied  ${f}`)

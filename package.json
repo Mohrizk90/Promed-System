@@ -10,18 +10,23 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "db:status": "node scripts/db-migrate.mjs --status"
+    "db:status": "node scripts/db-migrate.mjs --status",
+    "db:test": "node scripts/db-test.mjs"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.112",
+    "@ai-sdk/react": "^4.0.167",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.38.4",
+    "ai": "^7.0.163",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
     "lucide-react": "^0.469.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
-    "recharts": "^3.7.0"
+    "recharts": "^3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
