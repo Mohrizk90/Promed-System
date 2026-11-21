@@ -1,0 +1,31 @@
+// Compact description of the business tables, for the read-only query tool.
+export const SCHEMA_DOC = `
+clients(client_id, client_name, contact_info, address, opening_balance, created_at)
+suppliers(supplier_id, supplier_name, contact_info, address, created_at)
+products(product_id, product_name, model, unit_price, unit_cost, eta_item_code, eta_unit_type, eta_item_name)
+client_transactions = sales/invoices to clients (transaction_id, client_id, product_id, quantity, unit_price, line_items jsonb [extra lines: product_id, product_name, quantity, unit_price, line_total], subtotal_amount, vat_rate, vat_amount, wht_rate, wht_amount, total_amount, paid_amount, remaining_amount, transaction_date, due_date, status [not_started|in_progress|invoice|paused|paid|done], invoice_number, external_invoice_number, payment_terms)
+  NOTE: paid_amount/remaining_amount on old client invoices can be stale. For what a client really owes use client_balances(client_id) / client_invoice_status(client_id).
+supplier_transactions = purchases (transaction_id, supplier_id, product_id, quantity, unit_price, total_amount, paid_amount, remaining_amount, transaction_date, due_date, status, invoice_number)
+payments(payment_id, transaction_type [client|supplier], transaction_id [null = on account], client_id, supplier_id, payment_amount, payment_date, payment_method, reference_number)
+payment_allocations(allocation_id, payment_id, transaction_id, transaction_type, allocated_amount)
+liabilities(id, category, description, total_amount, paid_amount, remaining_amount, due_date, recurring, notes)
+liability_payments(id, liability_id, payment_amount, payment_date, payment_method, reference_number)
+employees(employee_id, name, contact_info, role, monthly_salary, notes)
+inventory_items(item_id, name, quantity, unit_cost, notes)
+ledger_entries = general income & expenses (id, kind [expense|income], amount, entry_date, category_id, account_id, party_name, client_id, supplier_id, employee_id, description, notes, source [manual|agent|import], voice_text, deleted_at) -- always filter deleted_at is null
+v_ledger = ledger_entries joined with names (id, kind, amount, entry_date, description, party_name, category_en, category_ar, account_name, client_name, supplier_name, employee_name, projects jsonb [{project_id,name,share_pct}])
+categories(id, name_en, name_ar, kind [expense|income|both], aliases text[], deleted_at)
+money_accounts(id, name, kind [cash|bank|wallet|card|other], aliases, deleted_at)
+project_types(id, key, name_en, name_ar, fields jsonb, deleted_at)
+projects(id, type_id, name, status [active|on_hold|done|cancelled], parent_id, client_id, supplier_id, product_id, budget, start_date, end_date, aliases text[], attributes jsonb, notes, deleted_at)
+record_links(project_id, record_type [ledger_entry|client_transaction|supplier_transaction|payment|liability|compliance_item|inventory_item|product|bom], record_id, share_pct)
+v_project_money(project_id, record_type, record_id, date, direction [income|expense], amount [already x share], label, category)
+v_project_totals(project_id, name, status, type_key, type_en, type_ar, budget, income, expense, net, records, last_activity, client_id, supplier_id, product_id, parent_id)
+boms(id, name, product_id, project_id), bom_lines(id, bom_id, component_product_id, component_name, quantity, unit_cost)
+compliance_items = licences/certificates/registrations (id, title, authority_id, category_id, status [active|expired|pending_renewal|archived], priority [low|medium|high|critical], reference_number, issue_date, expiry_date, renewal_period_days, description, notes)
+compliance_authorities(id, name, code), compliance_categories(id, key, name)
+compliance_item_documents(id, item_id, is_orphan, file_name, processing_status, review_status, document_type, ai_summary, extracted_metadata jsonb, created_at)
+compliance_item_expenses(id, item_id, expense_type, amount, expense_date, vendor)
+agent_actions(id, kind, summary, status [pending|applied|cancelled|undone|failed], created_at, applied_at, undone_at)
+Functions usable inside SELECT: client_balances(client_id or null), supplier_balances(supplier_id or null), client_invoice_status(client_id), norm_text(text) for Arabic-insensitive matching.
+`.trim()

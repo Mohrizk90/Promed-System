@@ -16,6 +16,8 @@ import {
   ChevronDown,
   Shield,
   Activity,
+  Wallet,
+  FolderKanban,
 } from './ui/Icons'
 import LanguageSwitcher from './LanguageSwitcher'
 import { InstallAppButton } from './PwaControls'
@@ -41,7 +43,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     : '/dashboard'
 
   const isActive = (path) =>
-    location.pathname === path || (path === '/reports/aging' && location.pathname.startsWith('/reports'))
+    location.pathname === path || (path === '/projects' && location.pathname.startsWith('/projects/')) || (path === '/reports/aging' && location.pathname.startsWith('/reports'))
 
   const navItems = [
     { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, shortcut: 'd', color: 'indigo' },
@@ -50,8 +52,11 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/suppliers', label: t('nav.supplierTransactions'), icon: Truck, shortcut: 's', color: 'violet' },
     { path: '/entities', label: t('nav.clientsSuppliers'), icon: Users, shortcut: 'e', color: 'emerald' },
     { path: '/products', label: t('nav.inventory'), icon: Package, shortcut: 'i', color: 'teal' },
+    { path: '/money', label: t('nav.money'), icon: Wallet, shortcut: null, color: 'emerald' },
+    { path: '/projects', label: t('nav.projects'), icon: FolderKanban, shortcut: null, color: 'violet' },
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
     { path: '/compliance', label: t('nav.compliance'), icon: Shield, shortcut: 'm', color: 'rose' },
+    { path: '/agent', label: t('nav.agent'), icon: Activity, shortcut: null, color: 'indigo' },
   ].filter((item) => !complianceOnly || item.path === '/compliance')
 
   const iconColors = {

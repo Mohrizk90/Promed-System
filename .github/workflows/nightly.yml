@@ -1,0 +1,57 @@
+name: Nightly backup and database checks
+
+# Every night: an encrypted full database backup (kept 30 days as a private workflow
+# artifact), then the database test suite (runs inside one transaction that is rolled back).
+# Restore: download the artifact, then
+#   gpg --batch --passphrase "$BACKUP_PASSPHRASE" -d promed-<date>.sql.gz.gpg | gunzip | psql "$DATABASE_URL"
+
+on:
+  schedule:
+    - cron: '30 0 * * *' # 02:30 Cairo time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Dump, compress and encrypt
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$DATABASE_URL" && test -n "$BACKUP_PASSPHRASE"
+          name="promed-$(date -u +%Y-%m-%d).sql.gz.gpg"
+          docker run --rm -e DATABASE_URL postgres:17 \
+            pg_dump "$DATABASE_URL" --no-owner --no-privileges --schema=public --schema=auth --schema=storage \
+            | gzip -9 \
+            | gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase "$BACKUP_PASSPHRASE" -o "$name"
+          ls -lh "$name"
+          test "$(stat -c%s "$name")" -gt 10000
+          echo "BACKUP_FILE=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_FILE }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 30
+          if-no-files-found: error
+
+  db-tests:
+    runs-on: ubuntu-latest
+    needs: backup
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Database tests (rolled back)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:test

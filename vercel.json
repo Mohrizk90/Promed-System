@@ -7,6 +7,18 @@
   "functions": {
     "api/compliance/extract.js": {
       "maxDuration": 60
+    },
+    "api/agent/chat.js": {
+      "maxDuration": 120
+    },
+    "api/agent/transcribe.js": {
+      "maxDuration": 60
+    },
+    "api/agent/speak.js": {
+      "maxDuration": 60
+    },
+    "api/agent/action.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [

@@ -296,3 +296,21 @@ begin
   assert ok or (select count(*) from ledger_entries) = 0, 'anon cannot read the ledger';
   raise notice 'PASS anonymous visitors are locked out';
 end $$;
+
+-- test
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"{{OWNER}}","role":"authenticated"}', true);
+do $$
+declare j jsonb; n0 int; n1 int;
+begin
+  select count(*) into n0 from ledger_entries;
+  j := agent_dry_run('record_entries', '{"entries":[{"kind":"expense","amount":120,"new_category":"Dry run cat"}]}');
+  assert (j->>'ok')::boolean, 'dry run ok';
+  assert (j->'result'->'entries'->0->>'amount')::numeric = 120, 'dry run returns the result';
+  select count(*) into n1 from ledger_entries;
+  assert n0 = n1 and not exists (select 1 from categories where name_en = 'Dry run cat'), 'dry run keeps nothing';
+  j := agent_dry_run('client_payment', '{"client_id": -5, "amount": 10}');
+  assert not (j->>'ok')::boolean and j->>'error' like '%not found%', 'dry run reports errors';
+  assert jsonb_typeof(agent_recent_actions(null, 5)) = 'array', 'recent actions';
+  raise notice 'PASS dry run previews without writing; recent actions';
+end $$;

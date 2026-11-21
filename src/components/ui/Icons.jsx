@@ -59,6 +59,8 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
+  FolderKanban,
+  Sparkles,
   ClipboardList,
   
   // UI
@@ -174,6 +176,8 @@ export {
   TrendingUp,
   TrendingDown,
   Activity,
+  FolderKanban,
+  Sparkles,
   ClipboardList,
   
   // UI

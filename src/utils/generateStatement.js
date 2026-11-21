@@ -13,7 +13,7 @@ const jsPDF = jsPDFImport?.default ?? jsPDFImport.jsPDF ?? jsPDFImport
 // buildStatementPdf directly and never calls this helper.
 // (Duplicated from generateInvoice.js to keep the change surface minimal —
 // no new shared module was introduced.)
-function savePdfBytes(bytes, filename) {
+export function savePdfBytes(bytes, filename) {
   const blob = new Blob([bytes], { type: 'application/pdf' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -29,7 +29,7 @@ function savePdfBytes(bytes, filename) {
 let _fontCache = null
 
 // When called from Node, the global `fetch` is unavailable. The MCP server wraps this with its own Node-aware font loader.
-async function loadArabicFont() {
+export async function loadArabicFont() {
   if (_fontCache) return _fontCache
   try {
     const [regular, bold] = await Promise.all([
@@ -57,7 +57,7 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary)
 }
 
-function registerFont(doc, fontData) {
+export function registerFont(doc, fontData) {
   if (!fontData) return false
   doc.addFileToVFS('Amiri-Regular.ttf', fontData.regular)
   doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal')

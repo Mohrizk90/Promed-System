@@ -33,6 +33,13 @@ async function bootstrap() {
     return
   }
 
+  // Dev-only UI preview with sample data (stripped from production builds).
+  if (import.meta.env.DEV && window.location.pathname.startsWith('/__preview')) {
+    const { default: DevPreview } = await import('./dev/DevPreview.jsx')
+    ReactDOM.createRoot(document.getElementById('root')).render(<DevPreview />)
+    return
+  }
+
   const { default: App } = await import('./App.jsx')
   ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

@@ -1,3 +1,5 @@
+import { agentTranslations, mergeTranslations } from './agent.js'
+
 export const translations = {
   en: {
     // Navigation
@@ -560,16 +562,7 @@ export const translations = {
       invoiceNextNumber: 'Next invoice number',
       invoicePadWidth: 'Number padding (digits)',
       saveInvoiceNumbering: 'Save invoice numbering',
-      invoiceNextPreview: 'Next invoice will be',
-      // Telegram Bot link
-      telegram: {
-        title: 'Telegram Bot',
-        description: 'Link your Telegram account to use the Promed AI assistant. Open Telegram, message the bot, and send /link to receive a 6-character code. Paste it here.',
-        codePlaceholder: '6-character code',
-        linkButton: 'Link',
-        linked: 'Linked',
-        unlinkButton: 'Unlink',
-      }
+      invoiceNextPreview: 'Next invoice will be',
     },
     // Aging Report
     aging: {
@@ -1778,16 +1771,7 @@ export const translations = {
       invoiceNextNumber: 'رقم الفاتورة التالي',
       invoicePadWidth: 'عدد خانات الرقم',
       saveInvoiceNumbering: 'حفظ ترقيم الفواتير',
-      invoiceNextPreview: 'الفاتورة التالية ستكون',
-      // Telegram Bot link
-      telegram: {
-        title: 'بوت تليجرام',
-        description: 'اربط حساب تليجرام لاستخدام مساعد Promed الذكي. افتح تليجرام، راسل البوت، وأرسل /link للحصول على كود من 6 أحرف. الصقه هنا.',
-        codePlaceholder: 'كود من 6 أحرف',
-        linkButton: 'ربط',
-        linked: 'مربوط',
-        unlinkButton: 'إلغاء الربط',
-      }
+      invoiceNextPreview: 'الفاتورة التالية ستكون',
     },
     // Aging Report
     aging: {
@@ -2428,3 +2412,5 @@ export const translations = {
     }
   }
 }
+
+mergeTranslations(translations, agentTranslations)

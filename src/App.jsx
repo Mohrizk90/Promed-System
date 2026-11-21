@@ -20,6 +20,11 @@ const ComplianceOrphanReview = lazy(() => import('./components/Compliance/Compli
 const ComplianceMobileLayout = lazy(() => import('./components/Compliance/ComplianceMobileLayout'))
 const ComplianceMobileApp = lazy(() => import('./components/Compliance/ComplianceMobileApp'))
 const ComplianceMobileQueue = lazy(() => import('./components/Compliance/ComplianceMobileQueue'))
+const ProjectsPage = lazy(() => import('./components/projects/ProjectsPage'))
+const ProjectDetail = lazy(() => import('./components/projects/ProjectDetail'))
+const MoneyPage = lazy(() => import('./components/money/MoneyPage'))
+const AgentActivity = lazy(() => import('./components/agent/AgentActivity'))
+const AgentDock = lazy(() => import('./components/agent/AgentDock'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
@@ -55,6 +60,9 @@ const PAGE_TITLES = [
   ['/entities', 'nav.clientsSuppliers'],
   ['/products', 'nav.inventory'],
   ['/liabilities', 'nav.liabilities'],
+  ['/money', 'nav.money'],
+  ['/projects', 'nav.projects'],
+  ['/agent', 'nav.agent'],
   ['/reports', 'nav.reports'],
   ['/compliance', 'nav.compliance'],
   ['/settings', 'common.settings'],
@@ -122,6 +130,7 @@ function AppShell({ children }) {
         {children}
       </div>
       <BottomNav menuOpen={sidebarOpen} onMenuClick={() => setSidebarOpen((v) => !v)} />
+      {!isComplianceOnlyUser(user) && <Suspense fallback={null}><AgentDock /></Suspense>}
     </div>
   )
 }
@@ -228,6 +237,10 @@ function AppContent() {
               <Route path="/settings" element={<ProtectedRoute><ComplianceOnlyGuard><SettingsPage /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/products" element={<ProtectedRoute><ComplianceOnlyGuard><ProductInventory /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/reports/aging" element={<ProtectedRoute><ComplianceOnlyGuard><AgingReport /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/money" element={<ProtectedRoute><ComplianceOnlyGuard><MoneyPage /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/projects" element={<ProtectedRoute><ComplianceOnlyGuard><ProjectsPage /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/projects/:id" element={<ProtectedRoute><ComplianceOnlyGuard><ProjectDetail /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/agent" element={<ProtectedRoute><ComplianceOnlyGuard><AgentActivity /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/reports/pnl" element={<ProtectedRoute><ComplianceOnlyGuard><ProfitLossReport /></ComplianceOnlyGuard></ProtectedRoute>} />
 
               {/* Compliance & Regulatory Management (worker runs for all sub-routes) */}
