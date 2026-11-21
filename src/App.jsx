@@ -96,23 +96,23 @@ function AppShell({ children }) {
   }, [navigate, registerShortcut, setShowHelp, user])
 
   return (
-    <div className="flex h-full min-h-0 bg-gray-100">
+    <div className="flex h-full min-h-0">
       <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Main content area: offset by sidebar on desktop, full width on mobile */}
         <div className="flex-1 flex flex-col min-w-0 ms-0 md:ms-60">
         {/* Mobile top bar: menu, logo, current page */}
-        <header className="flex-shrink-0 flex items-center gap-2 px-2 pt-safe bg-gradient-to-r from-blue-700 to-blue-800 text-white md:hidden shadow-sm no-print">
+        <header className="glass-chrome relative z-20 flex-shrink-0 flex items-center gap-2 px-2 pt-safe text-[#0b2a55] md:hidden no-print">
           <div className="flex items-center gap-2 h-12 w-full min-w-0">
             <button
               type="button"
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors"
+              className="p-2 rounded-xl hover:bg-white/60 active:bg-white/80 transition-colors"
               aria-label="Open menu"
             >
               <Menu size={22} />
             </button>
             <Link to={homePath} className="flex items-center flex-shrink-0" onClick={() => setSidebarOpen(false)} aria-label="Promed home">
-              <span className="bg-white rounded-md px-1.5 py-1">
+              <span className="bg-white/90 rounded-lg px-1.5 py-1 shadow-sm ring-1 ring-white">
                 <img src="/Logo_Promed.png" alt="Promed" className="h-6 w-auto object-contain" />
               </span>
             </Link>
@@ -190,7 +190,7 @@ function AppContent() {
 
   return (
     <>
-      <div className={showAppShell || showMobileComplianceShell ? 'h-full flex flex-col bg-gray-100 overflow-hidden' : 'h-full overflow-y-auto bg-gray-100'}>
+      <div className={showAppShell || showMobileComplianceShell ? 'app-wallpaper h-full flex flex-col overflow-hidden' : 'app-wallpaper h-full overflow-y-auto'}>
         {showMobileComplianceShell ? (
           <ErrorBoundary>
             <Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-[200px]"><LoadingSpinner size="lg" /></div>}>
@@ -207,7 +207,7 @@ function AppContent() {
         ) : showAppShell ? (
           <AppShell>
             <ComplianceMobileRedirect />
-            <main className="flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6">
+            <main className="app-main flex-1 min-h-0 flex flex-col overflow-hidden max-w-7xl w-full mx-auto py-2 sm:py-3 px-3 sm:px-4 lg:px-6">
               <Breadcrumbs />
               <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col main-scroll-mobile">
                 <ErrorBoundary>

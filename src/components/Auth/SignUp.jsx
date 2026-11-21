@@ -75,16 +75,16 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-full flex items-center justify-center bg-gradient-to-b from-blue-50 via-gray-100 to-gray-100 px-4 py-8 pt-safe pb-safe">
+    <div className="min-h-full flex items-center justify-center px-4 py-8 pt-safe pb-safe">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src="/Logo_Promed.png" alt="Promed" className="h-14 mx-auto mb-3" />
+          <img src="/Logo_Promed.png" alt="Promed" className="h-16 mx-auto mb-3 bg-white rounded-2xl px-3 py-2 shadow-[0_10px_30px_-12px_rgba(30,64,140,0.35)] ring-1 ring-white" />
           <p className="text-gray-600">Transaction Management System</p>
         </div>
 
         {/* Form Card */}
-        <div className="card p-6 sm:p-8 rounded-2xl shadow-lg">
+        <div className="glass p-6 sm:p-8 rounded-[1.75rem]">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             Create Account
           </h2>

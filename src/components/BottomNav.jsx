@@ -22,23 +22,23 @@ export default function BottomNav({ onMenuClick, menuOpen = false } = {}) {
   const isActive = (path) => !menuOpen && location.pathname === path
 
   const itemClass = (active) =>
-    `relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-h-[56px] text-[11px] font-medium transition-colors ${
-      active ? 'text-blue-700' : 'text-gray-500 active:text-gray-700'
+    `relative flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[58px] text-[11px] font-medium transition-colors ${
+      active ? 'text-blue-700' : 'text-[#3d5a85] active:text-[#0b2a55]'
     }`
 
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-gray-200 pb-safe pl-safe pr-safe z-40 md:hidden no-print shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
+      className="glass-chrome fixed inset-x-3 z-40 md:hidden no-print rounded-[28px]"
+      style={{ bottom: 'max(10px, env(safe-area-inset-bottom, 0px))' }}
       aria-label="Primary"
     >
-      <div className="flex items-stretch">
+      <div className="flex items-stretch px-1">
         {navItems.map((item) => {
           const Icon = item.icon
           const active = isActive(item.path)
           return (
             <Link key={item.path} to={item.path} className={itemClass(active)} aria-current={active ? 'page' : undefined}>
-              {active && <span className="absolute top-0 inset-x-5 h-0.5 rounded-b bg-blue-600" aria-hidden="true" />}
-              <span className={`flex items-center justify-center w-10 h-7 rounded-full transition-colors ${active ? 'bg-blue-50' : ''}`}>
+              <span className={`flex items-center justify-center w-12 h-8 rounded-full transition-all ${active ? 'bg-white shadow-[0_4px_12px_-4px_rgba(29,78,216,0.45)] ring-1 ring-white' : ''}`}>
                 <Icon size={20} strokeWidth={active ? 2.4 : 2} />
               </span>
               <span className="truncate max-w-full px-1">{item.label}</span>
@@ -52,7 +52,7 @@ export default function BottomNav({ onMenuClick, menuOpen = false } = {}) {
           aria-label={t('mobileNav.menu')}
           aria-expanded={menuOpen}
         >
-          <span className={`flex items-center justify-center w-10 h-7 rounded-full ${menuOpen ? 'bg-blue-50' : ''}`}>
+          <span className={`flex items-center justify-center w-12 h-8 rounded-full ${menuOpen ? 'bg-white shadow ring-1 ring-white' : ''}`}>
             <Menu size={20} />
           </span>
           <span>{t('mobileNav.menu')}</span>

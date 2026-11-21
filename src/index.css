@@ -709,7 +709,7 @@ body {
 
 /* Main content padding above bottom nav on mobile only */
 .main-scroll-mobile {
-  padding-bottom: calc(5rem + var(--safe-area-inset-bottom));
+  padding-bottom: calc(6.25rem + var(--safe-area-inset-bottom));
 }
 @media (min-width: 768px) {
   .main-scroll-mobile {
@@ -797,3 +797,122 @@ body {
     word-break: normal;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   LIQUID GLASS THEME
+   Wallpaper behind everything; translucent "glass" surfaces on top.
+   Real backdrop blur only on chrome that content scrolls under (tab bar,
+   sidebar, top bar), applied through ::before so it never changes how
+   position:fixed children (menus, modals) are placed.
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  --glass-ink: #0b2a55;
+  --glass-ink-soft: #3d5a85;
+  --glass-fill: rgba(255, 255, 255, 0.52);
+  --glass-fill-strong: rgba(255, 255, 255, 0.72);
+  --glass-edge: rgba(255, 255, 255, 0.85);
+  --glass-shadow: 0 10px 30px -12px rgba(30, 64, 140, 0.22), 0 2px 6px -2px rgba(30, 64, 140, 0.08);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --glass-blur: blur(18px) saturate(170%);
+}
+
+.app-wallpaper {
+  background-color: #dfeaff;
+  background-image:
+    radial-gradient(60% 45% at 0% 0%, rgba(120, 170, 255, 0.55) 0%, transparent 70%),
+    radial-gradient(55% 45% at 100% 35%, rgba(150, 235, 215, 0.55) 0%, transparent 70%),
+    radial-gradient(60% 50% at 30% 100%, rgba(186, 200, 255, 0.55) 0%, transparent 70%),
+    linear-gradient(160deg, #d6e5ff 0%, #eef4ff 45%, #dff6ef 100%);
+  background-attachment: fixed;
+}
+body { background-color: #e3edff; }
+
+/* Reusable glass recipes */
+.glass {
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+.glass-chrome { isolation: isolate; background: transparent; }
+.glass-chrome:not([class~="fixed"]):not([class~="absolute"]):not([class~="sticky"]) { position: relative; }
+.glass-chrome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+  border: 1px solid var(--glass-edge);
+}
+.glass-chrome-tint::before {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.80) 0%, rgba(30, 58, 138, 0.86) 100%);
+  border: 0;
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 8px 0 30px -14px rgba(15, 35, 90, 0.45), inset -1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Content surfaces inside the app turn to glass (dialogs stay solid for legibility) */
+.app-main :is([class~="card"], [class~="bg-white"][class~="rounded"], [class~="bg-white"][class~="rounded-lg"], [class~="bg-white"][class~="rounded-xl"], [class~="bg-white"][class~="rounded-2xl"], [class~="bg-white"][class~="shadow"], [class~="bg-white"][class~="shadow-sm"]):not([class~="fixed"] *):not([role="dialog"] *):not(.modal-content *):not(.no-glass) {
+  background: var(--glass-fill) !important;
+  border-color: var(--glass-edge) !important;
+  box-shadow: var(--glass-shadow), var(--glass-highlight) !important;
+}
+.app-main :is([class~="card"], [class~="bg-white"][class~="rounded-xl"], [class~="bg-white"][class~="rounded-lg"]):not([class~="fixed"] *):not([role="dialog"] *) {
+  border-radius: 1.1rem;
+}
+/* Inside a glass surface, nested white/grey fills become light veils instead of opaque blocks */
+.app-main .glass-inner-veil,
+.app-main :is([class~="card"], [class~="bg-white"][class~="rounded"], [class~="bg-white"][class~="rounded-lg"], [class~="bg-white"][class~="rounded-xl"], [class~="bg-white"][class~="shadow"]):not([class~="fixed"] *):not([role="dialog"] *) :is([class~="bg-white"], tbody[class~="bg-white"], tr[class~="bg-white"]):not([class~="fixed"] *):not(.no-glass) {
+  background-color: transparent !important;
+}
+.app-main :is([class~="card"], [class~="bg-white"][class~="rounded"], [class~="bg-white"][class~="rounded-lg"], [class~="bg-white"][class~="rounded-xl"], [class~="bg-white"][class~="shadow"]):not([class~="fixed"] *):not([role="dialog"] *) :is([class~="bg-gray-50"], [class~="bg-gray-100"], thead[class~="bg-gray-50"], thead[class~="bg-gray-100"]):not([class~="fixed"] *):not([class~="sticky"]) {
+  background-color: rgba(255, 255, 255, 0.45) !important;
+}
+.app-main tbody[class~="divide-y"] > :not([hidden]) ~ :not([hidden]),
+.app-main [class~="divide-gray-200"] > :not([hidden]) ~ :not([hidden]),
+.app-main [class~="divide-gray-100"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(11, 42, 85, 0.08);
+}
+.app-main tr[class~="hover:bg-gray-50"]:hover { background-color: rgba(255, 255, 255, 0.55) !important; }
+
+/* Solid colour stat tiles get a glossy top edge so they sit in the same world */
+.app-main [class~="text-white"]:is([class*="bg-blue-6"], [class*="bg-green-6"], [class*="bg-red-6"], [class*="bg-amber-6"], [class*="bg-slate-6"], [class*="bg-slate-7"], [class*="bg-gray-9"], [class*="bg-purple-6"], [class*="bg-cyan-6"], [class*="bg-violet-6"], [class*="bg-indigo-6"])[class~="rounded-lg"] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 24px -14px rgba(15, 35, 90, 0.6);
+  border-radius: 0.9rem;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0) 60%);
+}
+
+/* Controls */
+.input {
+  border-width: 1px !important;
+  border-color: rgba(11, 42, 85, 0.14) !important;
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  border-radius: 0.8rem !important;
+}
+.input:focus { border-color: #3b82f6 !important; background-color: #fff !important; }
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid var(--glass-edge);
+  color: var(--glass-ink) !important;
+  box-shadow: 0 2px 8px -4px rgba(30, 64, 140, 0.25), var(--glass-highlight);
+}
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.9) !important; }
+.app-main button[class~="bg-gray-200"]:not([class~="fixed"] *) {
+  background-color: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--glass-edge);
+  box-shadow: 0 2px 8px -4px rgba(30, 64, 140, 0.25);
+}
+.app-main button[class~="bg-gray-200"]:not([class~="fixed"] *):hover { background-color: rgba(255, 255, 255, 0.9); }
+
+/* Dialogs: solid, but with glass framing */
+.modal-content { border: 1px solid rgba(255, 255, 255, 0.9); box-shadow: 0 30px 60px -20px rgba(15, 35, 90, 0.45); }
+.modal-overlay { background: rgba(15, 30, 70, 0.35) !important; }
+
+/* Page headings pick up the glass ink colour */
+.app-main h1[class~="text-gray-900"], .app-main h2[class~="text-gray-900"] { color: var(--glass-ink); }
+
+/* Sticky table headers stay nearly opaque so scrolled rows don't show through */
+.app-main thead[class~="sticky"] { background-color: rgba(236, 243, 255, 0.96) !important; }

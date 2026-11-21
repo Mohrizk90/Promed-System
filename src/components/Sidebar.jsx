@@ -193,7 +193,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     </>
   )
 
-  const baseClasses = 'flex flex-col h-full bg-gradient-to-b from-blue-700 to-blue-800 text-white z-30'
+  const baseClasses = 'glass-chrome glass-chrome-tint flex flex-col h-full text-white z-30'
   const widthStyle = { width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }
 
   return (

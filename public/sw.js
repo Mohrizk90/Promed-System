@@ -4,7 +4,7 @@
  * - Everything else (Supabase, /api, /mcp, other origins, non-GET): untouched, straight to network.
  * Bump VERSION to force old caches out.
  */
-const VERSION = 'promed-v1'
+const VERSION = 'promed-v2'
 const SHELL_CACHE = `${VERSION}-shell`
 const ASSET_CACHE = `${VERSION}-assets`
 const SHELL_URL = '/index.html'
