@@ -496,6 +496,52 @@ function Liabilities() {
 
   if (loading) return <LoadingSpinner />
 
+  const rowActions = (row) => [
+    { label: t('paymentsBreakdown.payments'), icon: Wallet, onClick: () => fetchPaymentsForRow(row) },
+    ...(row.source === 'liability' ? [
+      { divider: true },
+      { label: t('common.edit'), icon: EditIcon, onClick: () => openEdit(row) },
+      { label: t('common.delete'), icon: Trash2, danger: true, onClick: () => setDeleteTarget(row) }
+    ] : [])
+  ]
+
+  const categoryLabel = (row) => (row.source === 'supplier'
+    ? t('liabilities.supplier')
+    : (CATEGORY_KEYS.includes(row.category) ? t('liabilities.categoryOption_' + (row.category || 'other')) : (row.category || t('liabilities.categoryOption_other'))))
+
+  const renderRowPayments = (row) => (
+    <div className="payment-detail-row py-1.5 pl-2 pr-1 border-l-4 border-amber-200 bg-amber-50/50 rounded-r text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-gray-800">{t('paymentsBreakdown.payments')} <span className="text-gray-500 font-normal">({paymentsForRow.length})</span></span>
+          <span className="text-green-700">{t('dashboard.paid')}: {formatCurrency(row.paid_amount)}</span>
+          <span className="text-red-600">{t('dashboard.remaining')}: {formatCurrency(row.remaining_amount)}</span>
+        </div>
+        {parseFloat(row.remaining_amount || 0) > 0 && (
+          <button type="button" onClick={() => openPayment(row)} className="px-1.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded text-[10px]">
+            + {t('paymentsBreakdown.addPayment')}
+          </button>
+        )}
+      </div>
+      <div className="max-h-64 overflow-y-auto pr-1">
+        {loadingPayments ? (
+          <p className="text-gray-500 py-1">{t('common.loading')}</p>
+        ) : paymentsForRow.length === 0 ? (
+          <p className="text-gray-500 py-1 text-center border border-dashed border-gray-300 rounded">{t('liabilities.noPayments')}</p>
+        ) : (
+          <div className="space-y-0.5">
+            {paymentsForRow.map((p) => (
+              <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white rounded border border-gray-200">
+                <span>{p.payment_date} – {formatCurrency(p.payment_amount)}</span>
+                <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div className="flex flex-col space-y-2 pb-4">
       <div className="space-y-2">
@@ -504,16 +550,16 @@ function Liabilities() {
             <h2 className="text-xl font-bold text-gray-900">{t('liabilities.title')}</h2>
             <p className="text-sm text-gray-600">{t('liabilities.subtitle')}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" onClick={handlePrint} disabled={sortedList.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm">
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+            <button type="button" onClick={handlePrint} disabled={sortedList.length === 0} className="hidden sm:inline-flex btn btn-secondary items-center gap-2 py-1.5 px-3 text-sm">
               <Printer size={18} />
               {t('common.print')}
             </button>
-            <button type="button" onClick={handleExportCsv} disabled={sortedList.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm">
+            <button type="button" onClick={handleExportCsv} disabled={sortedList.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm" aria-label={t('common.exportCsv')} title={t('common.exportCsv')}>
               <Download size={18} />
-              {t('common.exportCsv')}
+              <span className="hidden sm:inline">{t('common.exportCsv')}</span>
             </button>
-            <button type="button" onClick={openAdd} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded text-sm flex items-center gap-2">
+            <button type="button" onClick={openAdd} className="flex-1 sm:flex-none justify-center bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg text-sm flex items-center gap-2 shadow-sm">
               <Plus size={18} />
               {t('liabilities.addLiability')}
             </button>
@@ -523,17 +569,17 @@ function Liabilities() {
         {/* Summary cards - same style as Client/Supplier */}
         {filteredList.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 print:hidden">
-            <div className="bg-amber-600 text-white p-2.5 rounded shadow">
+            <div className="bg-amber-600 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block">
               <p className="text-xs font-medium">{t('liabilities.value')}</p>
-              <p className="text-lg font-bold">{formatCurrency(totalAmountSum)}</p>
+              <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(totalAmountSum)}</p>
             </div>
-            <div className="bg-green-600 text-white p-2.5 rounded shadow">
+            <div className="bg-green-600 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block">
               <p className="text-xs font-medium">{t('liabilities.paid')}</p>
-              <p className="text-lg font-bold">{formatCurrency(paidSum)}</p>
+              <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(paidSum)}</p>
             </div>
-            <div className="bg-red-600 text-white p-2.5 rounded shadow">
+            <div className="bg-red-600 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block">
               <p className="text-xs font-medium">{t('liabilities.remaining')}</p>
-              <p className="text-lg font-bold">{formatCurrency(remainingSum)}</p>
+              <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(remainingSum)}</p>
             </div>
           </div>
         )}
@@ -542,11 +588,11 @@ function Liabilities() {
       {combinedList.length > 0 && (
         <div className="print:hidden mb-3">
           <p className="text-xs font-medium text-gray-500 mb-2">{t('liabilities.category')} – {t('common.quickFilter')}</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 sm:flex-wrap">
             <button
               type="button"
               onClick={() => { setCategoryFilter('all'); setPage(1) }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
             >
               {t('liabilities.filterAllCategories')}
             </button>
@@ -563,7 +609,7 @@ function Liabilities() {
                   key={key}
                   type="button"
                   onClick={() => { setCategoryFilter(key); setPage(1) }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive ? s.active : s.inactive}`}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isActive ? s.active : s.inactive}`}
                 >
                   {key === 'supplier' ? t('liabilities.supplier') : t('liabilities.categoryOption_' + key)}
                 </button>
@@ -588,17 +634,17 @@ function Liabilities() {
                 <span className="text-xs font-medium text-gray-500">{t('liabilities.period')}:</span>
                 <div className="flex items-center gap-1.5">
                   <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m - 2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium" title={t('liabilities.prevMonth')}>‹</button>
-                  <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value || '')} className="input py-2 text-sm w-36 rounded-lg border-gray-300" aria-label={t('liabilities.period')} />
+                  <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value || '')} className="input py-2 text-sm w-full sm:w-36 rounded-lg border-gray-300" aria-label={t('liabilities.period')} />
                   <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium" title={t('liabilities.nextMonth')}>›</button>
                 </div>
                 <button type="button" onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`) }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200">{t('liabilities.currentMonth')}</button>
                 <button type="button" onClick={() => { setSelectedMonth(''); setDueDateFrom(''); setDueDateTo('') }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('liabilities.allMonths')}</button>
                 {periodLabel && <span className="text-sm font-medium text-gray-700 ml-1">({t('liabilities.dueIn')} {periodLabel})</span>}
               </div>
-              <div className="flex flex-wrap items-end gap-4">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3 sm:gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500">{t('liabilities.category')}</label>
-                  <select className="input py-2 text-sm w-40 rounded-lg border-gray-300" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}>
+                  <select className="input py-2 text-sm w-full sm:w-40 rounded-lg border-gray-300" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}>
                     <option value="all">{t('liabilities.filterAllCategories')}</option>
                     <option value="supplier">{t('liabilities.supplier')}</option>
                     {CATEGORY_KEYS.filter((k) => k !== 'custom').map((key) => (
@@ -608,7 +654,7 @@ function Liabilities() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500">{t('common.searchPlaceholder')}</label>
-                  <input type="search" className="input py-2 text-sm w-44 rounded-lg border-gray-300" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} />
+                  <input type="search" className="input py-2 text-sm w-full sm:w-44 rounded-lg border-gray-300" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} />
                 </div>
                 <div className="h-8 w-px bg-gray-200 hidden sm:block" aria-hidden />
                 <div className="flex flex-wrap items-center gap-4">
@@ -647,7 +693,7 @@ function Liabilities() {
               <div className="flex flex-wrap items-end gap-4 pt-2 border-t border-gray-200">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500">{t('liabilities.dueDate')}</label>
-                  <select className="input py-2 text-sm w-40 rounded-lg border-gray-300" value={dueFilter} onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}>
+                  <select className="input py-2 text-sm w-full sm:w-40 rounded-lg border-gray-300" value={dueFilter} onChange={(e) => { setDueFilter(e.target.value); setPage(1) }}>
                     <option value="all">{t('liabilities.dueAll')}</option>
                     <option value="overdue">{t('liabilities.dueOverdue')}{overdueCount > 0 ? ` (${overdueCount})` : ''}</option>
                     <option value="due_next_7_days">{t('liabilities.dueNext7Days')}</option>
@@ -658,9 +704,9 @@ function Liabilities() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500">{t('liabilities.dueDateRange')}</label>
                   <div className="flex items-center gap-2">
-                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueFrom')} aria-label={t('liabilities.dueFrom')} />
+                    <input type="date" className="input py-2 text-sm w-full sm:w-36 rounded-lg border-gray-300" value={dueDateFrom} onChange={(e) => { setDueDateFrom(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueFrom')} aria-label={t('liabilities.dueFrom')} />
                     <span className="text-gray-400 text-sm">–</span>
-                    <input type="date" className="input py-2 text-sm w-36 rounded-lg border-gray-300" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueTo')} aria-label={t('liabilities.dueTo')} />
+                    <input type="date" className="input py-2 text-sm w-full sm:w-36 rounded-lg border-gray-300" value={dueDateTo} onChange={(e) => { setDueDateTo(e.target.value); setSelectedMonth(''); setPage(1) }} title={t('liabilities.dueTo')} aria-label={t('liabilities.dueTo')} />
                   </div>
                 </div>
                 <div className="h-8 w-px bg-gray-200 hidden sm:block" aria-hidden />
@@ -692,7 +738,52 @@ function Liabilities() {
         />
       ) : (
         <>
-          <div className="bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">
+          {/* Phone: liability cards */}
+          <div className="md:hidden print:hidden mt-2 space-y-2">
+            {paginatedList.map((row) => {
+              const isOverdue = row.due_date && row.due_date < today && parseFloat(row.remaining_amount || 0) > 0
+              const isExpanded = expandedRowId === row.rowId
+              const remaining = parseFloat(row.remaining_amount || 0)
+              return (
+                <div key={row.rowId} className={`bg-white rounded-xl border shadow-sm ${isOverdue ? 'border-red-200' : 'border-gray-200'}`}>
+                  <div className="flex items-start gap-2 p-3 pb-2">
+                    <button type="button" onClick={() => fetchPaymentsForRow(row)} className="flex-1 min-w-0 text-start" aria-expanded={isExpanded}>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${row.source === 'supplier' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-800'}`}>
+                          {categoryLabel(row)}
+                        </span>
+                        {row.source === 'liability' && row.recurring && <span className="text-blue-600 text-xs" title={t('liabilities.recurring')}>↻</span>}
+                      </span>
+                      <span className="block font-medium text-gray-900 mt-1 line-clamp-2">{row.description || '–'}</span>
+                      {row.due_date && (
+                        <span className={`block text-[11px] mt-0.5 ${isOverdue ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
+                          {t('liabilities.dueDate')}: {row.due_date}{isOverdue ? ` · ${t('liabilities.overdue')}` : ''}
+                        </span>
+                      )}
+                    </button>
+                    <Dropdown trigger={<MoreVertical size={20} />} align="right" className="inline-block -me-1" items={rowActions(row)} />
+                  </div>
+                  <div className={`grid grid-cols-3 gap-2 px-3 py-2 border-t border-gray-100 bg-gray-50/70 ${isExpanded ? '' : 'rounded-b-xl'}`}>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">{t('liabilities.value')}</p>
+                      <p className="text-sm font-semibold tabular-nums truncate text-gray-900">{formatCurrency(row.total_amount)}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">{t('liabilities.paid')}</p>
+                      <p className="text-sm font-semibold tabular-nums truncate text-green-700">{formatCurrency(row.paid_amount)}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">{t('liabilities.remaining')}</p>
+                      <p className={`text-sm font-semibold tabular-nums truncate ${remaining > 0 ? 'text-red-700' : 'text-gray-400'}`}>{formatCurrency(row.remaining_amount)}</p>
+                    </div>
+                  </div>
+                  {isExpanded && <div className="px-2 pb-2 pt-1">{renderRowPayments(row)}</div>}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="hidden md:block print:block bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">
             <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                 <tr>
@@ -756,50 +847,14 @@ function Liabilities() {
                             trigger={<MoreVertical size={20} />}
                             align="right"
                             className="inline-block"
-                            items={[
-                              { label: t('paymentsBreakdown.payments'), icon: Wallet, onClick: () => fetchPaymentsForRow(row) },
-                              ...(row.source === 'liability' ? [
-                                { divider: true },
-                                { label: t('common.edit'), icon: EditIcon, onClick: () => openEdit(row) },
-                                { label: t('common.delete'), icon: Trash2, danger: true, onClick: () => setDeleteTarget(row) }
-                              ] : [])
-                            ]}
+                            items={rowActions(row)}
                           />
                         </td>
                       </tr>
                         {isExpanded && (
                           <tr>
                             <td colSpan={7} className="px-2 py-1 align-top rtl-flip">
-                              <div className="payment-detail-row py-1.5 pl-2 pr-1 border-l-4 border-amber-200 bg-amber-50/50 rounded-r text-xs">
-                                <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-gray-800">{t('paymentsBreakdown.payments')} <span className="text-gray-500 font-normal">({paymentsForRow.length})</span></span>
-                                    <span className="text-green-700">{t('dashboard.paid')}: {formatCurrency(row.paid_amount)}</span>
-                                    <span className="text-red-600">{t('dashboard.remaining')}: {formatCurrency(row.remaining_amount)}</span>
-                                  </div>
-                                  {parseFloat(row.remaining_amount || 0) > 0 && (
-                                    <button type="button" onClick={() => openPayment(row)} className="px-1.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded text-[10px]">
-                                      + {t('paymentsBreakdown.addPayment')}
-                                    </button>
-                                  )}
-                                </div>
-                                <div className="max-h-64 overflow-y-auto pr-1">
-                                  {loadingPayments ? (
-                                    <p className="text-gray-500 py-1">{t('common.loading')}</p>
-                                  ) : paymentsForRow.length === 0 ? (
-                                    <p className="text-gray-500 py-1 text-center border border-dashed border-gray-300 rounded">{t('liabilities.noPayments')}</p>
-                                  ) : (
-                                    <div className="space-y-0.5">
-                                      {paymentsForRow.map((p) => (
-                                        <div key={row.source === 'supplier' ? p.payment_id : p.id} className="flex items-center justify-between py-1 px-1.5 bg-white rounded border border-gray-200">
-                                          <span>{p.payment_date} – {formatCurrency(p.payment_amount)}</span>
-                                          <button type="button" onClick={() => setDeletePaymentTarget({ payment: p, row })} className="text-red-600 hover:underline text-[10px]">{t('common.delete')}</button>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                              {renderRowPayments(row)}
                             </td>
                           </tr>
                         )}

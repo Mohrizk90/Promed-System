@@ -15,6 +15,23 @@ export const translations = {
       compliance: 'Compliance',
       monitoring: 'Monitoring'
     },
+    // Installable app + mobile navigation
+    pwa: {
+      install: 'Install app',
+      installHint: 'Use Promed like a native app',
+      iosHint: 'Tap Share, then "Add to Home Screen"',
+      updateReady: 'A new version of Promed is available.',
+      reload: 'Update',
+      offline: 'You are offline. Changes will fail until you reconnect.',
+      back: 'Back online'
+    },
+    mobileNav: {
+      home: 'Home',
+      clients: 'Clients',
+      suppliers: 'Suppliers',
+      invoices: 'Invoices',
+      menu: 'More'
+    },
     // Clients & Suppliers page
     entities: {
       title: 'Clients & Suppliers',
@@ -1215,6 +1232,23 @@ export const translations = {
       invoices: 'الفواتير',
       compliance: 'الامتثال',
       monitoring: 'المراقبة'
+    },
+    // Installable app + mobile navigation
+    pwa: {
+      install: 'تثبيت التطبيق',
+      installHint: 'استخدم بروميد كتطبيق على جهازك',
+      iosHint: 'اضغط مشاركة ثم "إضافة إلى الشاشة الرئيسية"',
+      updateReady: 'يتوفر إصدار جديد من بروميد.',
+      reload: 'تحديث',
+      offline: 'أنت غير متصل. لن يتم حفظ التغييرات حتى يعود الاتصال.',
+      back: 'تم استعادة الاتصال'
+    },
+    mobileNav: {
+      home: 'الرئيسية',
+      clients: 'العملاء',
+      suppliers: 'الموردون',
+      invoices: 'الفواتير',
+      menu: 'المزيد'
     },
     // Clients & Suppliers page
     entities: {

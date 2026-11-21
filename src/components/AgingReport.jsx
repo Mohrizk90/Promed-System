@@ -150,8 +150,8 @@ export default function AgingReport() {
           <h2 className="text-xl font-bold text-gray-900">{t('aging.title')}</h2>
           <p className="text-gray-600 text-sm">{t('aging.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => window.print()} className="btn btn-secondary py-1.5 px-3 text-sm"><Printer size={16} /> {t('common.print')}</button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => window.print()} className="hidden sm:inline-flex btn btn-secondary py-1.5 px-3 text-sm"><Printer size={16} /> {t('common.print')}</button>
           <button onClick={handleExport} className="btn btn-secondary py-1.5 px-3 text-sm"><Download size={16} /> {t('common.exportCsv')}</button>
         </div>
       </div>

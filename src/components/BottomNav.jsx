@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, FileText, Truck, Users, Plus } from './ui/Icons'
+import { LayoutDashboard, Receipt, FileText, Truck, Menu } from './ui/Icons'
 import { useLanguage } from '../context/LanguageContext'
 import { useAuth } from '../context/AuthContext'
 import { isComplianceOnlyUser } from '../utils/userAccess'
 
-export default function BottomNav({ onAddClick } = {}) {
+/** Phone tab bar. The last tab opens the full sidebar drawer for everything else. */
+export default function BottomNav({ onMenuClick, menuOpen = false } = {}) {
   const location = useLocation()
   const { t } = useLanguage()
   const { user } = useAuth()
@@ -12,59 +13,50 @@ export default function BottomNav({ onAddClick } = {}) {
   if (isComplianceOnlyUser(user)) return null
 
   const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard'), color: 'indigo' },
-    { path: '/', icon: FileText, label: 'Clients', color: 'blue' },
-    { action: 'add', icon: Plus, label: 'Add', primary: true, color: 'blue' },
-    { path: '/suppliers', icon: Truck, label: 'Suppliers', color: 'purple' },
-    { path: '/entities', icon: Users, label: 'Entities', color: 'emerald' },
+    { path: '/dashboard', icon: LayoutDashboard, label: t('mobileNav.home') },
+    { path: '/', icon: Receipt, label: t('mobileNav.clients') },
+    { path: '/invoices', icon: FileText, label: t('mobileNav.invoices') },
+    { path: '/suppliers', icon: Truck, label: t('mobileNav.suppliers') },
   ]
 
-  const isActive = (path) => location.pathname === path
+  const isActive = (path) => !menuOpen && location.pathname === path
 
-  const colorClasses = {
-    indigo: 'text-indigo-600 active:text-indigo-700',
-    blue: 'text-blue-600 active:text-blue-700',
-    purple: 'text-purple-600 active:text-purple-700',
-    emerald: 'text-emerald-600 active:text-emerald-700',
-  }
-  const buttonColorClasses = {
-    indigo: 'bg-indigo-600 hover:bg-indigo-700',
-    blue: 'bg-blue-600 hover:bg-blue-700',
-    purple: 'bg-purple-600 hover:bg-purple-700',
-    emerald: 'bg-emerald-600 hover:bg-emerald-700',
-  }
+  const itemClass = (active) =>
+    `relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-h-[56px] text-[11px] font-medium transition-colors ${
+      active ? 'text-blue-700' : 'text-gray-500 active:text-gray-700'
+    }`
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 pb-safe pl-safe pr-safe z-40 sm:hidden">
-      <div className="rtl-flip flex items-center justify-around">
+    <nav
+      className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-gray-200 pb-safe pl-safe pr-safe z-40 md:hidden no-print shadow-[0_-2px_10px_rgba(0,0,0,0.04)]"
+      aria-label="Primary"
+    >
+      <div className="flex items-stretch">
         {navItems.map((item) => {
           const Icon = item.icon
-
-          if (item.action === 'add') {
-            return (
-              <button
-                key="add"
-                onClick={onAddClick ?? (() => {})}
-                className={`flex flex-col items-center justify-center -mt-4 w-14 h-14 text-white rounded-full shadow-lg transition-all active:scale-95 ${buttonColorClasses[item.color] || 'bg-blue-600 hover:bg-blue-700'}`}
-              >
-                <Icon size={24} />
-              </button>
-            )
-          }
-
           const active = isActive(item.path)
-          const colorClass = colorClasses[item.color] || 'text-blue-600'
           return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex flex-col items-center justify-center py-2 px-3 min-h-[56px] transition-colors ${active ? colorClass : 'text-gray-500'}`}
-            >
-              <Icon size={22} />
-              <span className="text-xs mt-1 font-medium">{item.label}</span>
+            <Link key={item.path} to={item.path} className={itemClass(active)} aria-current={active ? 'page' : undefined}>
+              {active && <span className="absolute top-0 inset-x-5 h-0.5 rounded-b bg-blue-600" aria-hidden="true" />}
+              <span className={`flex items-center justify-center w-10 h-7 rounded-full transition-colors ${active ? 'bg-blue-50' : ''}`}>
+                <Icon size={20} strokeWidth={active ? 2.4 : 2} />
+              </span>
+              <span className="truncate max-w-full px-1">{item.label}</span>
             </Link>
           )
         })}
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className={itemClass(menuOpen)}
+          aria-label={t('mobileNav.menu')}
+          aria-expanded={menuOpen}
+        >
+          <span className={`flex items-center justify-center w-10 h-7 rounded-full ${menuOpen ? 'bg-blue-50' : ''}`}>
+            <Menu size={20} />
+          </span>
+          <span>{t('mobileNav.menu')}</span>
+        </button>
       </div>
     </nav>
   )

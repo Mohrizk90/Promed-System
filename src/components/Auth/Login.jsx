@@ -75,7 +75,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 pt-safe pb-safe">
+    <div className="min-h-full flex items-center justify-center bg-gradient-to-b from-blue-50 via-gray-100 to-gray-100 px-4 py-8 pt-safe pb-safe">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -84,13 +84,13 @@ export default function Login() {
         </div>
 
         {/* Form Card */}
-        <div className="card p-8">
+        <div className="card p-6 sm:p-8 rounded-2xl shadow-lg">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             Sign In
           </h2>
 
           <p className="text-sm text-gray-500 mb-6 text-center">
-            Use the credentials configured in your Supabase project.
+            Sign in with your Promed account.
           </p>
 
           {showResetForm ? (

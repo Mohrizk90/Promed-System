@@ -8,7 +8,7 @@ import LoadingSpinner from '../LoadingSpinner'
 import TableSkeleton from '../TableSkeleton'
 import Pagination from '../ui/Pagination'
 import Dropdown from '../ui/Dropdown'
-import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical, Filter, Upload, FileText, Plus } from '../ui/Icons'
+import { Printer, Wallet, Edit as EditIcon, Trash2, MoreVertical, Filter, Upload, FileText, Plus, Download, ChevronDown } from '../ui/Icons'
 import { downloadCsv } from '../../utils/exportCsv'
 import { generateInvoice } from '../../utils/generateInvoice'
 import {
@@ -117,6 +117,8 @@ function TransactionPage({ config }) {
   const [invoicePreview, setInvoicePreview] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const paymentDetailsRefs = React.useRef(new Map())
+  // Filters start collapsed on phones so the list is visible without scrolling.
+  const [filtersOpen, setFiltersOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia || window.matchMedia('(min-width: 768px)').matches)
   const paymentModalContentRef = React.useRef(null)
   const paymentAmountInputRef = React.useRef(null)
   const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100]
@@ -993,7 +995,9 @@ function TransactionPage({ config }) {
     // When opening payments, auto-scroll to the expanded section.
     if (!expandedRows.has(transactionId)) {
       requestAnimationFrame(() => {
-        const el = paymentDetailsRefs.current.get(transactionId)
+        const el = ['card', 'table']
+          .map((v) => paymentDetailsRefs.current.get(`${v}:${transactionId}`))
+          .find((node) => node && node.offsetParent !== null)
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       })
     }
@@ -1480,6 +1484,125 @@ function TransactionPage({ config }) {
     )
   }
 
+  const renderPaymentDetails = (transaction, transactionPayments, variant) => (
+    <div
+      ref={(el) => {
+        const key = `${variant}:${transaction.transaction_id}`
+        if (el) paymentDetailsRefs.current.set(key, el)
+        else paymentDetailsRefs.current.delete(key)
+      }}
+      className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-blue-200 bg-gradient-to-r from-blue-50/80 to-transparent rounded-r mb-1"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <h4 className="font-semibold text-gray-800 text-xs flex items-center gap-1">
+            <span className="w-1.5 h-4 bg-blue-500 rounded"></span>
+            {t('paymentsBreakdown.payments')}
+            <span className="ml-1 text-gray-500 font-normal">({transactionPayments.length})</span>
+          </h4>
+          <div className="flex gap-2 text-xs flex-wrap">
+            {selectedMonth ? (
+              <>
+                <span className="text-green-700 font-medium">
+                  {t('dashboard.paid')}: {formatCurrency(paidMapsByTransactionId.inMonth.get(transaction.transaction_id) || 0)}
+                </span>
+                {(paidMapsByTransactionId.beforeMonth.get(transaction.transaction_id) || 0) > 0 && (
+                  <span className="text-gray-600 font-medium">
+                    {t('common.previous')}: {formatCurrency(paidMapsByTransactionId.beforeMonth.get(transaction.transaction_id) || 0)}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-green-700 font-medium">{t('dashboard.paid')}: {formatCurrency(effPaid(transaction))}</span>
+            )}
+            <span className="text-red-600 font-medium">{t('dashboard.remaining')}: {formatCurrency(effRemaining(transaction))}</span>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            setPaymentFormData({
+              transaction_id: transaction.transaction_id,
+              payment_amount: '',
+              payment_date: new Date().toISOString().split('T')[0],
+              payment_method: 'cash',
+              reference_number: ''
+            })
+            setShowPaymentModal(true)
+          }}
+          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded shadow shrink-0"
+        >
+          <span>+</span> {t('paymentsBreakdown.addPayment')}
+        </button>
+      </div>
+      {transactionPayments.length > 0 ? (
+        <div className="max-h-64 overflow-y-auto pr-1 space-y-1">
+          {transactionPayments.map((payment, idx) => (
+            <div
+              key={payment.payment_id}
+              className="flex items-center justify-between gap-2 py-1.5 px-2 bg-white rounded border border-gray-200"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-green-100 text-green-700 font-semibold text-xs">
+                  {idx + 1}
+                </span>
+                <div>
+                  <p className="font-semibold text-green-700 text-sm">{formatCurrency(payment.payment_amount)}</p>
+                  <p className="text-gray-500 text-xs">
+                    {new Date(payment.payment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {payment.payment_method && payment.payment_method !== 'cash' && (
+                      <span className="ml-1 inline-flex items-center px-1 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">{t('common.paymentMethod_' + payment.payment_method)}</span>
+                    )}
+                    {payment.reference_number && (
+                      <span className="ml-1 text-gray-400">#{payment.reference_number}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleDeletePayment(payment.payment_id, transaction.transaction_id)}
+                className="flex-shrink-0 px-2 py-0.5 text-red-600 hover:bg-red-50 rounded text-xs font-medium"
+              >
+                {t('paymentsBreakdown.deletePayment')}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 text-xs py-2 text-center bg-white rounded border border-dashed border-gray-300">
+          {t(translationKey === 'clientTransactions' ? 'paymentsBreakdown.noClientPayments' : 'paymentsBreakdown.noSupplierPayments')}
+        </p>
+      )}
+    </div>
+  )
+
+  const buildRowActions = (transaction, transactionPayments) => [
+    { label: t('paymentsBreakdown.payments') + ` (${transactionPayments.length})`, icon: Wallet, onClick: () => toggleRowExpansion(transaction.transaction_id) },
+    ...(invoicingEnabled
+      ? [
+          ...(isDraftInvoice(transaction)
+            ? [{ label: t('clientTransactions.issueInvoice'), icon: FileText, onClick: () => handleIssueInvoice(transaction) }]
+            : []),
+          ...(isIssuedInvoice(transaction)
+            ? [{ label: t('clientTransactions.printInvoice'), icon: FileText, onClick: () => handlePrintInvoice(transaction) }]
+            : []),
+        ]
+      : [{
+          label: (translationKey === 'clientTransactions' ? t('clientTransactions.invoice') : t('supplierTransactions.invoice')) + ` (${t('common.beta')})`,
+          icon: FileText,
+          onClick: async () => {
+            try {
+              await generateInvoice(transaction, { ...buildInvoicePdfOptions(language, currency), payments: transactionPayments })
+              success(t('common.saved') || 'Invoice generated')
+            } catch (e) {
+              showError(e?.message || 'Failed to generate invoice')
+            }
+          },
+        }]),
+    { divider: true },
+    { label: t(`${translationKey}.edit`), icon: EditIcon, onClick: () => handleEdit(transaction, invoicingEnabled) },
+    { label: t(`${translationKey}.delete`), icon: Trash2, danger: true, onClick: () => handleDelete(transaction.transaction_id) }
+  ]
+
   return (
     <>
     <div className="flex flex-col space-y-2 pb-4">
@@ -1489,23 +1612,24 @@ function TransactionPage({ config }) {
             <h2 className="text-xl font-bold text-gray-900">{t(`${translationKey}.title`)}</h2>
             <p className="text-gray-600 text-sm">{t(`${translationKey}.subtitle`)}</p>
           </div>
-          <div className="flex gap-1.5">
-            <button type="button" onClick={() => window.print()} disabled={transactions.length === 0} className="btn btn-secondary flex items-center gap-2 py-1.5 px-3 text-sm">
+          <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
+            <button type="button" onClick={() => window.print()} disabled={transactions.length === 0} className="hidden sm:inline-flex btn btn-secondary items-center gap-2 py-1.5 px-3 text-sm" title={t('common.print')}>
               <Printer size={18} />
               {t('common.print')}
             </button>
-            <button type="button" onClick={() => setShowCsvImportModal(true)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded text-sm flex items-center gap-2">
+            <button type="button" onClick={() => setShowCsvImportModal(true)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded-lg text-sm flex items-center gap-2" title={t('common.importCsv')} aria-label={t('common.importCsv')}>
               <Upload size={18} />
-              {t('common.importCsv')}
+              <span className="hidden sm:inline">{t('common.importCsv')}</span>
             </button>
-            <button type="button" onClick={handleExportCsv} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded text-sm">
-              {t('common.exportCsv')}
+            <button type="button" onClick={handleExportCsv} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded-lg text-sm flex items-center gap-2" title={t('common.exportCsv')} aria-label={t('common.exportCsv')}>
+              <Download size={18} />
+              <span className="hidden sm:inline">{t('common.exportCsv')}</span>
             </button>
             {entityType === 'client' && filterEntityId && (
               <button
                 type="button"
                 onClick={openStatementModal}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded text-sm flex items-center gap-2"
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded-lg text-sm flex items-center gap-2"
               >
                 <Printer size={18} />
                 {t('entities.accountStatement')}
@@ -1514,8 +1638,9 @@ function TransactionPage({ config }) {
             <button
               type="button"
               onClick={() => (invoicingEnabled ? openInvoiceModal() : (resetForm(), setShowModal(true)))}
-              className={`bg-${primaryColor}-600 hover:bg-${primaryColor}-700 text-white font-semibold py-2 px-4 rounded text-sm`}
+              className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-${primaryColor}-600 hover:bg-${primaryColor}-700 text-white font-semibold py-2 px-4 rounded-lg text-sm shadow-sm`}
             >
+              <Plus size={16} />
               {invoicingEnabled ? t('clientTransactions.createInvoice') : t(`${translationKey}.addTransaction`)}
             </button>
           </div>
@@ -1523,18 +1648,29 @@ function TransactionPage({ config }) {
 
         {/* Filters – card layout like Liabilities */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 print:hidden overflow-hidden">
-          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className="w-full px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between md:cursor-default"
+            aria-expanded={filtersOpen}
+            aria-label={t('common.filters')}
+          >
+            <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
               <Filter size={16} className="text-gray-500" />
               {t('common.filters')}
-            </h3>
-          </div>
-          <div className="p-4 space-y-4">
+              {hasActiveFilters && <span className="w-2 h-2 rounded-full bg-blue-600" aria-hidden="true" />}
+            </span>
+            <span className="md:hidden flex items-center gap-1 text-xs text-gray-500">
+              {selectedMonth || t(`${translationKey}.allMonths`)}
+              <ChevronDown size={16} className={`transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+          <div className={`p-3 sm:p-4 space-y-3 sm:space-y-4 ${filtersOpen ? '' : 'hidden'} md:block`}>
             <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-gray-200">
               <span className="text-xs font-medium text-gray-500">{t(`${translationKey}.period`) || 'Period'}:</span>
               <div className="flex items-center gap-1.5">
                 <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m - 2, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium" title="Previous month">‹</button>
-                <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="input py-2 text-sm w-36 rounded-lg border-gray-300" aria-label="Period" />
+                <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="input py-2 text-sm w-full sm:w-36 rounded-lg border-gray-300" aria-label="Period" />
                 <button type="button" onClick={() => { if (selectedMonth) { const [y, m] = selectedMonth.split('-').map(Number); const d = new Date(y, m, 1); setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) } }} className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium" title="Next month">›</button>
               </div>
               <button type="button" onClick={() => { const n = new Date(); setSelectedMonth(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`) }} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">{t(`${translationKey}.currentMonth`)}</button>
@@ -1546,28 +1682,28 @@ function TransactionPage({ config }) {
                 </label>
               )}
             </div>
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-col gap-1">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3 sm:gap-4">
+              <div className="col-span-2 flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500">{t('common.searchPlaceholder')}</label>
-                <input type="search" className="input py-2 text-sm w-44 rounded-lg border-gray-300" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                <input type="search" className="input py-2 text-sm w-full sm:w-44 rounded-lg border-gray-300" placeholder={t('common.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500">{t(filterByLabelKey)}</label>
-                <select className="input py-2 text-sm w-44 rounded-lg border-gray-300" value={filterEntityId} onChange={(e) => setFilterEntityId(e.target.value)}>
+                <select className="input py-2 text-sm w-full sm:w-44 rounded-lg border-gray-300" value={filterEntityId} onChange={(e) => setFilterEntityId(e.target.value)}>
                   <option value="">{t(filterByLabelKey)}</option>
                   {entities.map((e) => <option key={e[entityIdField]} value={e[entityIdField]}>{e[entityNameField]}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500">{t('common.filterByProduct')}</label>
-                <select className="input py-2 text-sm w-44 rounded-lg border-gray-300" value={filterProductId} onChange={(e) => setFilterProductId(e.target.value)}>
+                <select className="input py-2 text-sm w-full sm:w-44 rounded-lg border-gray-300" value={filterProductId} onChange={(e) => setFilterProductId(e.target.value)}>
                   <option value="">{t('common.filterByProduct')}</option>
                   {products.map((p) => <option key={p.product_id} value={p.product_id}>{p.product_name}{p.model ? ` (${p.model})` : ''}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500">{t('common.paymentStatus')}</label>
-                <select className="input py-2 text-sm w-40 rounded-lg border-gray-300" value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)}>
+                <select className="input py-2 text-sm w-full sm:w-40 rounded-lg border-gray-300" value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)}>
                   <option value="all">{t('common.paymentStatus')}</option>
                   <option value="outstanding">{t('common.outstanding')}</option>
                   <option value="paid">{t('common.paidInFull')}</option>
@@ -1575,7 +1711,7 @@ function TransactionPage({ config }) {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500">{t('common.status')}</label>
-                <select className="input py-2 text-sm w-36 rounded-lg border-gray-300" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                <select className="input py-2 text-sm w-full sm:w-36 rounded-lg border-gray-300" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                   <option value="all">{t('common.all')}</option>
                   {TRANSACTION_STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>{t('common.status_' + s.replace(/-/g, '_'))}</option>
@@ -1583,7 +1719,7 @@ function TransactionPage({ config }) {
                 </select>
               </div>
               {hasActiveFilters && (
-                <button type="button" onClick={clearFilters} className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg">
+                <button type="button" onClick={clearFilters} className="col-span-2 sm:col-span-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg">
                   {t('common.clearFilters')}
                 </button>
               )}
@@ -1601,18 +1737,18 @@ function TransactionPage({ config }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-white border border-gray-200 rounded-b-lg">
                 <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}>
                   <p className="text-xs font-medium">{t(`${translationKey}.monthTotalLabel`)}</p>
-                  <p className="text-lg font-bold">{formatCurrency(monthTotals.monthTotal)}</p>
-                  <p className="text-[11px] opacity-90">{t(`${translationKey}.monthTotalHint`)}</p>
+                  <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(monthTotals.monthTotal)}</p>
+                  <p className="hidden md:block text-[11px] opacity-90">{t(`${translationKey}.monthTotalHint`)}</p>
                 </div>
-                <div className="bg-red-600 text-white p-2.5 rounded shadow">
+                <div className="bg-red-600 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block">
                   <p className="text-xs font-medium">{t(`${translationKey}.monthOutstandingLabel`)}</p>
-                  <p className="text-lg font-bold">{formatCurrency(monthTotals.monthRemaining)}</p>
-                  <p className="text-[11px] opacity-90">{t(`${translationKey}.monthOutstandingHint`)}</p>
+                  <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(monthTotals.monthRemaining)}</p>
+                  <p className="hidden md:block text-[11px] opacity-90">{t(`${translationKey}.monthOutstandingHint`)}</p>
                 </div>
-                <div className="bg-green-600 text-white p-2.5 rounded shadow">
+                <div className="bg-green-600 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block">
                   <p className="text-xs font-medium">{t(`${translationKey}.monthPaidLabel`)}</p>
-                  <p className="text-lg font-bold">{formatCurrency(calculatePaid())}</p>
-                  <p className="text-[11px] opacity-90">{t(`${translationKey}.monthPaidHint`)}</p>
+                  <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(calculatePaid())}</p>
+                  <p className="hidden md:block text-[11px] opacity-90">{t(`${translationKey}.monthPaidHint`)}</p>
                 </div>
               </div>
             </div>
@@ -1622,35 +1758,125 @@ function TransactionPage({ config }) {
                 <h4 className="text-sm md:text-base font-bold text-white tracking-wide">{t(`${translationKey}.summaryPreviousTotals`)}</h4>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-2 bg-white border border-gray-200 rounded-b-lg">
-                <div className="bg-slate-700 text-white p-2.5 rounded shadow">
+                <div className="bg-slate-700 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block">
                   <p className="text-xs font-medium">{t(`${translationKey}.pastOutstandingLabel`)}</p>
-                  <p className="text-lg font-bold">{formatCurrency(includePastRemaining ? getPastRemainingTotal() : 0)}</p>
-                  <p className="text-[11px] opacity-90">{t(`${translationKey}.pastOutstandingHint`)}</p>
+                  <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(includePastRemaining ? getPastRemainingTotal() : 0)}</p>
+                  <p className="hidden md:block text-[11px] opacity-90">{t(`${translationKey}.pastOutstandingHint`)}</p>
                 </div>
-                <div className="bg-slate-600 text-white p-2.5 rounded shadow">
+                <div className="bg-slate-600 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block">
                   <p className="text-xs font-medium">{t(`${translationKey}.pastPaidLabel`)}</p>
-                  <p className="text-lg font-bold">{formatCurrency(previousPaidTotal)}</p>
-                  <p className="text-[11px] opacity-90">{t(`${translationKey}.pastPaidHint`)}</p>
+                  <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(previousPaidTotal)}</p>
+                  <p className="hidden md:block text-[11px] opacity-90">{t(`${translationKey}.pastPaidHint`)}</p>
                 </div>
-                <div className="bg-gray-900 text-white p-2.5 rounded shadow">
+                <div className="bg-gray-900 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block">
                   <p className="text-xs font-medium">{t(`${translationKey}.totalOutstandingLabel`)}</p>
-                  <p className="text-lg font-bold">{formatCurrency(calculateRemaining())}</p>
-                  <p className="text-[11px] opacity-90">{t(`${translationKey}.totalOutstandingHint`)}</p>
+                  <p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(calculateRemaining())}</p>
+                  <p className="hidden md:block text-[11px] opacity-90">{t(`${translationKey}.totalOutstandingHint`)}</p>
                 </div>
               </div>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}><p className="text-xs font-medium">{t(`${translationKey}.totalAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculateTotal())}</p></div>
-            <div className="bg-green-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t(`${translationKey}.paidAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculatePaid())}</p></div>
-            <div className="bg-red-600 text-white p-2.5 rounded shadow"><p className="text-xs font-medium">{t(`${translationKey}.remainingAmount`)}</p><p className="text-lg font-bold">{formatCurrency(calculateRemaining())}</p></div>
+            <div className={`bg-${primaryColor}-600 text-white p-2.5 rounded shadow`}><p className="text-xs font-medium">{t(`${translationKey}.totalAmount`)}</p><p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(calculateTotal())}</p></div>
+            <div className="bg-green-600 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block"><p className="text-xs font-medium">{t(`${translationKey}.paidAmount`)}</p><p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(calculatePaid())}</p></div>
+            <div className="bg-red-600 text-white px-3 py-2 md:p-2.5 rounded-lg shadow flex items-center justify-between gap-3 md:block"><p className="text-xs font-medium">{t(`${translationKey}.remainingAmount`)}</p><p className="text-base md:text-lg font-bold tabular-nums">{formatCurrency(calculateRemaining())}</p></div>
           </div>
         )}
       </div>
 
+      {/* Phone: card list (the 12-column table is unreadable at this width) */}
+      <div className="md:hidden print:hidden mt-2 space-y-2">
+        {filteredTransactions.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 text-center py-8 px-4">
+            <p className="text-gray-600 text-sm font-medium">{t(`${translationKey}.noTransactions`)}</p>
+            {transactions.length === 0 && <p className="text-gray-400 text-xs mt-1">{t(`${translationKey}.noTransactionsDesc`)}</p>}
+          </div>
+        ) : (
+          paginatedTransactions.map((transaction) => {
+            const transactionPayments = getPaymentsForTransaction(transaction.transaction_id)
+            const isExpanded = expandedRows.has(transaction.transaction_id)
+            const remaining = effRemaining(transaction)
+            const overdue = remaining > 0 && transaction.due_date && new Date(transaction.due_date) < new Date()
+            const invoiceNo = getDisplayInvoiceNumber(transaction)
+            const unitPrice = transaction.unit_price ?? (transaction.quantity ? parseFloat(transaction.total_amount) / transaction.quantity : 0)
+            const paidShown = selectedMonth
+              ? (paidMapsByTransactionId.inMonth.get(transaction.transaction_id) || 0)
+              : effPaid(transaction)
+            return (
+              <div key={transaction.transaction_id} className={`bg-white rounded-xl border shadow-sm ${overdue ? 'border-red-200' : 'border-gray-200'}`}>
+                <div className="flex items-start gap-2 p-3 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleRowExpansion(transaction.transaction_id)}
+                    className="flex-1 min-w-0 text-start"
+                    aria-expanded={isExpanded}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className="font-semibold text-gray-900 truncate">{transaction[entityRelationName]?.[entityNameField] || 'N/A'}</span>
+                      <span className={`flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStatusBadgeClasses(transaction.status)}`}>
+                        {t('common.status_' + (transaction.status || 'not_started').replace(/-/g, '_'))}
+                      </span>
+                    </span>
+                    <span className="block text-xs text-gray-500 truncate mt-0.5">
+                      {transaction.products?.product_name || 'N/A'}
+                      {transaction.products?.model ? ` (${transaction.products.model})` : ''}
+                      {' · '}{transaction.quantity} × {formatCurrency(unitPrice)}
+                    </span>
+                    <span className="text-[11px] text-gray-400 mt-0.5 flex flex-wrap items-center gap-x-2">
+                      <span>{new Date(transaction.transaction_date).toLocaleDateString()}</span>
+                      {invoiceNo ? (
+                        <span className="font-medium text-gray-600">#{invoiceNo}</span>
+                      ) : invoicingEnabled && isDraftInvoice(transaction) ? (
+                        <span className="px-1 rounded bg-amber-100 text-amber-800 font-semibold uppercase">{t('clientTransactions.invoiceDraft')}</span>
+                      ) : null}
+                      {transaction.due_date && (
+                        <span className={overdue ? 'text-red-600 font-semibold' : ''}>
+                          {t('common.dueDate')}: {new Date(transaction.due_date).toLocaleDateString()}
+                          {overdue ? ` · ${t('common.overdue')}` : ''}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  <Dropdown
+                    trigger={<MoreVertical size={20} />}
+                    align="right"
+                    className="inline-block -me-1"
+                    items={buildRowActions(transaction, transactionPayments)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleRowExpansion(transaction.transaction_id)}
+                  className={`w-full grid grid-cols-3 gap-2 px-3 py-2 border-t border-gray-100 bg-gray-50/70 text-start ${isExpanded ? '' : 'rounded-b-xl'}`}
+                  aria-label={t('paymentsBreakdown.payments')}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[10px] uppercase tracking-wide text-gray-500">{t(`${translationKey}.total`)}</span>
+                    <span className="block text-sm font-semibold text-gray-900 tabular-nums truncate">{formatCurrency(transaction.total_amount)}</span>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[10px] uppercase tracking-wide text-gray-500">{t(`${translationKey}.paid`)}</span>
+                    <span className="block text-sm font-semibold text-green-700 tabular-nums truncate">{formatCurrency(paidShown)}</span>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[10px] uppercase tracking-wide text-gray-500">{t(`${translationKey}.remaining`)}</span>
+                    <span className={`block text-sm font-semibold tabular-nums truncate ${remaining > 0 ? 'text-red-700' : 'text-gray-400'}`}>{formatCurrency(remaining)}</span>
+                  </span>
+                </button>
+                {isExpanded && (
+                  <div className="px-2 pb-2 pt-1">
+                    {renderPaymentDetails(transaction, transactionPayments, 'card')}
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+
       {/* Table - grows with content, page scrolls */}
-      <div className="bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">
+      <div className="hidden md:block print:block bg-white shadow rounded overflow-x-auto overflow-y-visible mt-2">
         <table className="min-w-full divide-y divide-gray-200 text-xs">
             <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
               <tr>
@@ -1735,126 +1961,14 @@ function TransactionPage({ config }) {
                           trigger={<MoreVertical size={20} />}
                           align="right"
                           className="inline-block"
-                          items={[
-                            { label: t('paymentsBreakdown.payments') + ` (${transactionPayments.length})`, icon: Wallet, onClick: () => toggleRowExpansion(transaction.transaction_id) },
-                            ...(invoicingEnabled
-                              ? [
-                                  ...(isDraftInvoice(transaction)
-                                    ? [{ label: t('clientTransactions.issueInvoice'), icon: FileText, onClick: () => handleIssueInvoice(transaction) }]
-                                    : []),
-                                  ...(isIssuedInvoice(transaction)
-                                    ? [{ label: t('clientTransactions.printInvoice'), icon: FileText, onClick: () => handlePrintInvoice(transaction) }]
-                                    : []),
-                                ]
-                              : [{
-                                  label: (translationKey === 'clientTransactions' ? t('clientTransactions.invoice') : t('supplierTransactions.invoice')) + ` (${t('common.beta')})`,
-                                  icon: FileText,
-                                  onClick: async () => {
-                                    try {
-                                      await generateInvoice(transaction, { ...buildInvoicePdfOptions(language, currency), payments: transactionPayments })
-                                      success(t('common.saved') || 'Invoice generated')
-                                    } catch (e) {
-                                      showError(e?.message || 'Failed to generate invoice')
-                                    }
-                                  },
-                                }]),
-                            { divider: true },
-                            { label: t(`${translationKey}.edit`), icon: EditIcon, onClick: () => handleEdit(transaction, invoicingEnabled) },
-                            { label: t(`${translationKey}.delete`), icon: Trash2, danger: true, onClick: () => handleDelete(transaction.transaction_id) }
-                          ]}
+                          items={buildRowActions(transaction, transactionPayments)}
                         />
                       </td>
                     </tr>
                     {isExpanded && (
                       <tr>
                         <td colSpan="12" className="px-2 py-0 align-top">
-                          <div
-                            ref={(el) => {
-                              if (el) paymentDetailsRefs.current.set(transaction.transaction_id, el)
-                              else paymentDetailsRefs.current.delete(transaction.transaction_id)
-                            }}
-                            className="payment-detail-row py-2 pl-2 pr-1 -mr-1 border-l-4 border-blue-200 bg-gradient-to-r from-blue-50/80 to-transparent rounded-r mb-1"
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <h4 className="font-semibold text-gray-800 text-xs flex items-center gap-1">
-                                  <span className="w-1.5 h-4 bg-blue-500 rounded"></span>
-                                  {t('paymentsBreakdown.payments')}
-                                  <span className="ml-1 text-gray-500 font-normal">({transactionPayments.length})</span>
-                                </h4>
-                                <div className="flex gap-2 text-xs flex-wrap">
-                                  {selectedMonth ? (
-                                    <>
-                                      <span className="text-green-700 font-medium">
-                                        {t('dashboard.paid')}: {formatCurrency(paidMapsByTransactionId.inMonth.get(transaction.transaction_id) || 0)}
-                                      </span>
-                                      {(paidMapsByTransactionId.beforeMonth.get(transaction.transaction_id) || 0) > 0 && (
-                                        <span className="text-gray-600 font-medium">
-                                          {t('common.previous')}: {formatCurrency(paidMapsByTransactionId.beforeMonth.get(transaction.transaction_id) || 0)}
-                                        </span>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <span className="text-green-700 font-medium">{t('dashboard.paid')}: {formatCurrency(effPaid(transaction))}</span>
-                                  )}
-                                  <span className="text-red-600 font-medium">{t('dashboard.remaining')}: {formatCurrency(effRemaining(transaction))}</span>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  setPaymentFormData({
-                                    transaction_id: transaction.transaction_id,
-                                    payment_amount: '',
-                                    payment_date: new Date().toISOString().split('T')[0],
-                                    payment_method: 'cash',
-                                    reference_number: ''
-                                  })
-                                  setShowPaymentModal(true)
-                                }}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded shadow shrink-0"
-                              >
-                                <span>+</span> {t('paymentsBreakdown.addPayment')}
-                              </button>
-                            </div>
-                            {transactionPayments.length > 0 ? (
-                              <div className="max-h-64 overflow-y-auto pr-1 space-y-1">
-                                {transactionPayments.map((payment, idx) => (
-                                  <div
-                                    key={payment.payment_id}
-                                    className="flex items-center justify-between gap-2 py-1.5 px-2 bg-white rounded border border-gray-200"
-                                  >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-green-100 text-green-700 font-semibold text-xs">
-                                        {idx + 1}
-                                      </span>
-                                      <div>
-                                        <p className="font-semibold text-green-700 text-sm">{formatCurrency(payment.payment_amount)}</p>
-                                        <p className="text-gray-500 text-xs">
-                                          {new Date(payment.payment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                          {payment.payment_method && payment.payment_method !== 'cash' && (
-                                            <span className="ml-1 inline-flex items-center px-1 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">{t('common.paymentMethod_' + payment.payment_method)}</span>
-                                          )}
-                                          {payment.reference_number && (
-                                            <span className="ml-1 text-gray-400">#{payment.reference_number}</span>
-                                          )}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={() => handleDeletePayment(payment.payment_id, transaction.transaction_id)}
-                                      className="flex-shrink-0 px-2 py-0.5 text-red-600 hover:bg-red-50 rounded text-xs font-medium"
-                                    >
-                                      {t('paymentsBreakdown.deletePayment')}
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-gray-500 text-xs py-2 text-center bg-white rounded border border-dashed border-gray-300">
-                                {t(translationKey === 'clientTransactions' ? 'paymentsBreakdown.noClientPayments' : 'paymentsBreakdown.noSupplierPayments')}
-                              </p>
-                            )}
-                          </div>
+                          {renderPaymentDetails(transaction, transactionPayments, 'table')}
                         </td>
                       </tr>
                     )}
@@ -1885,12 +1999,12 @@ function TransactionPage({ config }) {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed z-50 inset-0 flex items-center justify-center p-2 overflow-y-auto">
+        <div className="fixed z-50 inset-0 flex items-end sm:items-center justify-center p-0 sm:p-2 overflow-y-auto">
           <div 
             className="fixed inset-0 bg-gray-900 bg-opacity-75" 
             onClick={() => setShowModal(false)}
           />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] flex flex-col my-auto">
+          <div className="relative bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full max-w-2xl max-h-[92dvh] sm:max-h-[95vh] flex flex-col sm:my-auto overflow-hidden pb-safe sm:pb-0 animate-slide-up sm:animate-scale-in">
             <div className={`bg-${primaryColor}-600 px-4 py-2 flex-shrink-0`}>
               <h3 className="text-lg font-bold text-white">
                 {invoiceModalMode
@@ -2444,9 +2558,9 @@ function TransactionPage({ config }) {
 
       {/* Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed z-50 inset-0 flex items-center justify-center p-2 overflow-y-auto">
+        <div className="fixed z-50 inset-0 flex items-end sm:items-center justify-center p-0 sm:p-2 overflow-y-auto">
           <div className="fixed inset-0 bg-gray-900 bg-opacity-75" onClick={() => setShowPaymentModal(false)} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md max-h-[95vh] flex flex-col my-auto">
+          <div className="relative bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full max-w-md max-h-[92dvh] sm:max-h-[95vh] flex flex-col sm:my-auto overflow-hidden pb-safe sm:pb-0 animate-slide-up sm:animate-scale-in">
             <div className="bg-green-600 px-4 py-2 flex-shrink-0">
               <h3 className="text-lg font-bold text-white">{t('paymentsBreakdown.addPayment')}</h3>
             </div>

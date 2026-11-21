@@ -25,6 +25,7 @@ const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
+import { AppStatusBanners } from './components/PwaControls'
 import ProtectedRoute from './components/ProtectedRoute'
 import ComplianceOnlyGuard from './components/ComplianceOnlyGuard'
 import ComplianceMobileRedirect from './components/Compliance/ComplianceMobileRedirect'
@@ -48,11 +49,36 @@ const NAV_SHORTCUTS = [
   { path: '/compliance', shortcut: 'm' },
 ]
 
+const PAGE_TITLES = [
+  ['/dashboard', 'nav.dashboard'],
+  ['/invoices', 'nav.invoices'],
+  ['/suppliers', 'nav.supplierTransactions'],
+  ['/entities', 'nav.clientsSuppliers'],
+  ['/products', 'nav.inventory'],
+  ['/liabilities', 'nav.liabilities'],
+  ['/reports', 'nav.reports'],
+  ['/compliance', 'nav.compliance'],
+  ['/monitoring', 'nav.monitoring'],
+  ['/settings', 'common.settings'],
+]
+
+function getPageTitle(pathname, t) {
+  if (pathname === '/') return t('nav.clientTransactions')
+  const hit = PAGE_TITLES.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/'))
+  return hit ? t(hit[1]) : ''
+}
+
 function AppShell({ children }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { registerShortcut, setShowHelp } = useKeyboardShortcuts()
+  const { t } = useLanguage()
+  const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const pageTitle = getPageTitle(location.pathname, t)
+
+  // Close the drawer whenever the route changes (e.g. via bottom tabs).
+  useEffect(() => { setSidebarOpen(false) }, [location.pathname])
   const homePath = isComplianceOnlyUser(user)
     ? getComplianceHomePath({ mobile: prefersComplianceMobile() })
     : '/dashboard'
@@ -74,24 +100,30 @@ function AppShell({ children }) {
       <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Main content area: offset by sidebar on desktop, full width on mobile */}
         <div className="flex-1 flex flex-col min-w-0 ms-0 md:ms-60">
-        {/* Mobile top bar: hamburger + logo only */}
-        <header className="flex-shrink-0 flex items-center gap-2 h-12 px-3 bg-blue-700 text-white md:hidden border-b border-blue-600">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg hover:bg-blue-600 transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu size={24} />
-          </button>
-          <Link to={homePath} className="flex items-center" onClick={() => setSidebarOpen(false)}>
-            <div className="bg-white rounded-lg px-2 py-1.5">
-              <img src="/Logo_Promed.png" alt="Promed" className="h-8 w-auto object-contain" />
-            </div>
-          </Link>
+        {/* Mobile top bar: menu, logo, current page */}
+        <header className="flex-shrink-0 flex items-center gap-2 px-2 pt-safe bg-gradient-to-r from-blue-700 to-blue-800 text-white md:hidden shadow-sm no-print">
+          <div className="flex items-center gap-2 h-12 w-full min-w-0">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
+            </button>
+            <Link to={homePath} className="flex items-center flex-shrink-0" onClick={() => setSidebarOpen(false)} aria-label="Promed home">
+              <span className="bg-white rounded-md px-1.5 py-1">
+                <img src="/Logo_Promed.png" alt="Promed" className="h-6 w-auto object-contain" />
+              </span>
+            </Link>
+            {pageTitle && (
+              <h1 className="flex-1 min-w-0 truncate text-[15px] font-semibold ps-1">{pageTitle}</h1>
+            )}
+          </div>
         </header>
         {children}
       </div>
+      <BottomNav menuOpen={sidebarOpen} onMenuClick={() => setSidebarOpen((v) => !v)} />
     </div>
   )
 }
@@ -158,7 +190,7 @@ function AppContent() {
 
   return (
     <>
-      <div className={`${showAppShell || showMobileComplianceShell ? 'h-screen flex flex-col bg-gray-100 overflow-hidden' : 'min-h-screen bg-gray-100'} ${showAppShell || showMobileComplianceShell ? 'pb-0' : ''}`}>
+      <div className={showAppShell || showMobileComplianceShell ? 'h-full flex flex-col bg-gray-100 overflow-hidden' : 'h-full overflow-y-auto bg-gray-100'}>
         {showMobileComplianceShell ? (
           <ErrorBoundary>
             <Suspense fallback={<div className="flex-1 flex items-center justify-center min-h-[200px]"><LoadingSpinner size="lg" /></div>}>
@@ -229,8 +261,7 @@ function AppContent() {
           </Suspense>
         )}
 
-        {showAppShell && <BottomNav />}
-
+        <AppStatusBanners />
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </div>
     </>

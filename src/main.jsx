@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client'
 import './index.css'
 import SupabaseConfigMissing from './components/SupabaseConfigMissing.jsx'
 import { supabaseMissingConfig } from './lib/supabase.js'
+import { initPwa } from './utils/pwa.js'
+
+initPwa()
 
 // Recharts 2.x prints a noisy "width(-1) / height(-1)" warning during the
 // first paint of any chart. Suppress only that message; leave all other

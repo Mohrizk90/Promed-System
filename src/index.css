@@ -333,6 +333,21 @@ body {
     @apply px-4 py-2 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0;
   }
 
+  /* Phones: dialogs become bottom sheets (easier to reach, keyboard-friendly) */
+  @media (max-width: 639px) {
+    .modal-overlay {
+      align-items: flex-end;
+      padding: var(--safe-area-inset-top) 0 0 0;
+    }
+    .modal-content {
+      max-width: 100% !important;
+      border-radius: 1rem 1rem 0 0;
+      max-height: calc(100dvh - var(--safe-area-inset-top) - 2rem);
+      padding-bottom: var(--safe-area-inset-bottom);
+      animation: sheet-up 0.22s ease-out;
+    }
+  }
+
   /* Tooltip */
   .tooltip {
     @apply absolute z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg pointer-events-none opacity-0 transition-opacity duration-200;
@@ -694,9 +709,9 @@ body {
 
 /* Main content padding above bottom nav on mobile only */
 .main-scroll-mobile {
-  padding-bottom: calc(5.5rem + var(--safe-area-inset-bottom));
+  padding-bottom: calc(5rem + var(--safe-area-inset-bottom));
 }
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .main-scroll-mobile {
     padding-bottom: 0;
   }
@@ -724,6 +739,25 @@ body {
   @apply inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono font-medium text-gray-600 bg-gray-100 border border-gray-300 rounded;
 }
 
+@keyframes sheet-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Installed app (standalone): no rubber-band on the shell, no tap flash, no text-select on chrome */
+@media (display-mode: standalone) {
+  body { overscroll-behavior: none; }
+  nav, header, aside { -webkit-user-select: none; user-select: none; }
+}
+* { -webkit-tap-highlight-color: transparent; }
+
+/* iOS zooms into inputs below 16px; keep form text at 16px on phones */
+@media (max-width: 767px) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Success animation */
 @keyframes success-check {
   0% { transform: scale(0); opacity: 0; }
@@ -741,4 +775,12 @@ body {
   width: 8px;
   height: 8px;
   animation: confetti 0.8s ease-out forwards;
+}
+
+/* Horizontal chip rows that swipe without a visible scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

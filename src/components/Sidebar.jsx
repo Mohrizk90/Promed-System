@@ -18,6 +18,7 @@ import {
   Activity,
 } from './ui/Icons'
 import LanguageSwitcher from './LanguageSwitcher'
+import { InstallAppButton } from './PwaControls'
 import { useLanguage } from '../context/LanguageContext'
 import packageJson from '../../package.json'
 import { useAuth } from '../context/AuthContext'
@@ -126,6 +127,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
       {/* Bottom section */}
       <div className="flex-shrink-0 px-2 py-2 border-t border-white/10 space-y-0.5">
+        <InstallAppButton onDone={handleNavClick} />
         {/* Help — ERP keyboard shortcuts only */}
         {!complianceOnly && (
           <button
@@ -208,7 +210,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/50 backdrop-blur-[1px] z-[45] md:hidden animate-fade-in"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -216,10 +218,10 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
       {/* Mobile drawer */}
       <aside
-        className={`${baseClasses} md:hidden fixed top-0 bottom-0 start-0 pt-safe transform transition-transform duration-200 ease-out ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'
+        className={`${baseClasses} md:hidden fixed top-0 bottom-0 start-0 pt-safe pb-safe !z-50 shadow-2xl transform transition-transform duration-200 ease-out ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full invisible'
         }`}
-        style={widthStyle}
+        style={{ width: 'min(18rem, 85vw)' }}
         aria-label="Sidebar"
         aria-hidden={!mobileOpen}
       >
@@ -238,6 +240,12 @@ export default function Sidebar({ mobileOpen, onClose }) {
           </button>
         </div>
 
+        {user?.email && (
+          <div className="mx-3 mb-1 flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 text-[12px] text-blue-100">
+            <UserIcon size={13} className="flex-shrink-0" />
+            <span className="truncate">{user.email}</span>
+          </div>
+        )}
         {/* Mobile nav */}
         <div className="flex-1 overflow-hidden flex flex-col">
           <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
@@ -246,14 +254,15 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
           {/* Mobile bottom */}
           <div className="flex-shrink-0 px-2 py-2 border-t border-white/10 space-y-0.5">
+            <InstallAppButton onDone={onClose} />
             {!complianceOnly && (
               <button
                 type="button"
-                onClick={() => { setShowHelp(true); onClose?.() }}
-                className="rtl-flip w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[12px] text-blue-200/80 hover:bg-white/10 hover:text-white"
+                onClick={() => { onClose?.(); navigate('/settings') }}
+                className="rtl-flip w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-blue-100 hover:bg-white/10 hover:text-white"
               >
-                <HelpCircle size={14} />
-                <span>{t('common.keyboard')}</span>
+                <Settings size={15} />
+                <span>{t('common.settings')}</span>
               </button>
             )}
             <div className="px-1">
@@ -262,9 +271,9 @@ export default function Sidebar({ mobileOpen, onClose }) {
             <button
               type="button"
               onClick={handleSignOut}
-              className="rtl-flip w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[12px] text-red-300/80 hover:bg-white/10 hover:text-white"
+              className="rtl-flip w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-red-200 hover:bg-white/10 hover:text-white"
             >
-              <LogOut size={14} />
+              <LogOut size={15} />
               <span>{t('common.signOut')}</span>
             </button>
             <div className="text-center pt-0.5">

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
+import { useIsPhone } from '../hooks/useMediaQuery'
 import { useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getPaginationPrefs, setPaginationPrefs } from '../utils/paginationPrefs'
@@ -642,6 +643,9 @@ function Dashboard() {
 
   const hasAnyData = clientTransactions.length > 0 || supplierTransactions.length > 0
 
+  const isPhone = useIsPhone()
+  const chartHeight = isPhone ? 240 : 350
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -652,7 +656,7 @@ function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => <MetricSkeleton key={i} />)}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
           <ChartSkeleton />
           <ChartSkeleton />
         </div>
@@ -681,17 +685,17 @@ function Dashboard() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">{t('dashboard.title')}</h1>
-          <p className="text-gray-600">{t('dashboard.subtitle')}</p>
+          <h1 className="hidden md:block text-3xl font-bold text-gray-900 mb-1">{t('dashboard.title')}</h1>
+          <p className="text-gray-600 text-sm md:text-base">{t('dashboard.subtitle')}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 print:hidden">
-          <button type="button" onClick={() => window.print()} className="btn btn-secondary flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 print:hidden w-full lg:w-auto">
+          <button type="button" onClick={() => window.print()} className="hidden sm:inline-flex btn btn-secondary items-center gap-2">
             <Printer size={18} />
             {t('common.print')}
           </button>
           {/* Quick Filters */}
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-full sm:w-auto overflow-x-auto no-scrollbar">
             {['all', 'month', 'quarter', 'year'].map(range => (
               <button
                 key={range}
@@ -699,7 +703,7 @@ function Dashboard() {
                   setQuickFilter(range)
                   setDateRange({ start: null, end: null })
                 }}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`flex-1 sm:flex-none whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                   quickFilter === range && !dateRange.start
                     ? 'bg-white text-gray-900 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
@@ -733,7 +737,7 @@ function Dashboard() {
           </Tooltip>
 
           {/* Refresh */}
-          <button onClick={fetchData} className="btn btn-ghost btn-sm">
+          <button onClick={fetchData} className="btn btn-ghost btn-sm" aria-label="Refresh" title="Refresh">
             <RefreshCw size={16} />
           </button>
         </div>
@@ -782,7 +786,7 @@ function Dashboard() {
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <Link to="/" className="block transition-opacity hover:opacity-90">
           <MetricCard
             title={t('dashboard.collectionRate')}
@@ -853,13 +857,13 @@ function Dashboard() {
       </div>
 
       {/* Charts Row 1 - LTR so charts render correctly in Arabic/RTL */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
         {/* Revenue vs Expenses Trend */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.revenueVsExpensesTrend')}</h2>
+        <div className="card p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('dashboard.revenueVsExpensesTrend')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
-          <ResponsiveContainer width="100%" height={350}>
-            <AreaChart data={revenueExpensesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <AreaChart data={revenueExpensesData} margin={{ top: 10, right: isPhone ? 8 : 30, left: isPhone ? -12 : 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -871,8 +875,8 @@ function Dashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-300)" />
-              <XAxis dataKey="month" stroke="var(--text-tertiary)" />
-              <YAxis stroke="var(--text-tertiary)" />
+              <XAxis dataKey="month" stroke="var(--text-tertiary)" tick={{ fontSize: isPhone ? 10 : 12 }} />
+              <YAxis stroke="var(--text-tertiary)" tick={{ fontSize: isPhone ? 10 : 12 }} tickFormatter={isPhone ? compactNumber : undefined} />
               <RechartsTooltip
                 formatter={(value) => formatCurrency(value)}
                 contentStyle={{ backgroundColor: 'var(--color-surface-50)', border: '1px solid var(--color-surface-300)', borderRadius: '0.5rem' }}
@@ -886,26 +890,27 @@ function Dashboard() {
         </div>
 
         {/* Payment Status Distribution */}
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.paymentStatusDistribution')}</h2>
+        <div className="card p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('dashboard.paymentStatusDistribution')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
             <PieChart>
               <Pie
                 data={paymentStatusData}
                 cx="50%"
                 cy="50%"
-                innerRadius={80}
-                outerRadius={120}
+                innerRadius={isPhone ? 50 : 80}
+                outerRadius={isPhone ? 80 : 120}
                 paddingAngle={2}
                 dataKey="value"
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={isPhone ? false : ({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
                 {paymentStatusData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+              {isPhone && <Legend wrapperStyle={{ fontSize: 12 }} />}
             </PieChart>
           </ResponsiveContainer>
           </div>
@@ -913,17 +918,17 @@ function Dashboard() {
       </div>
 
       {/* Charts Row 2 - LTR so charts render correctly in Arabic/RTL */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
         {/* Top Clients */}
         <Link to="/" className="block transition-opacity hover:opacity-95">
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.topClientsByRevenue')}</h2>
+        <div className="card p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('dashboard.topClientsByRevenue')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={topClientsData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart data={topClientsData} layout="vertical" margin={{ top: 5, right: isPhone ? 8 : 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-300)" />
-              <XAxis type="number" stroke="var(--text-tertiary)" />
-              <YAxis dataKey="name" type="category" width={100} stroke="var(--text-tertiary)" />
+              <XAxis type="number" stroke="var(--text-tertiary)" tick={{ fontSize: isPhone ? 10 : 12 }} tickFormatter={isPhone ? compactNumber : undefined} />
+              <YAxis dataKey="name" type="category" width={isPhone ? 80 : 100} stroke="var(--text-tertiary)" tick={{ fontSize: isPhone ? 10 : 12 }} />
               <RechartsTooltip formatter={(value) => formatCurrency(value)} />
               <Legend />
               <Bar dataKey="total" fill="#3b82f6" name={t('dashboard.totalRevenueLong')} radius={[0, 4, 4, 0]} />
@@ -936,14 +941,14 @@ function Dashboard() {
 
         {/* Top Suppliers */}
         <Link to="/suppliers" className="block transition-opacity hover:opacity-95">
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.topSuppliersByPurchases')}</h2>
+        <div className="card p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('dashboard.topSuppliersByPurchases')}</h2>
           <div dir="ltr" className="min-w-0 w-full">
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={topSuppliersData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart data={topSuppliersData} layout="vertical" margin={{ top: 5, right: isPhone ? 8 : 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-300)" />
-              <XAxis type="number" stroke="var(--text-tertiary)" />
-              <YAxis dataKey="name" type="category" width={100} stroke="var(--text-tertiary)" />
+              <XAxis type="number" stroke="var(--text-tertiary)" tick={{ fontSize: isPhone ? 10 : 12 }} tickFormatter={isPhone ? compactNumber : undefined} />
+              <YAxis dataKey="name" type="category" width={isPhone ? 80 : 100} stroke="var(--text-tertiary)" tick={{ fontSize: isPhone ? 10 : 12 }} />
               <RechartsTooltip formatter={(value) => formatCurrency(value)} />
               <Legend />
               <Bar dataKey="total" fill="#8b5cf6" name={t('dashboard.totalPurchases')} radius={[0, 4, 4, 0]} />
@@ -956,29 +961,29 @@ function Dashboard() {
       </div>
 
       {/* Top Products Table */}
-      <div className="card p-4">
+      <div className="card p-3 sm:p-4">
         <h2 className="text-base font-semibold text-gray-900 mb-3">{t('dashboard.topProductsPerformance')}</h2>
         <div className="overflow-x-auto overflow-y-visible">
-          <table className="min-w-full divide-y divide-gray-200 table-fixed">
+          <table className="min-w-full divide-y divide-gray-200 sm:table-fixed">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[25%] min-w-0">{t('dashboard.product')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">{t('dashboard.qtySold')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.qtyPurchased')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.revenue')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.cost')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.profit')}</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">{t('dashboard.profitMargin')}</th>
+                <th className="px-2 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[25%] min-w-0">{t('dashboard.product')}</th>
+                <th className="px-2 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">{t('dashboard.qtySold')}</th>
+                <th className="hidden sm:table-cell px-2 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.qtyPurchased')}</th>
+                <th className="px-2 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.revenue')}</th>
+                <th className="hidden sm:table-cell px-2 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.cost')}</th>
+                <th className="px-2 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">{t('dashboard.profit')}</th>
+                <th className="px-2 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">{t('dashboard.profitMargin')}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedProductsData.map((product, index) => (
                 <tr key={index} className="hover:bg-gray-50 transition-colors">
-                  <td className="table-cell-wrap px-4 py-2 text-sm font-medium text-gray-900" title={product.name}>{product.name}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">{product.sold}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">{product.purchased}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-blue-600">{formatCurrencyDetailed(product.revenue)}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-purple-600">{formatCurrencyDetailed(product.cost)}</td>
+                  <td className="table-cell-wrap px-2 sm:px-4 py-2 text-sm font-medium text-gray-900" title={product.name}>{product.name}</td>
+                  <td className="px-2 sm:px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">{product.sold}</td>
+                  <td className="hidden sm:table-cell px-2 sm:px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">{product.purchased}</td>
+                  <td className="px-2 sm:px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-blue-600">{formatCurrencyDetailed(product.revenue)}</td>
+                  <td className="hidden sm:table-cell px-2 sm:px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-purple-600">{formatCurrencyDetailed(product.cost)}</td>
                   <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-semibold ${product.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrencyDetailed(product.profit)}
                   </td>
@@ -1087,3 +1092,11 @@ function MetricCard({ title, value, subtitle, icon: Icon, color = 'blue', small 
 }
 
 export default Dashboard
+
+function compactNumber(value) {
+  const n = Number(value) || 0
+  const abs = Math.abs(n)
+  if (abs >= 1e6) return `${(n / 1e6).toFixed(abs >= 1e7 ? 0 : 1)}M`
+  if (abs >= 1e3) return `${(n / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}K`
+  return String(n)
+}

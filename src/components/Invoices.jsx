@@ -119,6 +119,15 @@ export default function Invoices() {
     )
   }
 
+  const invoiceActions = (tx) => [
+    ...(isDraftInvoice(tx)
+      ? [{ label: t('clientTransactions.issueInvoice'), icon: FileText, onClick: () => handleIssue(tx) }]
+      : []),
+    ...(isIssuedInvoice(tx)
+      ? [{ label: t('clientTransactions.printInvoice'), icon: FileText, onClick: () => handlePrint(tx) }]
+      : []),
+  ]
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -130,27 +139,27 @@ export default function Invoices() {
   return (
     <div className="space-y-4 pb-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
+        <div className="hidden sm:block">
           <h1 className="text-xl font-bold text-gray-900">{t('invoices.title')}</h1>
           <p className="text-sm text-gray-600">{t('invoices.subtitle')}</p>
         </div>
         <Link
           to="/"
-          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm"
+          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 sm:py-2 px-4 rounded-lg text-sm shadow-sm"
         >
           <Plus size={18} />
           {t('clientTransactions.createInvoice')}
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4 space-y-3">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap">
           {STATUS_FILTERS.map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setStatusFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full sm:rounded-lg text-sm font-medium transition-colors ${
                 statusFilter === key
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -165,11 +174,58 @@ export default function Invoices() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('invoices.searchPlaceholder')}
-          className="input py-2 text-sm w-full max-w-md"
+          className="input py-2 text-sm w-full sm:max-w-md"
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+      {/* Phone: invoice cards */}
+      <div className="md:hidden space-y-2">
+        {filtered.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 px-4 py-10 text-center text-gray-500 text-sm">
+            {t('invoices.empty')}
+          </div>
+        ) : (
+          filtered.map((tx) => {
+            const actions = invoiceActions(tx)
+            const remaining = Number(tx.remaining_amount) || 0
+            return (
+              <div key={tx.transaction_id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900 truncate">
+                        {getDisplayInvoiceNumber(tx) || (
+                          <span className="text-amber-700 text-xs font-semibold uppercase">{t('clientTransactions.invoiceDraft')}</span>
+                        )}
+                      </span>
+                      {statusBadge(tx)}
+                    </div>
+                    <p className="text-sm text-gray-700 truncate mt-0.5">{tx.clients?.client_name || '—'}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {new Date(tx.transaction_date).toLocaleDateString()} · {t('invoices.lines')}: {getInvoiceLinesFromTransaction(tx).length}
+                    </p>
+                  </div>
+                  {actions.length > 0 && (
+                    <Dropdown trigger={<MoreVertical size={20} />} align="right" className="-me-1" items={actions} />
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">{t('clientTransactions.total')}</p>
+                    <p className="text-sm font-semibold tabular-nums text-gray-900">{formatCurrency(tx.total_amount)}</p>
+                  </div>
+                  <div className="text-end">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500">{t('clientTransactions.remaining')}</p>
+                    <p className={`text-sm font-semibold tabular-nums ${remaining > 0 ? 'text-red-700' : 'text-gray-400'}`}>{formatCurrency(tx.remaining_amount)}</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -212,14 +268,7 @@ export default function Invoices() {
                       <Dropdown
                         trigger={<MoreVertical size={18} />}
                         align="right"
-                        items={[
-                          ...(isDraftInvoice(tx)
-                            ? [{ label: t('clientTransactions.issueInvoice'), icon: FileText, onClick: () => handleIssue(tx) }]
-                            : []),
-                          ...(isIssuedInvoice(tx)
-                            ? [{ label: t('clientTransactions.printInvoice'), icon: FileText, onClick: () => handlePrint(tx) }]
-                            : []),
-                        ]}
+                        items={invoiceActions(tx)}
                       />
                     </td>
                   </tr>

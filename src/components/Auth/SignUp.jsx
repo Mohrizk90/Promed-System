@@ -75,7 +75,7 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 pt-safe pb-safe">
+    <div className="min-h-full flex items-center justify-center bg-gradient-to-b from-blue-50 via-gray-100 to-gray-100 px-4 py-8 pt-safe pb-safe">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -84,7 +84,7 @@ export default function SignUp() {
         </div>
 
         {/* Form Card */}
-        <div className="card p-8">
+        <div className="card p-6 sm:p-8 rounded-2xl shadow-lg">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             Create Account
           </h2>
