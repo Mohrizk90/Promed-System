@@ -16,6 +16,7 @@ import MoneyPage from '../components/money/MoneyPage'
 import ProjectsPage from '../components/projects/ProjectsPage'
 import ProjectDetail from '../components/projects/ProjectDetail'
 import AgentActivity from '../components/agent/AgentActivity'
+import BomsPage from '../components/boms/BomsPage'
 
 const UID = '00000000-0000-4000-8000-000000000001'
 const d = (n) => { const x = new Date(); x.setDate(x.getDate() - n); return x.toISOString().slice(0, 10) }
@@ -143,6 +144,9 @@ const TABLES = {
   project_types: TYPES, v_project_totals: PROJECTS, categories: CATS, money_accounts: ACCOUNTS, v_ledger: LEDGER,
   projects: PROJECTS.map((p) => ({ id: p.project_id, name: p.name, type_id: p.type_id, status: p.status, budget: p.budget, aliases: [], attributes: {}, notes: null })),
   clients: [{ client_id: 1, client_name: 'Dar El Fouad Hospital' }], agent_messages: MESSAGES, agent_actions: ACTIONS, agent_changes: CHANGES,
+  bom_lines: [{ id: 1, component_name: 'LED module', quantity: 12, unit_cost: 25 }, { id: 2, component_name: 'Control board', quantity: 1, unit_cost: 900 }, { id: 3, component_name: 'Power supply', quantity: 1, unit_cost: 300 }, { id: 4, component_name: 'Frame and paint', quantity: 1, unit_cost: 650 }, { id: 5, component_name: 'Wheels and screws', quantity: 1, unit_cost: 120 }],
+  boms: [{ id: 1, name: 'BOM - Sample lamp unit', product_id: 1, notes: null, updated_at: ts(5), bom_lines: [{ id: 1, component_name: 'LED module', quantity: 12, unit_cost: 25 }, { id: 2, component_name: 'Control board', quantity: 1, unit_cost: 900 }, { id: 3, component_name: 'Power supply', quantity: 1, unit_cost: 300 }, { id: 4, component_name: 'Frame and paint', quantity: 1, unit_cost: 650 }, { id: 5, component_name: 'Wheels and screws', quantity: 1, unit_cost: 120 }] }, { id: 2, name: 'BOM - Sample trolley', product_id: 2, notes: 'Draft', updated_at: ts(900), bom_lines: [{ quantity: 1, unit_cost: 450 }] }],
+  products: [{ product_id: 1, product_name: 'Sample lamp unit' }, { product_id: 2, product_name: 'Sample trolley' }],
   agent_settings: [{ voice_replies: false, auto_save_limit: 5000 }], app_members: [{ role: 'owner' }],
   agent_conversations: [{ id: 'c-1', title: 'بنزين وتاكسي وتحصيل دار الفؤاد', updated_at: ts(2) }, { id: 'c-2', title: 'تقرير مصاريف أكتوبر', updated_at: ts(3000) }],
 }
@@ -218,6 +222,7 @@ function Shell() {
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/projects/:id" element={<ProjectDetail />} />
                 <Route path="/agent" element={<AgentActivity />} />
+                <Route path="/boms" element={<BomsPage />} />
                 <Route path="*" element={<div className="p-6 space-x-3"><Link to="/money">money</Link><Link to="/projects">projects</Link><Link to="/agent">agent</Link></div>} />
               </Routes>
             </div>

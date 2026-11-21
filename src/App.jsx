@@ -24,6 +24,7 @@ const ProjectsPage = lazy(() => import('./components/projects/ProjectsPage'))
 const ProjectDetail = lazy(() => import('./components/projects/ProjectDetail'))
 const MoneyPage = lazy(() => import('./components/money/MoneyPage'))
 const AgentActivity = lazy(() => import('./components/agent/AgentActivity'))
+const BomsPage = lazy(() => import('./components/boms/BomsPage'))
 const AgentDock = lazy(() => import('./components/agent/AgentDock'))
 const Login = lazy(() => import('./components/Auth/Login'))
 const SignUp = lazy(() => import('./components/Auth/SignUp'))
@@ -62,6 +63,7 @@ const PAGE_TITLES = [
   ['/liabilities', 'nav.liabilities'],
   ['/money', 'nav.money'],
   ['/projects', 'nav.projects'],
+  ['/boms', 'nav.boms'],
   ['/agent', 'nav.agent'],
   ['/reports', 'nav.reports'],
   ['/compliance', 'nav.compliance'],
@@ -240,6 +242,7 @@ function AppContent() {
               <Route path="/money" element={<ProtectedRoute><ComplianceOnlyGuard><MoneyPage /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/projects" element={<ProtectedRoute><ComplianceOnlyGuard><ProjectsPage /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/projects/:id" element={<ProtectedRoute><ComplianceOnlyGuard><ProjectDetail /></ComplianceOnlyGuard></ProtectedRoute>} />
+              <Route path="/boms" element={<ProtectedRoute><ComplianceOnlyGuard><BomsPage /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/agent" element={<ProtectedRoute><ComplianceOnlyGuard><AgentActivity /></ComplianceOnlyGuard></ProtectedRoute>} />
               <Route path="/reports/pnl" element={<ProtectedRoute><ComplianceOnlyGuard><ProfitLossReport /></ComplianceOnlyGuard></ProtectedRoute>} />
 

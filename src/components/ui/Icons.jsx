@@ -60,6 +60,7 @@ import {
   TrendingDown,
   Activity,
   FolderKanban,
+  Layers,
   Sparkles,
   ClipboardList,
   
@@ -177,6 +178,7 @@ export {
   TrendingDown,
   Activity,
   FolderKanban,
+  Layers,
   Sparkles,
   ClipboardList,
   

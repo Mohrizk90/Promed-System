@@ -18,6 +18,8 @@ export const PAGES = {
   money: '/money',
   projects: '/projects',
   project: '/projects/:id',
+  boms: '/boms',
+  bom: '/boms?id=:id',
   agent_activity: '/agent',
   aging_report: '/reports/aging',
   profit_loss: '/reports/pnl',
@@ -511,7 +513,7 @@ export function createTools(ctx) {
     // ------------------------------------------------------------------ screen
     open_page: tool({
       description: 'Open a screen of the app for the owner (the app navigates there).',
-      inputSchema: z.object({ page: z.enum(Object.keys(PAGES)), id: z.number().int().optional().describe('For project / compliance pages') }),
+      inputSchema: z.object({ page: z.enum(Object.keys(PAGES)), id: z.number().int().optional().describe('For project / bom / compliance pages') }),
       execute: async ({ page, id }) => {
         let path = PAGES[page]
         if (path.includes(':id')) {

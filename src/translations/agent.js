@@ -56,7 +56,24 @@ const METHODS_AR = { cash: 'كاش', bank_transfer: 'تحويل بنكي', chequ
 
 export const agentTranslations = {
   en: {
-    nav: { projects: 'Projects', money: 'Money', agent: 'Agent activity' },
+    nav: { projects: 'Projects', money: 'Money', agent: 'Agent activity', boms: 'Bills of materials' },
+    boms: {
+      title: 'Bills of materials',
+      subtitle: 'What each device is made of and what one unit costs to build.',
+      new: 'New BOM', ask_agent: 'Ask the agent', search: 'Search BOMs or products…',
+      empty: 'No bills of materials yet.', empty_hint: 'Create one with "New BOM", or tell the agent what a device is made of.',
+      pick: 'Pick a BOM from the list.', back: 'All BOMs',
+      name: 'Name', product: 'Product', no_product: 'No product linked', notes: 'Notes',
+      save: 'Save', cancel: 'Cancel', edit: 'Edit', delete: 'Delete',
+      saved: 'Saved', deleted: 'BOM deleted', delete_confirm: 'Delete this bill of materials?',
+      n_lines: '{n} components',
+      component: 'Component', qty: 'Qty', unit_cost: 'Unit cost', line_total: 'Total',
+      new_component: 'Add a component…', add_line: 'Add component', delete_line: 'Remove component',
+      line_invalid: 'Enter a name, a quantity above 0 and a cost.',
+      unit_total: 'Cost of one unit', units: 'How many units?', order_total: 'Cost of {n} units',
+      edit_hint: 'Click any cell to change it; it saves when you leave the cell or press Enter.',
+    },
+
     mobileNav: { agent: 'Agent' },
     agent: {
       title: 'Promed Agent',
@@ -284,7 +301,24 @@ export const agentTranslations = {
     },
   },
   ar: {
-    nav: { projects: 'المشاريع', money: 'الفلوس', agent: 'نشاط المساعد' },
+    nav: { projects: 'المشاريع', money: 'الفلوس', agent: 'نشاط المساعد', boms: 'قوائم المكونات' },
+    boms: {
+      title: 'قوائم المكونات',
+      subtitle: 'كل جهاز متكون من إيه، وتكلفة تصنيع الجهاز الواحد.',
+      new: 'قائمة جديدة', ask_agent: 'اسأل المساعد', search: 'دوّر في القوايم أو المنتجات…',
+      empty: 'لسه مفيش قوايم مكونات.', empty_hint: 'اعمل واحدة من "قائمة جديدة"، أو قول للمساعد الجهاز متكون من إيه.',
+      pick: 'اختار قائمة من اللي على الجنب.', back: 'كل القوايم',
+      name: 'الاسم', product: 'المنتج', no_product: 'مش مربوطة بمنتج', notes: 'ملاحظات',
+      save: 'حفظ', cancel: 'إلغاء', edit: 'تعديل', delete: 'مسح',
+      saved: 'اتحفظ', deleted: 'القائمة اتمسحت', delete_confirm: 'تمسح قائمة المكونات دي؟',
+      n_lines: '{n} مكون',
+      component: 'المكون', qty: 'الكمية', unit_cost: 'سعر الوحدة', line_total: 'الإجمالي',
+      new_component: 'ضيف مكون…', add_line: 'إضافة مكون', delete_line: 'شيل المكون',
+      line_invalid: 'اكتب الاسم وكمية أكبر من صفر والسعر.',
+      unit_total: 'تكلفة الجهاز الواحد', units: 'كام جهاز؟', order_total: 'تكلفة {n} جهاز',
+      edit_hint: 'دوس على أي خانة وعدّلها؛ بتتحفظ أول ما تخرج منها أو تدوس Enter.',
+    },
+
     mobileNav: { agent: 'المساعد' },
     agent: {
       title: 'مساعد بروميد',

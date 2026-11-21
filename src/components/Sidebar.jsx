@@ -18,6 +18,7 @@ import {
   Activity,
   Wallet,
   FolderKanban,
+  Layers,
 } from './ui/Icons'
 import LanguageSwitcher from './LanguageSwitcher'
 import { InstallAppButton } from './PwaControls'
@@ -54,6 +55,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
     { path: '/products', label: t('nav.inventory'), icon: Package, shortcut: 'i', color: 'teal' },
     { path: '/money', label: t('nav.money'), icon: Wallet, shortcut: null, color: 'emerald' },
     { path: '/projects', label: t('nav.projects'), icon: FolderKanban, shortcut: null, color: 'violet' },
+    { path: '/boms', label: t('nav.boms'), icon: Layers, shortcut: null, color: 'teal' },
     { path: '/liabilities', label: t('nav.liabilities'), icon: CreditCard, shortcut: 'l', color: 'amber' },
     { path: '/compliance', label: t('nav.compliance'), icon: Shield, shortcut: 'm', color: 'rose' },
     { path: '/agent', label: t('nav.agent'), icon: Activity, shortcut: null, color: 'indigo' },
