@@ -2,24 +2,24 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import App from './App'
 
+// Without a session the app must land on the sign-in screen (every business page is protected).
 describe('App', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'localStorage', {
-      value: { getItem: () => 'en', setItem: () => {} },
-      writable: true
+      value: { getItem: (k) => (k === 'language' ? 'en' : null), setItem: () => {}, removeItem: () => {} },
+      writable: true,
     })
   })
 
-  it('renders Promed branding', () => {
+  it('shows the sign-in screen when nobody is logged in', async () => {
     render(<App />)
-    expect(screen.getByText('Promed')).toBeInTheDocument()
+    expect(await screen.findByText(/sign in with your promed account/i)).toBeInTheDocument()
+    expect(screen.getByAltText(/promed/i)).toBeInTheDocument()
   })
 
-  it('renders navigation links', () => {
+  it('does not render protected navigation before sign-in', async () => {
     render(<App />)
-    expect(screen.getAllByRole('link', { name: /dashboard/i }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: /client transactions/i }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: /supplier transactions/i }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: /clients & suppliers/i }).length).toBeGreaterThan(0)
+    await screen.findByText(/sign in with your promed account/i)
+    expect(screen.queryByRole('link', { name: /client transactions/i })).toBeNull()
   })
 })
