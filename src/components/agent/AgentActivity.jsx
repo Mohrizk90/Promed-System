@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Sparkles, Undo2, Check, X, Loader2, Mic, ChevronDown, Settings2 } from 'lucide-react'
+import { Sparkles, Undo2, Check, X, Loader2, Mic, ChevronDown, Settings2, Activity, CheckCircle2, XCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { agentAction } from '../../lib/agentApi'
+import { agentAction, agentErrorText, agentHealth } from '../../lib/agentApi'
 import { useLanguage } from '../../context/LanguageContext'
 import { useToast } from '../../context/ToastContext'
 import useDataChanged from '../../hooks/useDataChanged'
@@ -78,6 +78,55 @@ function SettingsCard() {
         <Button onClick={save} disabled={saving}>{t('activity.save')}</Button>
       </div>
       <p className="text-[11.5px] text-slate-500 mt-1.5">{t('activity.auto_limit_hint')}</p>
+    </div>
+  )
+}
+
+function HealthCard() {
+  const { t } = useLanguage()
+  const [state, setState] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const run = async () => {
+    setBusy(true)
+    try {
+      setState(await agentHealth())
+    } catch (e) {
+      setState({ ok: false, error: agentErrorText(e, t) })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div className="flex items-center gap-2 font-semibold text-[#0b2a55] mb-1"><Activity size={16} />{t('activity.health')}</div>
+      <p className="text-[11.5px] text-slate-500 mb-2.5">{t('activity.health_hint')}</p>
+      {state && (
+        <div className="mb-3 space-y-1.5">
+          <div className={`flex items-start gap-2 rounded-xl px-2.5 py-2 text-[12.5px] ring-1 ${state.ok ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-rose-50 text-rose-800 ring-rose-200'}`}>
+            {state.ok ? <CheckCircle2 size={15} className="mt-0.5 shrink-0" /> : <XCircle size={15} className="mt-0.5 shrink-0" />}
+            <span>{state.ok ? t('activity.health_ok') : (state.error || t(`agent.err_${state.code || 'generic'}`))}</span>
+          </div>
+          {(state.models || []).map((m) => (
+            <div key={m.role} className="flex items-center justify-between gap-2 text-[12px] text-slate-600">
+              <span className="min-w-0 truncate">{t(`activity.role_${m.role}`)} <span className="text-slate-400" dir="ltr">· {m.id}</span></span>
+              {m.ok
+                ? <span className="text-emerald-700 shrink-0">✓</span>
+                : <span className="text-rose-700 shrink-0" title={m.message}>✗ {m.status || ''}</span>}
+            </div>
+          ))}
+          {state.live && (
+            <div className="flex items-center justify-between gap-2 text-[12px] text-slate-600">
+              <span>{t('activity.health_live')}</span>
+              {state.live.ok
+                ? <span className="text-emerald-700" dir="ltr">✓ {(state.live.ms / 1000).toFixed(1)} s</span>
+                : <span className="text-rose-700" title={state.live.message}>✗ {state.live.status || ''}</span>}
+            </div>
+          )}
+        </div>
+      )}
+      <Button variant="secondary" onClick={run} disabled={busy}>
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}{t('activity.health_run')}
+      </Button>
     </div>
   )
 }
@@ -204,6 +253,7 @@ export default function AgentActivity() {
         </div>
         <div className="space-y-3">
           <SettingsCard />
+          <HealthCard />
         </div>
       </div>
     </div>

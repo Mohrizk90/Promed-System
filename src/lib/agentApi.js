@@ -12,12 +12,17 @@ export async function getAccessToken() {
 }
 
 async function readError(res) {
+  let message = res.statusText || `HTTP ${res.status}`
+  let code = null
   try {
     const j = await res.json()
-    return j?.error || res.statusText
-  } catch {
-    return res.statusText || `HTTP ${res.status}`
-  }
+    message = j?.error || message
+    code = j?.code || null
+  } catch { /* not JSON */ }
+  const err = new Error(message)
+  err.code = code
+  err.status = res.status
+  return err
 }
 
 async function postJson(path, body) {
@@ -26,8 +31,30 @@ async function postJson(path, body) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getAccessToken()}` },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(await readError(res))
+  if (!res.ok) throw await readError(res)
   return res
+}
+
+const KNOWN_CODES = ['key_missing', 'key_invalid', 'key_blocked', 'billing', 'quota', 'busy', 'model', 'network', 'generic']
+
+/** A failure from any agent call, in the owner's language. */
+export function agentErrorText(err, t) {
+  if (!err) return ''
+  const raw = String(err.message || err)
+  let code = err.code
+  if (!code) {
+    const m = raw.match(/AGENT_ERROR:(\w+)/) || raw.match(/"code"\s*:\s*"(\w+)"/)
+    code = m?.[1]
+  }
+  if (!code && /failed to fetch|networkerror|load failed/i.test(raw)) code = 'network'
+  if (code && KNOWN_CODES.includes(code)) return t(`agent.err_${code}`)
+  return raw && !/^AGENT_ERROR/.test(raw) && raw.length < 200 ? raw : t('agent.error_generic')
+}
+
+/** Checks the Gemini key and every model the agent uses. */
+export async function agentHealth() {
+  const res = await postJson('/api/agent/action', { op: 'health' })
+  return res.json()
 }
 
 /** Confirm / cancel / undo an agent action. */

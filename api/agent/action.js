@@ -1,6 +1,7 @@
 // POST /api/agent/action — the owner presses Confirm / Cancel / Undo on an agent card.
 import { authenticateRequest } from '../_lib/auth.js'
 import { readJsonBody, requireMember, sendError } from '../_lib/agent/http.js'
+import { checkGemini } from '../_lib/agent/health.js'
 
 export const config = { maxDuration: 30 }
 
@@ -12,6 +13,7 @@ export default async function handler(req, res) {
     const { userClient } = await authenticateRequest(req)
     await requireMember(userClient)
     const { op, actionId, force } = readJsonBody(req)
+    if (op === 'health') return res.status(200).json(await checkGemini())
     if (!UUID.test(actionId || '')) return res.status(400).json({ error: 'Invalid action id' })
 
     const call = async (fn, args) => {

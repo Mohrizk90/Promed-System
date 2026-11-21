@@ -4,7 +4,7 @@ import { DefaultChatTransport } from 'ai'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Mic, Square, Send, Paperclip, X, Loader2, AlertTriangle, FileText, Image as ImageIcon, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { AGENT_CHAT_URL, getAccessToken, notifyDataChanged, speak, transcribe, uploadAttachment } from '../../lib/agentApi'
+import { AGENT_CHAT_URL, agentErrorText, getAccessToken, notifyDataChanged, speak, transcribe, uploadAttachment } from '../../lib/agentApi'
 import { canRecord, startRecording } from '../../lib/audioRecorder'
 import MiniMarkdown from './MiniMarkdown'
 import { ActionCard, ActionStatusContext, ChartCard, ComplianceCard, SourcesCard, TableCard, ToolChip } from './AgentCards'
@@ -162,7 +162,7 @@ export default function AgentChat({ conversationId, initialMessages, user, t, la
       try {
         uploaded = await Promise.all(files.map((f) => uploadAttachment(f, user.id)))
       } catch (e) {
-        setLocalError(e.message)
+        setLocalError(agentErrorText(e, t))
         setUploading(false)
         return
       }
@@ -196,7 +196,7 @@ export default function AgentChat({ conversationId, initialMessages, user, t, la
         if (!text?.trim()) throw new Error(t('agent.no_speech'))
         await send(text, { voice: true })
       } catch (e) {
-        setLocalError(e.message)
+        setLocalError(agentErrorText(e, t))
       } finally {
         setTranscribing(false)
       }
@@ -208,7 +208,7 @@ export default function AgentChat({ conversationId, initialMessages, user, t, la
       setElapsed(0)
       setRec(r)
     } catch (e) {
-      setLocalError(e?.name === 'NotAllowedError' ? t('agent.mic_denied') : e.message)
+      setLocalError(e?.name === 'NotAllowedError' ? t('agent.mic_denied') : agentErrorText(e, t))
     }
   }
 
@@ -284,7 +284,7 @@ export default function AgentChat({ conversationId, initialMessages, user, t, la
           {(error || localError) && (
             <div className="rounded-2xl bg-rose-50/90 ring-1 ring-rose-200 px-3 py-2 text-[12.5px] text-rose-800 flex items-start gap-2">
               <AlertTriangle size={15} className="mt-0.5 shrink-0" />
-              <div className="flex-1">{localError || t('agent.error_generic')}</div>
+              <div className="flex-1">{localError || agentErrorText(error, t)}</div>
               {error && !localError && (
                 <button type="button" onClick={() => { clearError(); regenerate() }} className="inline-flex items-center gap-1 font-medium text-rose-700">
                   <RefreshCw size={13} />{t('agent.retry')}

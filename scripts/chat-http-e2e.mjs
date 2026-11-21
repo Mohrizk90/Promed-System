@@ -131,6 +131,24 @@ try {
   const cj = await c.json()
   check(cj.action?.status === 'applied', `confirm applies it (got ${cj.action?.status || cj.error})`)
 
+  console.log('Broken Gemini key → clear error code, not a generic failure')
+  const goodKey = process.env.GEMINI_API_KEY
+  process.env.GEMINI_API_KEY = 'AIzaSy-not-a-real-key-for-testing-000000'
+  try {
+    const rk = await fetch(`${base}/api/agent/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale: 'ar', messages: [{ id: 'u9', role: 'user', parts: [{ type: 'text', text: 'ازيك' }] }] }),
+    })
+    const raw = await rk.text()
+    check(/AGENT_ERROR:key_invalid/.test(raw), `stream says key_invalid (got ${(raw.match(/AGENT_ERROR:\w+/) || [rk.status])[0]})`)
+    const hk = await (await fetch(`${base}/api/agent/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'health' }) })).json()
+    check(hk.ok === false && hk.code === 'key_invalid', `health check reports key_invalid (got ${hk.code})`)
+  } finally {
+    process.env.GEMINI_API_KEY = goodKey
+  }
+  const hg = await (await fetch(`${base}/api/agent/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'health' }) })).json()
+  check(hg.ok === true && hg.models.every((m) => m.ok), `health check passes with the real key (${hg.models.map((m) => m.role).join(', ')})`)
+
   console.log('Bad request')
   const bad = await fetch(`${base}/api/agent/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [] }) })
   check(bad.status === 400, 'empty messages → 400')

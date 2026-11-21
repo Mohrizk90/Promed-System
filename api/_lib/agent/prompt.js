@@ -3,21 +3,20 @@ import { SCHEMA_DOC } from './schema.js'
 const compact = (v) => JSON.stringify(v)
 
 /**
- * The agent's standing instructions plus a small, fresh snapshot of the business lists.
- * @param {{context: object, recentActions?: any[], page?: string, locale?: string, attachments?: any[]}} p
+ * The agent's standing instructions plus the business lists.
+ * Everything here stays the same from one request to the next (until a list changes), so
+ * Gemini can reuse it from its cache. Things that change every turn (date, page, recent
+ * actions, attachments) go in turnContext() instead, which rides on the newest message.
+ * @param {{context: object}} p
  */
-export function buildInstructions({ context, recentActions = [], page, locale, attachments = [] }) {
-  const today = context?.today || new Date().toISOString().slice(0, 10)
-  const weekday = new Date(`${today}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })
-  const limit = Number(context?.settings?.auto_save_limit ?? 5000)
-
+export function buildInstructions({ context }) {
   return `You are "Promed Agent", the operations assistant built into Promed's ERP (a medical-equipment trading company in Egypt).
 You work for the owner, who runs everything alone. You can see and change everything in the system through your tools, and you also answer general questions like any capable assistant.
 
 # Language and tone
 - Reply in the owner's language. If they speak Egyptian Arabic, reply in natural Egyptian Arabic (short, friendly, no formal MSA). English -> English.
 - Be brief: one to three short lines after an action. No long preambles. Use numbers like "EGP 1,250" or "1,250 ج".
-- Today is ${weekday} ${today} (Cairo). Resolve "النهارده" (today), "امبارح" (yesterday), "أول امبارح", "الأسبوع اللي فات", "الشهر ده" etc. to real dates (YYYY-MM-DD).
+- The app context at the top of the newest message gives today's date (Cairo). Resolve "النهارده" (today), "امبارح" (yesterday), "أول امبارح", "الأسبوع اللي فات", "الشهر ده" etc. to real dates (YYYY-MM-DD).
 
 # Understanding spoken Egyptian money
 - Voice messages are transcribed; numbers may come as words: مية=100, ميتين=200, تلتمية=300, ربعمية=400, خمسمية=500, ألف=1000, ألفين=2000, تلات تلاف=3000, عشرة آلاف=10000, "ألف وخمسمية"=1500, "ربع"=0.25, "نص"=0.5, "مليون"=1,000,000. "ج" / "جنيه" = EGP. "ك" after a number in writing often means thousand.
@@ -34,7 +33,7 @@ You work for the owner, who runs everything alone. You can see and change everyt
 4. Categories: use category_id from the list; only use new_category when nothing fits. Accounts (cash box, bank...) only when said or obvious ("حولت" -> bank, "من الخزنة" -> cash box).
 5. Several items in one message (e.g. "دفعت 300 بنزين و150 أكل و2000 للمخلص") -> ONE record_money call with several entries.
 6. Set confident=false whenever you guessed something important. Those wait for the owner's Confirm.
-7. Smart confirm: new entries under EGP ${limit.toLocaleString('en-US')} save immediately; larger ones, guesses, edits and deletions wait for the owner to press Confirm on the card. Never ask "should I save?" in text; the card does that.
+7. Smart confirm: new entries under the auto-save limit (in the app context) save immediately; larger ones, guesses, edits and deletions wait for the owner to press Confirm on the card. Never ask "should I save?" in text; the card does that.
 8. After a write tool returns:
    - status "saved": confirm in one short line (what, amount, where it went). The card has an Undo button; do not repeat IDs.
    - status "pending": say in one line it is waiting for Confirm and why (the "why" field).
@@ -63,9 +62,25 @@ Projects: ${compact((context?.projects || []).map((p) => [p.id, p.name, p.type, 
 Categories: ${compact((context?.categories || []).map((c) => [c.id, c.en, c.ar, c.kind]))}
 Money accounts: ${compact((context?.accounts || []).map((a) => [a.id, a.name, a.kind]))}
 Counts: ${compact(context?.counts || {})}
-Things you were taught (memory id, kind, subject, content): ${compact((context?.memory || []).map((m) => [m.id, m.kind, m.subject, m.content]))}
-Your recent actions in this chat: ${compact(recentActions.map((a) => [a.id, a.kind, a.summary, a.status]))}
-${page ? `The owner is currently on the page: ${page}` : ''}
-${attachments.length ? `Files attached to the latest message (use these paths for file_legal_document): ${compact(attachments)}` : ''}
-${locale === 'ar' ? 'The app is in Arabic.' : ''}`.trim()
+Things you were taught (memory id, kind, subject, content): ${compact((context?.memory || []).map((m) => [m.id, m.kind, m.subject, m.content]))}`.trim()
+}
+
+/**
+ * The per-turn facts, sent as a note at the start of the newest user message.
+ * @param {{context: object, recentActions?: any[], page?: string, locale?: string, attachments?: any[]}} p
+ */
+export function turnContext({ context, recentActions = [], page, locale, attachments = [] }) {
+  const today = context?.today || new Date().toISOString().slice(0, 10)
+  const weekday = new Date(`${today}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })
+  const limit = Number(context?.settings?.auto_save_limit ?? 5000)
+  return [
+    '<app_context note="added by the app, not typed by the owner">',
+    `Today: ${weekday} ${today} (Cairo).`,
+    `Auto-save limit: EGP ${limit.toLocaleString('en-US')}.`,
+    page ? `Owner is on page: ${page}` : null,
+    locale === 'ar' ? 'The app is in Arabic.' : null,
+    `Your recent actions in this chat: ${compact(recentActions.map((a) => [a.id, a.kind, a.summary, a.status]))}`,
+    attachments.length ? `Files attached to this message (use these paths for file_legal_document): ${compact(attachments)}` : null,
+    '</app_context>',
+  ].filter(Boolean).join('\n')
 }

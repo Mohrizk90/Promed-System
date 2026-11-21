@@ -65,3 +65,16 @@ describe('agent translations', () => {
     expect(names.filter((n) => !get('ar', `agent.tool_${n}`))).toEqual([])
   })
 })
+
+describe('agentErrorText', () => {
+  it('turns server codes into the owner language', async () => {
+    const { agentErrorText } = await import('../../lib/agentApi')
+    const t = (k) => `T:${k}`
+    expect(agentErrorText(new Error('AGENT_ERROR:key_invalid'), t)).toBe('T:agent.err_key_invalid')
+    expect(agentErrorText(new Error('{"error":"API key not valid","code":"key_invalid"}'), t)).toBe('T:agent.err_key_invalid')
+    expect(agentErrorText(Object.assign(new Error('x'), { code: 'quota' }), t)).toBe('T:agent.err_quota')
+    expect(agentErrorText(new TypeError('Failed to fetch'), t)).toBe('T:agent.err_network')
+    expect(agentErrorText(new Error('AGENT_ERROR:generic'), t)).toBe('T:agent.err_generic')
+    expect(agentErrorText(new Error('Recording was too short'), t)).toBe('Recording was too short')
+  })
+})

@@ -126,3 +126,19 @@ describe('speakableText', () => {
     expect(speakableText('a'.repeat(2000))).toHaveLength(700)
   })
 })
+
+describe('aiErrorCode', () => {
+  it('names Gemini key, quota and model failures', async () => {
+    const { aiErrorCode, streamErrorText } = await import('./errors.js')
+    expect(aiErrorCode({ statusCode: 400, message: 'API key not valid. Please pass a valid API key.' })).toBe('key_invalid')
+    expect(aiErrorCode({ message: 'API key expired. Please renew the API key.' })).toBe('key_invalid')
+    expect(aiErrorCode(new Error('GEMINI_API_KEY is not set on the server'))).toBe('key_missing')
+    expect(aiErrorCode({ statusCode: 403, message: 'Requests from this API are blocked' })).toBe('key_blocked')
+    expect(aiErrorCode({ statusCode: 429, message: 'Resource has been exhausted (e.g. check quota).' })).toBe('quota')
+    expect(aiErrorCode({ message: 'Failed after 2 attempts', lastError: { statusCode: 503, message: 'The model is overloaded' } })).toBe('busy')
+    expect(aiErrorCode({ statusCode: 404, message: 'models/x is not found for API version v1beta' })).toBe('model')
+    expect(aiErrorCode(new TypeError('fetch failed'))).toBe('network')
+    expect(aiErrorCode(new Error('column "x" does not exist'))).toBe(null)
+    expect(streamErrorText(new Error('weird'))).toBe('AGENT_ERROR:generic')
+  })
+})

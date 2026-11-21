@@ -1,4 +1,5 @@
 import { HttpError } from '../auth.js'
+import { aiErrorCode } from './errors.js'
 
 export function readJsonBody(req) {
   if (req.body && typeof req.body === 'object') return req.body
@@ -9,10 +10,13 @@ export function readJsonBody(req) {
 }
 
 export function sendError(res, err, tag) {
-  const status = err instanceof HttpError ? err.status : (err?.status && Number(err.status) < 600 ? Number(err.status) : 500)
+  const code = err instanceof HttpError ? null : aiErrorCode(err)
+  const status = err instanceof HttpError ? err.status
+    : code ? 502
+      : (err?.status && Number(err.status) < 600 ? Number(err.status) : 500)
   const message = err?.message || 'Something went wrong'
-  console.error(`[${tag}]`, status, message)
-  if (!res.headersSent) res.status(status).json({ error: message })
+  console.error(`[${tag}]`, status, code || '', message)
+  if (!res.headersSent) res.status(status).json(code ? { error: message, code } : { error: message })
 }
 
 /** The agent is for company members only (and today: the owner). */

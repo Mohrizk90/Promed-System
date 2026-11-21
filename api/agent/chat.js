@@ -6,6 +6,7 @@ import { runAgent } from '../_lib/agent/run.js'
 import { getGoogle } from '../_lib/agent/models.js'
 import { readJsonBody, requireMember, sendError } from '../_lib/agent/http.js'
 import { extractDocumentForUser } from '../_lib/extraction/runner.js'
+import { aiErrorCode, streamErrorText } from '../_lib/agent/errors.js'
 
 export const config = { maxDuration: 120 }
 
@@ -50,6 +51,10 @@ export default async function handler(req, res) {
         stream: result.stream,
         originalMessages: messages,
         generateMessageId: createIdGenerator({ prefix: 'msg', size: 16 }),
+        onError: (err) => {
+          console.error('[agent/chat] stream error', aiErrorCode(err) || '', err?.message || err)
+          return streamErrorText(err)
+        },
         onEnd: async ({ messages: all }) => {
           if (!conversationId) return
           const rows = all.slice(-2).map((m) => ({

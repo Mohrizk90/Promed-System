@@ -1,6 +1,6 @@
 // One agent turn: shared by the HTTP handler and the evaluation tests.
 import { convertToModelMessages, isStepCount, streamText } from 'ai'
-import { buildInstructions } from './prompt.js'
+import { buildInstructions, turnContext } from './prompt.js'
 import { createTools } from './tools.js'
 import { modelWithFallback, MODELS } from './models.js'
 
@@ -24,6 +24,20 @@ export function prepareUiMessages(messages = []) {
     })
     return { ...m, parts }
   })
+}
+
+/**
+ * Put the per-turn app context in front of the newest user message. Earlier messages stay
+ * byte-for-byte the same between turns, so Gemini can serve them from its cache.
+ */
+export function withTurnContext(modelMessages, note) {
+  const idx = modelMessages.map((m) => m.role).lastIndexOf('user')
+  if (idx < 0) return modelMessages
+  const msg = modelMessages[idx]
+  const parts = typeof msg.content === 'string' ? [{ type: 'text', text: msg.content }] : msg.content
+  const out = modelMessages.slice()
+  out[idx] = { ...msg, content: [{ type: 'text', text: note }, ...parts] }
+  return out
 }
 
 /**
@@ -60,8 +74,11 @@ export async function runAgent(o) {
 
   return streamText({
     model: modelWithFallback(google, o.model || MODELS.main),
-    instructions: buildInstructions({ context, recentActions, page: o.page, locale: o.locale, attachments }),
-    messages: await convertToModelMessages(prepareUiMessages(o.messages), { tools, ignoreIncompleteToolCalls: true }),
+    instructions: buildInstructions({ context }),
+    messages: withTurnContext(
+      await convertToModelMessages(prepareUiMessages(o.messages), { tools, ignoreIncompleteToolCalls: true }),
+      turnContext({ context, recentActions, page: o.page, locale: o.locale, attachments }),
+    ),
     tools,
     stopWhen: isStepCount(12),
     maxRetries: 1,
