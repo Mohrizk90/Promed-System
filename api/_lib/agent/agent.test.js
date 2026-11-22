@@ -142,3 +142,20 @@ describe('aiErrorCode', () => {
     expect(streamErrorText(new Error('weird'))).toBe('AGENT_ERROR:generic')
   })
 })
+
+describe('prompt rules for editing sales', () => {
+  it('tells the agent which sale fields update_record accepts (matches the DB registry)', async () => {
+    const fs = await import('node:fs')
+    const { buildInstructions } = await import('./prompt.js')
+    const sql = fs.readFileSync(`${process.cwd()}/db/migrations/0004_agent_core.sql`, 'utf8')
+    const row = sql.match(/\('client_transactions', 'transaction_id', 'Sale', 'عملية بيع', null, array\[([^\]]+)\]/)
+    const cols = row[1].replace(/'/g, '').split(',').map((s) => s.trim())
+    // amounts and taxes are not editable, so the prompt must route those through delete + re-record
+    for (const c of ['vat_rate', 'wht_rate', 'total_amount', 'paid_amount']) expect(cols).not.toContain(c)
+    const text = buildInstructions({ context: {} })
+    expect(text).toMatch(/update_record can only change status, invoice numbers, dates and payment terms/)
+    expect(text).toMatch(/delete_record the old one and record it again/)
+    expect(text).toMatch(/receive_client_payment for the remaining amount/)
+    expect(text).toMatch(/do not create it again/)
+  })
+})
