@@ -30,3 +30,6 @@ dist-ssr
 .env.development.local
 .vercel
 test-results/
+
+# Daily review reports (business data, never commit)
+.daily-review/
