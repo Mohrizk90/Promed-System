@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Sparkles, Undo2, Check, X, Loader2, Mic, ChevronDown, Settings2, Activity, CheckCircle2, XCircle } from 'lucide-react'
+import { Sparkles, Undo2, Check, X, Loader2, Mic, ChevronDown, Settings2, Activity, CheckCircle2, XCircle, Coins } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { agentAction, agentErrorText, agentHealth } from '../../lib/agentApi'
 import { useLanguage } from '../../context/LanguageContext'
@@ -78,6 +78,92 @@ function SettingsCard() {
         <Button onClick={save} disabled={saving}>{t('activity.save')}</Button>
       </div>
       <p className="text-[11.5px] text-slate-500 mt-1.5">{t('activity.auto_limit_hint')}</p>
+    </div>
+  )
+}
+
+const usd = (v) => {
+  const n = Number(v || 0)
+  return `$${n === 0 ? '0' : n < 1 ? n.toFixed(3) : n.toFixed(2)}`
+}
+
+function CostCard() {
+  const { t } = useLanguage()
+  const [month, setMonth] = useState(null)
+  const [last30, setLast30] = useState(null)
+  const load = useCallback(async () => {
+    const from30 = new Date(Date.now() - 29 * 86400e3).toISOString().slice(0, 10)
+    const [m, l] = await Promise.all([
+      supabase.rpc('ai_usage_summary', { p_from: null, p_to: null }),
+      supabase.rpc('ai_usage_summary', { p_from: from30, p_to: null }),
+    ])
+    setMonth(m.data || { calls: 0, by_feature: [] })
+    setLast30(l.data || null)
+  }, [])
+  useEffect(() => { load() }, [load])
+  useDataChanged(load)
+
+  const days = useMemo(() => {
+    const map = Object.fromEntries((last30?.by_day || []).map((d) => [d.day, Number(d.usd)]))
+    return Array.from({ length: 30 }, (_, i) => {
+      const day = new Date(Date.now() - (29 - i) * 86400e3).toISOString().slice(0, 10)
+      return { day, usd: map[day] || 0 }
+    })
+  }, [last30])
+  const maxDay = Math.max(...days.map((d) => d.usd), 0.0001)
+  const maxFeature = Math.max(...(month?.by_feature || []).map((f) => Number(f.usd)), 0.0001)
+
+  return (
+    <div className="glass rounded-2xl p-4">
+      <div className="flex items-center gap-2 font-semibold text-[#0b2a55] mb-1"><Coins size={16} />{t('activity.costs')}</div>
+      <p className="text-[11.5px] text-slate-500 mb-3">{t('activity.costs_hint')}</p>
+      {!month ? (
+        <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-slate-400" /></div>
+      ) : Number(month.calls || 0) === 0 && Number(last30?.calls || 0) === 0 ? (
+        <p className="text-[12.5px] text-slate-600">{t('activity.costs_empty')}</p>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-white/60 ring-1 ring-slate-200/70 px-3 py-2">
+              <div className="text-[11.5px] text-slate-500">{t('activity.costs_month')}</div>
+              <div className="text-lg font-bold text-[#0b2a55] tabular-nums" dir="ltr">{usd(month.total_usd)}</div>
+              <div className="text-[11px] text-slate-400">{t('activity.costs_calls', { n: month.calls })}</div>
+            </div>
+            <div className="rounded-xl bg-white/60 ring-1 ring-slate-200/70 px-3 py-2">
+              <div className="text-[11.5px] text-slate-500">{t('activity.costs_today')}</div>
+              <div className="text-lg font-bold text-[#0b2a55] tabular-nums" dir="ltr">{usd(month.today_usd)}</div>
+              <div className="text-[11px] text-slate-400">{t('activity.costs_last30')}: <span dir="ltr">{usd(last30?.total_usd)}</span></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[11.5px] text-slate-500 mb-1">{t('activity.costs_last30')}</div>
+            <div className="flex items-end gap-[2px] h-14" dir="ltr" role="img" aria-label={t('activity.costs_last30')}>
+              {days.map((d) => (
+                <div key={d.day} className="flex-1 rounded-t bg-blue-500/80 hover:bg-blue-600" style={{ height: `${Math.max(d.usd > 0 ? 6 : 2, (d.usd / maxDay) * 100)}%`, opacity: d.usd > 0 ? 1 : 0.25 }} title={`${d.day}: ${usd(d.usd)}`} />
+              ))}
+            </div>
+          </div>
+
+          {(month.by_feature || []).length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[11.5px] text-slate-500">{t('activity.costs_by_feature')}</div>
+              {month.by_feature.map((f) => (
+                <div key={f.feature} className="text-[12px]">
+                  <div className="flex justify-between gap-2 text-slate-700">
+                    <span>{t(`activity.feature_${f.feature}`)} <span className="text-slate-400">· {t('activity.costs_calls', { n: f.calls })}</span></span>
+                    <span className="tabular-nums font-medium" dir="ltr">{usd(f.usd)}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-slate-200/70 mt-0.5 overflow-hidden">
+                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(Number(f.usd) / maxFeature) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {Number(month.unpriced_calls) > 0 && <p className="text-[11px] text-amber-700">{t('activity.costs_unpriced', { n: month.unpriced_calls })}</p>}
+        </div>
+      )}
     </div>
   )
 }
@@ -252,6 +338,7 @@ export default function AgentActivity() {
           ))}
         </div>
         <div className="space-y-3">
+          <CostCard />
           <SettingsCard />
           <HealthCard />
         </div>

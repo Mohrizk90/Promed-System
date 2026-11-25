@@ -3,6 +3,7 @@ import { generateText } from 'ai'
 import { authenticateRequest } from '../_lib/auth.js'
 import { getGoogle, isRetryable, MODELS } from '../_lib/agent/models.js'
 import { readJsonBody, requireMember, sendError } from '../_lib/agent/http.js'
+import { createUsageLog, supabaseSaver } from '../_lib/agent/usage.js'
 
 export const config = { maxDuration: 60 }
 
@@ -23,13 +24,13 @@ async function transcribe(google, modelId, data, mediaType, names) {
     ? `
 Company names you may hear (only use one of these spellings if you clearly hear that name; never insert a name that was not said): ${names.join(' · ')}`
     : ''
-  const { text } = await generateText({
+  const { text, usage, response } = await generateText({
     model: google(modelId),
     maxRetries: 1,
     temperature: 0,
     messages: [{ role: 'user', content: [{ type: 'text', text: TRANSCRIBE_PROMPT + hint }, { type: 'file', data, mediaType }] }],
   })
-  return text.trim()
+  return { text: text.trim(), usage, model: response?.modelId || modelId }
 }
 
 /** Company vocabulary: clients, suppliers, products, projects (helps with names). */
@@ -47,10 +48,12 @@ export async function loadNameHints(rpc) {
 
 export async function transcribeAudio(google, data, mediaType, names = []) {
   try {
-    return { text: await transcribe(google, MODELS.transcribe, data, mediaType, names), model: MODELS.transcribe }
+    const r = await transcribe(google, MODELS.transcribe, data, mediaType, names)
+    return { text: r.text, model: MODELS.transcribe, usage: r.usage }
   } catch (e) {
     if (!isRetryable(e) && !/not found|not supported|invalid/i.test(e.message || '')) throw e
-    return { text: await transcribe(google, MODELS.transcribeFallback, data, mediaType, names), model: MODELS.transcribeFallback }
+    const r = await transcribe(google, MODELS.transcribeFallback, data, mediaType, names)
+    return { text: r.text, model: MODELS.transcribeFallback, usage: r.usage }
   }
 }
 
@@ -73,7 +76,10 @@ export default async function handler(req, res) {
     })
     const out = await transcribeAudio(getGoogle(), audio, mediaType.split(';')[0], names)
     console.info(`[agent/transcribe] ${audio.length} bytes -> ${out.text.length} chars via ${out.model} in ${Date.now() - started} ms`)
-    return res.status(200).json(out)
+    const log = createUsageLog({ save: supabaseSaver(userClient) })
+    log.report({ feature: 'transcribe', model: out.model, usage: out.usage, meta: { bytes: audio.length } })
+    await log.flush()
+    return res.status(200).json({ text: out.text, model: out.model })
   } catch (err) {
     sendError(res, err, 'agent/transcribe')
   }

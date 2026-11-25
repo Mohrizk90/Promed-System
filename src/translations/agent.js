@@ -35,7 +35,7 @@ const TOOLS_EN = {
   record_purchase: 'Recording purchase', create_project: 'Creating project', create_project_type: 'Creating project type',
   link_to_project: 'Linking to project', create_record: 'Creating record', update_record: 'Editing record',
   delete_record: 'Deleting record', undo_action: 'Undoing', remember: 'Remembering', forget: 'Forgetting',
-  agent_settings: 'Updating settings', open_page: 'Opening page', show_table: 'Preparing table', show_chart: 'Drawing chart',
+  ai_costs: 'Checking AI costs', agent_settings: 'Updating settings', open_page: 'Opening page', show_table: 'Preparing table', show_chart: 'Drawing chart',
   file_legal_document: 'Filing legal document', scan_compliance_document: 'Scanning document', web_search: 'Searching the web',
 }
 const TOOLS_AR = {
@@ -47,7 +47,7 @@ const TOOLS_AR = {
   record_purchase: 'بسجّل شراء', create_project: 'بعمل مشروع', create_project_type: 'بعمل نوع مشروع',
   link_to_project: 'بربط بالمشروع', create_record: 'بضيف سجل', update_record: 'بعدّل سجل',
   delete_record: 'بمسح سجل', undo_action: 'بتراجع', remember: 'بحفظ المعلومة', forget: 'بنسى المعلومة',
-  agent_settings: 'بغيّر الإعدادات', open_page: 'بفتح الصفحة', show_table: 'بجهّز جدول', show_chart: 'برسم شارت',
+  ai_costs: 'بحسب تكلفة الذكاء الاصطناعي', agent_settings: 'بغيّر الإعدادات', open_page: 'بفتح الصفحة', show_table: 'بجهّز جدول', show_chart: 'برسم شارت',
   file_legal_document: 'بحفظ المستند القانوني', scan_compliance_document: 'بقرا المستند', web_search: 'بدوّر على النت',
 }
 
@@ -175,6 +175,12 @@ export const agentTranslations = {
     },
     activity: {
       title: 'Agent activity',
+      costs: 'AI costs (Gemini)',
+      costs_hint: 'Estimated from every call’s tokens and Google’s published prices. The real bill is in Google AI Studio.',
+      costs_month: 'This month', costs_today: 'Today', costs_calls: '{n} calls',
+      costs_last30: 'Last 30 days', costs_by_feature: 'By use', costs_empty: 'No usage recorded yet. It starts counting from now.',
+      costs_unpriced: '{n} calls with no price on file',
+      feature_chat: 'Chat', feature_transcribe: 'Voice to text', feature_speak: 'Read aloud', feature_web_search: 'Web search', feature_document_scan: 'Document scans', feature_other: 'Other',
       health: 'Check connection',
       health_hint: 'Tests the Gemini key and every model the agent uses (costs almost nothing).',
       health_run: 'Check now',
@@ -420,6 +426,12 @@ export const agentTranslations = {
     },
     activity: {
       title: 'نشاط المساعد',
+      costs: 'تكلفة الذكاء الاصطناعي (Gemini)',
+      costs_hint: 'تقديرية من عدد التوكنز في كل طلب وأسعار جوجل المعلنة. الفاتورة الحقيقية في Google AI Studio.',
+      costs_month: 'الشهر ده', costs_today: 'النهارده', costs_calls: '{n} طلب',
+      costs_last30: 'آخر 30 يوم', costs_by_feature: 'حسب الاستخدام', costs_empty: 'لسه مفيش استهلاك متسجل. العداد بيبدأ من دلوقتي.',
+      costs_unpriced: '{n} طلب ملوش سعر مسجل',
+      feature_chat: 'المحادثة', feature_transcribe: 'تحويل الصوت لكلام', feature_speak: 'القراءة بصوت', feature_web_search: 'البحث في النت', feature_document_scan: 'قراءة المستندات', feature_other: 'تاني',
       health: 'فحص الاتصال',
       health_hint: 'بيجرب مفتاح Gemini وكل موديل المساعد بيستخدمه (تكلفته تقريبًا صفر).',
       health_run: 'افحص دلوقتي',

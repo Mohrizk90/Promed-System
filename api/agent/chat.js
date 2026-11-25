@@ -7,6 +7,7 @@ import { getGoogle } from '../_lib/agent/models.js'
 import { readJsonBody, requireMember, sendError } from '../_lib/agent/http.js'
 import { extractDocumentForUser } from '../_lib/extraction/runner.js'
 import { aiErrorCode, streamErrorText } from '../_lib/agent/errors.js'
+import { createUsageLog, supabaseSaver } from '../_lib/agent/usage.js'
 
 export const config = { maxDuration: 120 }
 
@@ -34,7 +35,9 @@ export default async function handler(req, res) {
     }
 
     const db = supabaseDb(userClient)
+    const usage = createUsageLog({ save: supabaseSaver(userClient), conversationId })
     const result = await runAgent({
+      usage,
       db,
       getGoogle,
       messages,
@@ -42,7 +45,7 @@ export default async function handler(req, res) {
       voiceText: typeof body.voiceText === 'string' ? body.voiceText.slice(0, 4000) : null,
       page: typeof body.page === 'string' ? body.page.slice(0, 200) : null,
       locale: body.locale === 'ar' ? 'ar' : 'en',
-      extractDocument: async (documentId) => extractDocumentForUser({ documentId, user, outputLocale: body.locale === 'ar' ? 'ar' : 'en' }),
+      extractDocument: async (documentId) => extractDocumentForUser({ documentId, user, outputLocale: body.locale === 'ar' ? 'ar' : 'en', onUsage: usage.report }),
     })
 
     await pipeUIMessageStreamToResponse({
@@ -56,6 +59,14 @@ export default async function handler(req, res) {
           return streamErrorText(err)
         },
         onEnd: async ({ messages: all }) => {
+          try {
+            for (const step of await result.steps) {
+              usage.report({ feature: 'chat', model: step.response?.modelId || step.model?.modelId, usage: step.usage })
+            }
+          } catch (e) {
+            console.error('[agent/chat] usage read failed', e.message)
+          }
+          await usage.flush()
           if (!conversationId) return
           const rows = all.slice(-2).map((m) => ({
             conversation_id: conversationId, message_id: m.id, role: m.role, parts: m.parts, created_at: new Date().toISOString(),

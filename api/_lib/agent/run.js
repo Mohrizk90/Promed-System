@@ -52,6 +52,7 @@ export function withTurnContext(modelMessages, note) {
  * @param {Function} [o.extractDocument]
  * @param {string} [o.model]          override model id (evals)
  * @param {AbortSignal} [o.abortSignal]
+ * @param {{report: Function}} [o.usage]  Gemini usage log (web search reports into it)
  */
 export async function runAgent(o) {
   const [context, recentActions] = await Promise.all([
@@ -70,6 +71,7 @@ export async function runAgent(o) {
     lists: context || {},
     getGoogle: o.getGoogle,
     extractDocument: o.extractDocument,
+    usage: o.usage,
   })
 
   return streamText({

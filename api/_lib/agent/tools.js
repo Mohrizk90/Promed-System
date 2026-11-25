@@ -502,6 +502,15 @@ export function createTools(ctx) {
       },
     }),
 
+    ai_costs: tool({
+      description: 'How much Gemini (the AI behind you: chat, voice, read-aloud, web search, document scans) has cost, in USD, for a date range (default: this month). Estimates from published prices; the real bill is in Google AI Studio. Use for "صرفنا كام على جيميناي / الذكاء الاصطناعي".',
+      inputSchema: z.object({
+        from: z.string().optional().describe('YYYY-MM-DD, default first day of this month'),
+        to: z.string().optional().describe('YYYY-MM-DD, default today'),
+      }),
+      execute: async ({ from, to }) => ({ costs: await rpc('ai_usage_summary', { p_from: from || null, p_to: to || null }), currency: 'USD', note: 'Estimated from token counts and published Gemini prices' }),
+    }),
+
     agent_settings: tool({
       description: 'Change the agent\'s own settings: auto-save limit in EGP (0 = always ask) or spoken replies on/off.',
       inputSchema: z.object({ auto_save_limit: z.number().optional(), voice_replies: z.boolean().optional() }),
@@ -585,12 +594,13 @@ export function createTools(ctx) {
       execute: async ({ query }) => {
         if (!ctx.getGoogle) return { error: 'Web search is not available here' }
         const google = ctx.getGoogle()
-        const { text, sources } = await generateText({
+        const { text, sources, usage, response } = await generateText({
           model: google(MODELS.search),
           tools: { google_search: google.tools.googleSearch({}) },
           prompt: `Search the web and answer concisely with facts and dates: ${query}`,
           maxRetries: 1,
         })
+        ctx.usage?.report({ feature: 'web_search', model: response?.modelId || MODELS.search, usage })
         return { answer: text, sources: (sources || []).slice(0, 6).map((s) => ({ title: s.title, url: s.url })) }
       },
     }),

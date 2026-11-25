@@ -190,6 +190,13 @@ function patchSupabase() {
   supabase.from = builder
   supabase.rpc = async (fn, args) => {
     if (fn === 'project_overview') return { data: overview(args.p_project), error: null }
+    if (fn === 'ai_usage_summary') {
+      const by_day = Array.from({ length: 30 }, (_, i) => ({ day: new Date(Date.now() - i * 86400e3).toISOString().slice(0, 10), usd: i % 6 === 5 ? 0 : 0.2 + ((i * 7) % 5) * 0.15, calls: 20 }))
+      return { data: {
+        total_usd: 6.42, today_usd: 0.31, calls: 512, unpriced_calls: 0, by_day,
+        by_feature: [{ feature: 'chat', calls: 410, usd: 5.1 }, { feature: 'transcribe', calls: 60, usd: 0.48 }, { feature: 'document_scan', calls: 12, usd: 0.5 }, { feature: 'speak', calls: 22, usd: 0.24 }, { feature: 'web_search', calls: 8, usd: 0.1 }],
+      }, error: null }
+    }
     return { data: null, error: null }
   }
   supabase.auth.getSession = async () => ({ data: { session } })

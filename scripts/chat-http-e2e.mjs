@@ -34,6 +34,14 @@ const userClient = {
     try { return { data: await pgRpc.rpc(fn, args), error: null } } catch (e) { return { data: null, error: { message: e.message } } }
   },
   from: (table) => ({
+    insert: async (rows) => {
+      if (table !== 'ai_usage') throw new Error('unsupported in test stub')
+      for (const r of rows) {
+        await client.query('insert into ai_usage (feature, model, conversation_id, input_tokens, cached_tokens, output_tokens, reasoning_tokens, meta) values ($1,$2,$3,$4,$5,$6,$7,$8)',
+          [r.feature, r.model, r.conversation_id, r.input_tokens, r.cached_tokens, r.output_tokens, r.reasoning_tokens, r.meta ? JSON.stringify(r.meta) : null])
+      }
+      return { error: null }
+    },
     select: (cols) => ({
       eq: (col, val) => ({
         maybeSingle: async () => {
@@ -108,6 +116,8 @@ try {
   console.log(`    ${((Date.now() - t0) / 1000).toFixed(1)} s`)
   await new Promise((ok) => setTimeout(ok, 300))
   check(saved.length === 2 && saved[1].role === 'assistant', 'conversation saved (user + assistant)')
+  const used = (await client.query("select count(*)::int n, sum(input_tokens)::int input, sum(cost_usd)::float usd from ai_usage where conversation_id = $1 and feature = 'chat'", [conversationId])).rows[0]
+  check(used.n >= 1 && used.input > 0 && used.usd > 0, `Gemini usage logged with a cost (${used.n} calls, ${used.input} input tokens, $${(used.usd || 0).toFixed(5)})`)
   const actionId = out?.output?.action_id
   const entry = (await client.query(`select e.amount, e.voice_text, e.source from agent_changes c join ledger_entries e on e.id = c.pk_val::bigint where c.action_id = $1 and c.table_name = 'ledger_entries'`, [actionId])).rows[0]
   check(Number(entry?.amount) === 180 && entry?.source === 'agent', 'ledger entry written with source = agent')

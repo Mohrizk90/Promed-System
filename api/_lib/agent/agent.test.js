@@ -143,6 +143,36 @@ describe('aiErrorCode', () => {
   })
 })
 
+describe('AI usage log', () => {
+  it('maps SDK and raw Gemini usage into rows', async () => {
+    const { createUsageLog, fromGeminiMetadata } = await import('./usage.js')
+    const saved = []
+    const log = createUsageLog({ save: async (rows) => { saved.push(...rows) }, conversationId: 'c1' })
+    log.report({ feature: 'chat', model: 'models/gemini-3.8-flash', usage: { inputTokens: 10000, inputTokenDetails: { cacheReadTokens: 8000 }, outputTokens: 120, outputTokenDetails: { reasoningTokens: 20 } } })
+    log.report({ feature: 'document_scan', model: 'gemini-2.5-flash', usage: fromGeminiMetadata({ promptTokenCount: 900, candidatesTokenCount: 50, thoughtsTokenCount: 30 }) })
+    log.report({ feature: 'nonsense', model: 'x', usage: { inputTokens: -5 } })
+    await log.flush()
+    expect(saved[0]).toMatchObject({ feature: 'chat', model: 'gemini-3.8-flash', conversation_id: 'c1', input_tokens: 10000, cached_tokens: 8000, output_tokens: 120, reasoning_tokens: 20 })
+    expect(saved[1]).toMatchObject({ feature: 'document_scan', input_tokens: 900, output_tokens: 80, reasoning_tokens: 30 })
+    expect(saved[2]).toMatchObject({ feature: 'other', input_tokens: 0 })
+    await log.flush()
+    expect(saved).toHaveLength(3)
+  })
+  it('never breaks the request when saving fails', async () => {
+    const { createUsageLog } = await import('./usage.js')
+    const log = createUsageLog({ save: async () => { throw new Error('db down') } })
+    log.report({ feature: 'chat', model: 'm', usage: {} })
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(log.flush()).resolves.toBeUndefined()
+    spy.mockRestore()
+  })
+  it('estimates read-aloud tokens from audio length', async () => {
+    const { speechUsage } = await import('../../agent/speak.js')
+    const u = speechUsage({ audio: { uint8Array: new Uint8Array(44 + 2 * 24000 * 4) }, providerMetadata: { google: { sampleRate: 24000 } } }, 'x'.repeat(30))
+    expect(u).toEqual({ inputTokens: 10, outputTokens: 100 })
+  })
+})
+
 describe('prompt rules for editing sales', () => {
   it('tells the agent which sale fields update_record accepts (matches the DB registry)', async () => {
     const fs = await import('node:fs')

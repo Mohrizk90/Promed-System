@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { fromGeminiMetadata } from '../../agent/usage.js'
 import { EXTRACTION_JSON_SCHEMA_DESCRIPTION, parseJsonFromModel, validateExtractionResult } from '../schema.js'
 import { withRetry, withTimeout, isRetryableGeminiError } from '../retry.js'
 
@@ -80,7 +81,7 @@ export function isSupportedMime(mimeType) {
   return m.startsWith('image/')
 }
 
-export async function extractWithGemini({ buffer, mimeType, fileName, outputLocale }) {
+export async function extractWithGemini({ buffer, mimeType, fileName, outputLocale, onUsage }) {
   if (!buffer?.length) throw new Error('Empty document buffer')
   if (!isSupportedMime(mimeType)) {
     throw new Error(`Unsupported MIME type for AI extraction: ${mimeType || 'unknown'}. Supported: PDF, JPG, PNG.`)
@@ -120,6 +121,10 @@ export async function extractWithGemini({ buffer, mimeType, fileName, outputLoca
       'Gemini extraction',
     )
 
+    // Every attempt is billed, so each one is logged (retries included).
+    if (onUsage && result?.response?.usageMetadata) {
+      try { onUsage({ feature: 'document_scan', model: modelName, usage: fromGeminiMetadata(result.response.usageMetadata) }) } catch { /* logging only */ }
+    }
     const text = result?.response?.text?.()
     const parsed = parseJsonFromModel(text)
     return validateExtractionResult(parsed)
