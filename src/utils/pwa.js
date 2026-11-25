@@ -41,10 +41,22 @@ export function applyUpdate() {
   waitingWorker.postMessage('SKIP_WAITING')
 }
 
+// New versions install themselves, but only at a moment that cannot lose anyone's typing:
+// right after the app opens, or while it is in the background. Otherwise the update banner
+// stays available and the update runs the next time the app is hidden.
+const OPENED_AT = Date.now()
+const SAFE_AFTER_OPEN_MS = 15000
+
+function autoApplyIfSafe() {
+  if (!waitingWorker) return
+  if (document.visibilityState === 'hidden' || Date.now() - OPENED_AT < SAFE_AFTER_OPEN_MS) applyUpdate()
+}
+
 function trackWaiting(reg) {
   const mark = (worker) => {
     waitingWorker = worker
     set({ updateReady: true })
+    autoApplyIfSafe()
   }
   if (reg.waiting && navigator.serviceWorker.controller) mark(reg.waiting)
   reg.addEventListener('updatefound', () => {
@@ -84,7 +96,11 @@ export function initPwa() {
       // Check for a new deploy when the app comes back to the foreground.
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update().catch(() => {})
+        else autoApplyIfSafe()
       })
+      // Long-open screens still pick up new deploys.
+      setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000)
+      reg.update().catch(() => {})
     } catch {
       /* non-fatal: app works without offline support */
     }

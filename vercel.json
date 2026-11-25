@@ -21,6 +21,14 @@
       "maxDuration": 30
     }
   },
+  "redirects": [
+    {
+      "source": "/:path((?!api/|sw\\.js|assets/|icons/|fonts/|manifest\\.webmanifest|Logo_Promed\\.png).*)",
+      "has": [{ "type": "host", "value": "promed-system.vercel.app" }],
+      "destination": "https://erp.promedmisr.com/:path",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
